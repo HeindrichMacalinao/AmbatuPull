@@ -248,7 +248,7 @@ function BadgePreview() {
   return <span className="preview-badge">Live</span>
 }
 
-function PreviewMetric({ value, label }: { value: string label: string }) {
+function PreviewMetric({ value, label }: { value: string; label: string }) {
   return (
     <div>
       <span>{label}</span>

@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from "react"
 import Button from "./Button"
 
-export type TableColumn = { key: string label: string align?: "right" }
+export type TableColumn = { key: string; label: string; align?: "right" }
 export type StatusFilter = "Active" | "Inactive" | "All"
 export type StatusCounts = { active: number; inactive: number; all: number }
 export type TableRow = Record<string, ReactNode> & {
