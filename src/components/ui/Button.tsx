@@ -10,7 +10,7 @@ export default function Button({
   disabled = false,
 }: {
   children: ReactNode
-  variant?: "primary" | "secondary" | "ghost" | "danger"
+  variant?: "primary" | "secondary" | "ghost" | "danger" | "outline" | "success"
   icon?: IconName
   onClick?: () => void
   disabled?: boolean

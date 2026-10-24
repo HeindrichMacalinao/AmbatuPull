@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import Button from "../components/ui/Button"
 import Icon from "../components/ui/Icon"
 import CustomersTable from "../components/tables/CustomersTable"
@@ -8,6 +8,10 @@ import SalesTable from "../components/tables/SalesTable"
 import SimpleHRTable from "../components/tables/SimpleHRTable"
 import UsersTable from "../components/tables/UsersTable"
 import type { Page, Role } from "../lib/types"
+import type {
+  StatusCounts,
+  StatusFilter,
+} from "../components/ui/DataTable"
 
 export const moduleMeta: Record<Exclude<Page, "Dashboard" | "Reports" | "Audit Log" | "System Settings">, {
   title: string
@@ -52,6 +56,21 @@ export default function ModulePage({
 }) {
   const meta = moduleMeta[page]
   const [hrTab, setHrTab] = useState("Employees")
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("Active")
+  const [statusCounts, setStatusCounts] = useState<StatusCounts>({
+    active: 0,
+    inactive: 0,
+    all: 0,
+  })
+  const updateStatusCounts = useCallback((counts: StatusCounts) => {
+    setStatusCounts((current) =>
+      current.active === counts.active &&
+      current.inactive === counts.inactive &&
+      current.all === counts.all
+        ? current
+        : counts,
+    )
+  }, [])
   return (
     <>
       <section className="page-heading">
@@ -59,9 +78,11 @@ export default function ModulePage({
           <div className="page-title">{meta.title}</div>
           <div className="page-subtitle">{meta.subtitle}</div>
         </div>
-        <Button icon="plus" onClick={openModal}>
-          {meta.action}
-        </Button>
+        {!(page === "Human Resources" && role === "User") && (
+          <Button icon="plus" onClick={openModal}>
+            {meta.action}
+          </Button>
+        )}
       </section>
       {page === "Human Resources" && (
         <div className="tabs">
@@ -97,9 +118,22 @@ export default function ModulePage({
           <div className="toolbar-right">
             {role !== "User" && (
               <div className="status-tabs">
-                <button className="active">Active</button>
-                <button>Inactive</button>
-                <button>All</button>
+                {(["Active", "Inactive", "All"] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    className={statusFilter === filter ? "active" : ""}
+                    onClick={() => setStatusFilter(filter)}
+                    aria-pressed={statusFilter === filter}
+                  >
+                    {filter} (
+                    {filter === "Active"
+                      ? statusCounts.active
+                      : filter === "Inactive"
+                        ? statusCounts.inactive
+                        : statusCounts.all}
+                    )
+                  </button>
+                ))}
               </div>
             )}
             <Button variant="secondary" icon="filter">
@@ -107,16 +141,49 @@ export default function ModulePage({
             </Button>
           </div>
         </div>
-        {page === "Customers" && <CustomersTable role={role} />}
-        {page === "Products" && <ProductsTable role={role} />}
+        {page === "Customers" && (
+          <CustomersTable
+            role={role}
+            statusFilter={statusFilter}
+            onStatusCountsChange={updateStatusCounts}
+          />
+        )}
+        {page === "Products" && (
+          <ProductsTable
+            role={role}
+            statusFilter={statusFilter}
+            onStatusCountsChange={updateStatusCounts}
+          />
+        )}
         {page === "Human Resources" && hrTab === "Employees" && (
-          <EmployeesTable role={role} />
+          <EmployeesTable
+            role={role}
+            statusFilter={statusFilter}
+            onStatusCountsChange={updateStatusCounts}
+          />
         )}
         {page === "Human Resources" && hrTab !== "Employees" && (
-          <SimpleHRTable tab={hrTab} role={role} />
+          <SimpleHRTable
+            tab={hrTab}
+            role={role}
+            statusFilter={statusFilter}
+            onStatusCountsChange={updateStatusCounts}
+          />
         )}
-        {page === "Sales" && <SalesTable role={role} />}
-        {page === "User Management" && <UsersTable role={role} />}
+        {page === "Sales" && (
+          <SalesTable
+            role={role}
+            statusFilter={statusFilter}
+            onStatusCountsChange={updateStatusCounts}
+          />
+        )}
+        {page === "User Management" && (
+          <UsersTable
+            role={role}
+            statusFilter={statusFilter}
+            onStatusCountsChange={updateStatusCounts}
+          />
+        )}
       </section>
     </>
   )

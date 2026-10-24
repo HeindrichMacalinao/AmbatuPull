@@ -1,16 +1,42 @@
-import type { ReactNode } from "react"
+import { useEffect, type ReactNode } from "react"
 import Button from "./Button"
 
 export type TableColumn = { key: string label: string align?: "right" }
-export type TableRow = Record<string, ReactNode> & { deleted?: boolean }
+export type StatusFilter = "Active" | "Inactive" | "All"
+export type StatusCounts = { active: number; inactive: number; all: number }
+export type TableRow = Record<string, ReactNode> & {
+  deleted?: boolean
+  statusCategory?: "active" | "inactive" | "other"
+}
 
 export default function DataTable({
   columns,
   rows,
+  statusFilter = "All",
+  onStatusCountsChange,
 }: {
   columns: TableColumn[]
   rows: TableRow[]
+  statusFilter?: StatusFilter
+  onStatusCountsChange?: (counts: StatusCounts) => void
 }) {
+  const counts = rows.reduce<StatusCounts>(
+    (current, row) => {
+      if (row.statusCategory === "active") current.active += 1
+      if (row.statusCategory === "inactive") current.inactive += 1
+      current.all += 1
+      return current
+    },
+    { active: 0, inactive: 0, all: 0 },
+  )
+  useEffect(() => {
+    onStatusCountsChange?.(counts)
+  }, [counts.active, counts.inactive, counts.all, onStatusCountsChange])
+  const filteredRows =
+    statusFilter === "All"
+      ? rows
+      : rows.filter((row) => row.statusCategory === statusFilter.toLowerCase())
+
   return (
     <div className="table-wrap">
       <table>
@@ -28,7 +54,7 @@ export default function DataTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => (
+          {filteredRows.map((row, index) => (
             <tr key={index} className={row.deleted ? "deleted-row" : ""}>
               {columns.map((column) => (
                 <td
@@ -44,8 +70,8 @@ export default function DataTable({
       </table>
       <div className="pagination">
         <span>
-          Showing <strong>1–{rows.length}</strong> of{" "}
-          <strong>{rows.length}</strong> records
+          Showing <strong>1–{filteredRows.length}</strong> of{" "}
+          <strong>{filteredRows.length}</strong> records
         </span>
         <div>
           <Button variant="secondary" disabled>

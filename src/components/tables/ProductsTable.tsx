@@ -1,9 +1,20 @@
 import type { Role } from "../../lib/types"
 import Badge from "../ui/Badge"
-import DataTable from "../ui/DataTable"
+import DataTable, {
+  type StatusCounts,
+  type StatusFilter,
+} from "../ui/DataTable"
 import ActionLinks from "./ActionLinks"
 
-export default function ProductsTable({ role }: { role: Role }) {
+export default function ProductsTable({
+  role,
+  statusFilter,
+  onStatusCountsChange,
+}: {
+  role: Role
+  statusFilter: StatusFilter
+  onStatusCountsChange: (counts: StatusCounts) => void
+}) {
   const admin = role !== "User"
   return (
     <DataTable
@@ -22,6 +33,7 @@ export default function ProductsTable({ role }: { role: Role }) {
       ]}
       rows={[
         {
+          statusCategory: "active",
           code: <strong>P-001</strong>,
           description: "Industrial Widget A",
           unit: "pcs",
@@ -35,6 +47,7 @@ export default function ProductsTable({ role }: { role: Role }) {
           ),
         },
         {
+          statusCategory: "active",
           code: <strong>P-002</strong>,
           description: "Steel Bracket Heavy",
           unit: "pcs",
@@ -48,6 +61,7 @@ export default function ProductsTable({ role }: { role: Role }) {
           ),
         },
         {
+          statusCategory: "active",
           code: <strong>P-003</strong>,
           description: "Premium Sealant",
           unit: "can",
@@ -63,6 +77,7 @@ export default function ProductsTable({ role }: { role: Role }) {
         ...(admin
           ? [
               {
+                statusCategory: "inactive",
                 code: <strong>P-004</strong>,
                 description: "Safety Gloves XL",
                 unit: "pair",
@@ -75,6 +90,8 @@ export default function ProductsTable({ role }: { role: Role }) {
             ]
           : []),
       ]}
+      statusFilter={statusFilter}
+      onStatusCountsChange={onStatusCountsChange}
     />
   )
 }

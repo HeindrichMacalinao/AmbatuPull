@@ -1,9 +1,22 @@
 import type { Role } from "../../lib/types"
 import Badge from "../ui/Badge"
-import DataTable, { type TableColumn, type TableRow } from "../ui/DataTable"
+import DataTable, {
+  type StatusCounts,
+  type StatusFilter,
+  type TableColumn,
+  type TableRow,
+} from "../ui/DataTable"
 import ActionLinks from "./ActionLinks"
 
-export default function CustomersTable({ role }: { role: Role }) {
+export default function CustomersTable({
+  role,
+  statusFilter,
+  onStatusCountsChange,
+}: {
+  role: Role
+  statusFilter: StatusFilter
+  onStatusCountsChange: (counts: StatusCounts) => void
+}) {
   const admin = role !== "User"
   const columns: TableColumn[] = [
     { key: "id", label: "Cust no" },
@@ -20,6 +33,7 @@ export default function CustomersTable({ role }: { role: Role }) {
   ]
   const rows: TableRow[] = [
     {
+      statusCategory: "active",
       id: <strong>C-001</strong>,
       name: "Acme Corporation",
       address: "123 Main St., Metro City",
@@ -29,6 +43,7 @@ export default function CustomersTable({ role }: { role: Role }) {
       actions: <ActionLinks names={["Edit", ...(admin ? ["Delete"] : [])]} />,
     },
     {
+      statusCategory: "active",
       id: <strong>C-002</strong>,
       name: "Globex Industries",
       address: "456 Oak Ave., Harbor Town",
@@ -38,6 +53,7 @@ export default function CustomersTable({ role }: { role: Role }) {
       actions: <ActionLinks names={["Edit", ...(admin ? ["Delete"] : [])]} />,
     },
     {
+      statusCategory: "active",
       id: <strong>C-003</strong>,
       name: "Initech LLC",
       address: "88 Market Rd., Westhaven",
@@ -49,6 +65,7 @@ export default function CustomersTable({ role }: { role: Role }) {
     ...(admin
       ? [
           {
+            statusCategory: "inactive",
             id: <strong>C-004</strong>,
             name: "Umbrella Corp",
             address: "1 Raccoon City Blvd",
@@ -61,5 +78,12 @@ export default function CustomersTable({ role }: { role: Role }) {
         ]
       : []),
   ]
-  return <DataTable columns={columns} rows={rows} />
+  return (
+    <DataTable
+      columns={columns}
+      rows={rows}
+      statusFilter={statusFilter}
+      onStatusCountsChange={onStatusCountsChange}
+    />
+  )
 }

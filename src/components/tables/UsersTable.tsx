@@ -1,9 +1,20 @@
 import type { Role } from "../../lib/types"
 import Badge from "../ui/Badge"
-import DataTable from "../ui/DataTable"
+import DataTable, {
+  type StatusCounts,
+  type StatusFilter,
+} from "../ui/DataTable"
 import ActionLinks from "./ActionLinks"
 
-export default function UsersTable({ role }: { role: Role }) {
+export default function UsersTable({
+  role,
+  statusFilter,
+  onStatusCountsChange,
+}: {
+  role: Role
+  statusFilter: StatusFilter
+  onStatusCountsChange: (counts: StatusCounts) => void
+}) {
   return (
     <DataTable
       columns={[
@@ -16,6 +27,7 @@ export default function UsersTable({ role }: { role: Role }) {
       ]}
       rows={[
         {
+          statusCategory: "active",
           id: "USR-001",
           name: (
             <div className="person-cell">
@@ -29,6 +41,7 @@ export default function UsersTable({ role }: { role: Role }) {
           actions: <span className="muted">Protected account</span>,
         },
         {
+          statusCategory: "active",
           id: "USR-002",
           name: (
             <div className="person-cell">
@@ -42,6 +55,7 @@ export default function UsersTable({ role }: { role: Role }) {
           actions: <ActionLinks names={["Rights", "Edit", "Block"]} />,
         },
         {
+          statusCategory: "inactive",
           id: "USR-003",
           name: (
             <div className="person-cell">
@@ -57,6 +71,7 @@ export default function UsersTable({ role }: { role: Role }) {
         ...(role === "Superadmin"
           ? [
               {
+                statusCategory: "active",
                 id: "USR-004",
                 name: "System Owner",
                 email: "owner@hope.com",
@@ -67,6 +82,8 @@ export default function UsersTable({ role }: { role: Role }) {
             ]
           : []),
       ]}
+      statusFilter={statusFilter}
+      onStatusCountsChange={onStatusCountsChange}
     />
   )
 }
