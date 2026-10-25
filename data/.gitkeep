@@ -1,1 +1,0 @@
-# Keep data directory in Git while ignoring SQLite database binaries (.db, .sqlite, .sqlite3)
