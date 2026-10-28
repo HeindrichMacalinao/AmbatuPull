@@ -1,7 +1,7 @@
 {
-  "name": "ambatu-pull-erp",
+  "name": "ambatupull-erp",
   "version": "1.0.0",
-  "description": "Hope, Inc. ERP — System Foundation & Local Database Migration Runner",
+  "description": "Hope, Inc. ERP - System Foundation & Local Database Migration Runner",
   "main": "scripts/migrate/index.js",
   "scripts": {
     "migrate": "node scripts/migrate/index.js up",
@@ -11,7 +11,8 @@
     "migrate:reset": "node scripts/migrate/index.js reset",
     "db:setup": "node scripts/migrate/index.js up",
     "db:status": "node scripts/migrate/index.js status",
-    "db:reset": "node scripts/migrate/index.js reset"
+    "db:reset": "node scripts/migrate/index.js reset",
+    "test": "python tests/verify_hope.py"
   },
   "keywords": [
     "sqlite",
