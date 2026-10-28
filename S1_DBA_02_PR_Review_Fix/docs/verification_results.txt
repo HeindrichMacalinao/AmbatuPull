@@ -1,0 +1,21 @@
+S1-DBA-02 verification — 2026-10-28
+
+$ python scripts/regenerate_hope.py
+$ python tests/verify_hope.py
+
+PASS: HopeERP.db SQLite integrity and 10 required tables
+PASS: exact SQL schema, PKs, and status/stamp constraints on all 10 tables
+PASS: 928 historical records; every business value matches HopeDB_audit.sql.txt
+PASS: all 9 foreign keys present and reject orphaned INSERTs
+PASS: expected historical IDs/values and relationship joins
+SUCCESS: HopeERP.db
+
+PASS: HOPE_Model1.db SQLite integrity and 10 required tables
+PASS: exact SQL schema, PKs, and status/stamp constraints on all 10 tables
+PASS: 928 historical records; every business value matches HopeDB_audit.sql.txt
+PASS: all 9 foreign keys present and reject orphaned INSERTs
+PASS: expected historical IDs/values and relationship joins
+PASS: original Model1.db preserved (16 tables plus indexes/views)
+SUCCESS: HOPE_Model1.db
+
+ALL TESTS PASSED: 2 database(s); 928 baseline records each

@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+"""Rebuild S1-DBA-02 SQLite artifacts from the approved HOPE historical seed.
+
+Run from the repository root: python scripts/regenerate_hope.py
+Optional: python scripts/regenerate_hope.py --model1 path/to/Model1.db
+
+Rebuilds both output DBs atomically, without modifying the source Model1.db.
+"""
+from __future__ import annotations
+
+import argparse
+import os
+import sqlite3
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+MIGRATION = ROOT / 'db/migrations/001_hope_base_tables.sql'
+SEED = ROOT / 'db/seeds/002_hope_historical_data.sql'
+DEFAULT_MODEL1 = ROOT / 'reference/Model1.db'
+
+
+def rebuild(target: Path, source_model: Path | None) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmpname = tempfile.mkstemp(prefix=f'.{target.stem}-', suffix='.db', dir=target.parent)
+    os.close(fd)
+    temporary = Path(tmpname)
+    try:
+        conn = sqlite3.connect(temporary)
+        try:
+            conn.execute('PRAGMA foreign_keys = ON')
+            if source_model is not None:
+                assert source_model.is_file(), f'Original source DB not found: {source_model}'
+                source = sqlite3.connect(f'file:{source_model.resolve().as_posix()}?mode=ro', uri=True)
+                try:
+                    source.backup(conn)
+                finally:
+                    source.close()
+                conn.execute('PRAGMA foreign_keys = ON')
+            conn.executescript(MIGRATION.read_text(encoding='utf-8'))
+            conn.executescript(SEED.read_text(encoding='utf-8'))
+            assert conn.execute('PRAGMA foreign_keys').fetchone()[0] == 1
+            assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
+            assert conn.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
+            conn.commit()
+        finally:
+            conn.close()
+        os.replace(temporary, target)
+        print(f'BUILT: {target.name} ({target.stat().st_size:,} bytes)')
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--model1', type=Path, default=DEFAULT_MODEL1,
+                        help='original simulation Model1.db to preserve in HOPE_Model1.db')
+    args = parser.parse_args()
+    rebuild(ROOT / 'HopeERP.db', None)
+    rebuild(ROOT / 'HOPE_Model1.db', args.model1)
+
+
+if __name__ == '__main__':
+    main()
