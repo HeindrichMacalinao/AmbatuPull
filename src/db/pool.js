@@ -11,15 +11,15 @@ let pool = null;
  * We add a startup retry loop and an idle-error handler so a DB restart
  * never crashes the process.
  */
-function createPool(dbConfig) {
+function createPool(dbConfig = {}) {
   if (pool) return pool;
 
   pool = new Pool({
-    host: dbConfig.host,
-    port: dbConfig.port,
-    user: dbConfig.user,
-    password: dbConfig.password,
-    database: dbConfig.database,
+    host: dbConfig.host || process.env.DB_HOST || process.env.PGHOST || 'localhost',
+    port: Number(dbConfig.port || process.env.DB_PORT || process.env.PGPORT || 5432),
+    user: dbConfig.user || process.env.DB_USER || process.env.PGUSER || 'erp_user',
+    password: dbConfig.password || process.env.DB_PASS || process.env.DB_PASSWORD || process.env.PGPASSWORD || '',
+    database: dbConfig.database || process.env.DB_NAME || process.env.PGDATABASE || 'erp_db',
     max: 10,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
