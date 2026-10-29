@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rebuild S1-DBA-02 SQLite artifacts from the approved HOPE historical seed.
+"""Rebuild integrated S1-DBA-01/02/03 SQLite database artifacts.
 
 Run from the repository root: python scripts/regenerate_hope.py
 Optional: python scripts/regenerate_hope.py --model1 path/to/Model1.db
@@ -17,6 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = ROOT / 'db/migrations/001_hope_base_tables.sql'
 SEED = ROOT / 'db/seeds/002_hope_historical_data.sql'
+USER_MIGRATION = ROOT / 'db/migrations/002_user_management_tables.sql'
 DEFAULT_MODEL1 = ROOT / 'reference/Model1.db'
 
 
@@ -39,6 +40,8 @@ def rebuild(target: Path, source_model: Path | None) -> None:
                 conn.execute('PRAGMA foreign_keys = ON')
             conn.executescript(MIGRATION.read_text(encoding='utf-8'))
             conn.executescript(SEED.read_text(encoding='utf-8'))
+            # S1-DBA-03 runs AFTER S1-DBA-02 so EMPLOYEE exists.
+            conn.executescript(USER_MIGRATION.read_text(encoding='utf-8'))
             assert conn.execute('PRAGMA foreign_keys').fetchone()[0] == 1
             assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
             assert conn.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
