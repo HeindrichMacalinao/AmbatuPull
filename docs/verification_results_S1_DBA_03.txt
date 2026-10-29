@@ -1,0 +1,64 @@
+S1-DBA-03 | Integrated local verification
+SQLite 3 / Python sqlite3
+Build order: 001 base -> historical seed -> 002 user management
+
+$ python scripts/regenerate_hope.py
+BUILT: HopeERP.db (233,472 bytes)
+BUILT: HOPE_Model1.db (409,600 bytes)
+Exit code: 0
+
+$ python tests/verify_hope.py
+PASS: HopeERP.db SQLite integrity and 10 required tables
+PASS: exact SQL schema, PKs, and status/stamp constraints on all 10 tables
+PASS: 928 historical records; every business value matches HopeDB_audit.sql.txt
+PASS: all 9 foreign keys present and reject orphaned INSERTs
+PASS: expected historical IDs/values and relationship joins
+SUCCESS: HopeERP.db
+
+PASS: HOPE_Model1.db SQLite integrity and 10 required tables
+PASS: exact SQL schema, PKs, and status/stamp constraints on all 10 tables
+PASS: 928 historical records; every business value matches HopeDB_audit.sql.txt
+PASS: all 9 foreign keys present and reject orphaned INSERTs
+PASS: expected historical IDs/values and relationship joins
+PASS: original Model1.db preserved (16 tables plus indexes/views)
+SUCCESS: HOPE_Model1.db
+
+ALL TESTS PASSED: 2 database(s); 928 baseline records each
+Exit code: 0
+
+$ python tests/verify_user_management.py
+--- HopeERP.db ---
+PASS: five user-management tables, exact columns/PKs and 5 FKs
+PASS: role/default/status/audit constraints and both requested indexes
+PASS: case-insensitive email uniqueness, valid employee FK, restricted values/stamp
+PASS: junction ON DELETE CASCADE for account and rights; restricted module delete
+PASS: soft-disable retains grants; EMPLOYEE deletion sets nullable empNo to NULL
+PASS: no demonstration accounts/permissions persisted
+PASS: SQLite integrity and FK checks
+PASS: five user-management tables, exact columns/PKs and 5 FKs
+PASS: role/default/status/audit constraints and both requested indexes
+PASS: idempotent reapplication
+SUCCESS: HopeERP.db
+
+--- HOPE_Model1.db ---
+PASS: five user-management tables, exact columns/PKs and 5 FKs
+PASS: role/default/status/audit constraints and both requested indexes
+PASS: case-insensitive email uniqueness, valid employee FK, restricted values/stamp
+PASS: junction ON DELETE CASCADE for account and rights; restricted module delete
+PASS: soft-disable retains grants; EMPLOYEE deletion sets nullable empNo to NULL
+PASS: no demonstration accounts/permissions persisted
+PASS: SQLite integrity and FK checks
+PASS: five user-management tables, exact columns/PKs and 5 FKs
+PASS: role/default/status/audit constraints and both requested indexes
+PASS: idempotent reapplication
+SUCCESS: HOPE_Model1.db
+
+ALL S1-DBA-03 VERIFICATIONS PASSED: both databases
+Exit code: 0
+
+PRESERVED BASELINE: All 928 historical business rows match HopeDB_audit.sql.txt in both DB files.
+PRESERVED TASK 1: Original Model1.db simulation (16 tables plus indexes/views) matches the source.
+S1-DBA-03: Five tables and five new FKs; two explicit indexes; three allowed system roles.
+SQLite foreign-key enforcement enabled in the runners and tests.
+No mock accounts, modules, rights, or permissions persisted.
+NOTE: Tests run locally against generated files, NOT on GitHub or CI.

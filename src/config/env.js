@@ -2,21 +2,20 @@
 
 require('dotenv').config();
 
-const REQUIRED = [
-  'PORT',
-  'DB_HOST',
-  'DB_PORT',
-  'DB_USER',
-  'DB_PASS',
-  'DB_NAME',
-  'SESSION_SECRET',
-  'APP_URL',
-];
-
 function loadEnv(source = process.env) {
   const errors = [];
 
-  for (const key of REQUIRED) {
+  const dbClient = (source.DB_CLIENT || (source.DB_HOST ? 'pg' : 'sqlite')).toLowerCase();
+  const isPostgres = dbClient === 'pg' || dbClient === 'postgres';
+
+  const required = [
+    'PORT',
+    'SESSION_SECRET',
+    'APP_URL',
+    ...(isPostgres ? ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASS', 'DB_NAME'] : []),
+  ];
+
+  for (const key of required) {
     if (source[key] === undefined || String(source[key]).trim() === '') {
       errors.push(`${key} is missing`);
     }
@@ -30,8 +29,8 @@ function loadEnv(source = process.env) {
     return n;
   };
 
-  const port = source.PORT ? toPort('PORT') : undefined;
-  const dbPort = source.DB_PORT ? toPort('DB_PORT') : undefined;
+  const port = source.PORT ? toPort('PORT') : 3000;
+  const dbPort = isPostgres && source.DB_PORT ? toPort('DB_PORT') : (source.DB_PORT ? toPort('DB_PORT') : undefined);
 
   if (source.SESSION_SECRET && source.SESSION_SECRET.length < 16) {
     errors.push('SESSION_SECRET must be at least 16 characters');
@@ -51,9 +50,15 @@ function loadEnv(source = process.env) {
     throw new Error(msg);
   }
 
+  const dbPath = source.DB_PATH || './data/erp_local.db';
+
   return Object.freeze({
     port,
+    dbClient,
+    dbPath,
     db: Object.freeze({
+      client: dbClient,
+      path: dbPath,
       host: source.DB_HOST,
       port: dbPort,
       user: source.DB_USER,
