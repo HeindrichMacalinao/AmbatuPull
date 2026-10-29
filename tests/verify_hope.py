@@ -149,7 +149,11 @@ def verify(db_path: Path, original_rows: dict[str, list[tuple]]) -> None:
         existing = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         assert set(TABLES).issubset(existing), f'Missing HOPE tables: {set(TABLES) - existing}'
         if db_path.name.lower() == 'hoperp.db':
-            assert existing == set(TABLES), f'Clean HopeERP.db has unexpected tables: {existing - set(TABLES)}'
+            # S1-DBA-03 extends the clean ERP database by five tables;
+            # AUTOINCREMENT additionally creates SQLite's internal sequence table.
+            user_tables = {'app_user', 'role', 'module', 'rights', 'user_permission'}
+            expected_tables = set(TABLES) | user_tables | {'sqlite_sequence'}
+            assert existing == expected_tables, f'Clean HopeERP.db schema mismatch: missing={expected_tables-existing}, extra={existing-expected_tables}'
         print(f'PASS: {db_path.name} SQLite integrity and 10 required tables')
 
         for table, business_cols in TABLES.items():

@@ -13,7 +13,7 @@ The historical dataset in the supplied `HopeDB_audit.sql.txt` is **available** a
 | `db/verify/verify_hope.sql` | Read-only SQL inspection and expected counts |
 | `tests/verify_hope.py` | Automated schema, FK, audit, record count, and **full source-to-target parity** tests |
 | `scripts/regenerate_hope.py` | Rebuilds both database files from migration and historical seed |
-| `HopeERP.db` | Clean SQLite ERP database (10 tables) |
+| `HopeERP.db` | Integrated clean SQLite ERP database (10 S1-DBA-02 base tables plus 5 S1-DBA-03 user-management tables) |
 | `HOPE_Model1.db` | SQLite copy of original simulation DB with 10 ERP tables added |
 | `reference/HopeDB_audit.sql.txt` | Unmodified source historical SQL (PostgreSQL reference, **do not execute on SQLite**) |
 | `reference/Model1.db` | Unmodified original simulation database used to reproduce `HOPE_Model1.db` |
@@ -64,6 +64,8 @@ sqlite3 HopeERP.db ".read db/verify/verify_hope.sql"
 | SALESDETAIL | 313 |
 | PAYMENT | 165 |
 | **Total** | **928** |
+
+For the combined S1-DBA-03 package, the clean ERP database additionally contains 5 user-management tables and SQLite’s internal `sqlite_sequence` table. See [S1_DBA_03.md](S1_DBA_03.md).
 
 The automated verifier also checks exact columns/types, composite primary keys, all nine foreign keys, rejection of orphan inserts, invalid statuses and null stamps, joins, and exact values of **every historical business row** against the original source. For `HOPE_Model1.db`, it also checks that the original simulation tables and their contents were preserved.
 
