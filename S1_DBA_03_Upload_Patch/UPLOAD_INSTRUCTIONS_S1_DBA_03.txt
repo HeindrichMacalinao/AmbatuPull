@@ -1,0 +1,28 @@
+S1-DBA-03 integrated patch for AmbatuPull (adds to S1-DBA-01 and S1-DBA-02)
+
+Upload repo-relative paths, not the enclosing ZIP folder.
+
+New:
+  db/migrations/002_user_management_tables.sql
+  db/verify/verify_user_management.sql
+  tests/verify_user_management.py
+  docs/S1_DBA_03.md
+  docs/verification_results_S1_DBA_03.txt
+
+Updated, to build/verify all three tasks together:
+  scripts/regenerate_hope.py
+  tests/verify_hope.py
+  HopeERP.db
+  HOPE_Model1.db
+
+Unchanged original S1-DBA-02 files are INCLUDED in the full ZIP for reproducibility.
+Do not re-upload unchanged files unnecessarily; preserve unrelated project modules.
+The project repo's actual migration runner is not confirmed; register the
+new migration if your team has a different authoritative runner.
+
+Commands from repository root:
+  python scripts/regenerate_hope.py
+  python tests/verify_hope.py
+  python tests/verify_user_management.py
+
+GitHub branch is NOT modified automatically by this ZIP.
