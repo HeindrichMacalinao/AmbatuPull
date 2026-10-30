@@ -14,7 +14,8 @@
     "db:setup": "node scripts/migrate/index.js up",
     "db:status": "node scripts/migrate/index.js status",
     "db:reset": "node scripts/migrate/index.js reset",
-    "test": "python tests/verify_hope.py && python tests/verify_user_management.py && python tests/verify_qa_fixtures.py"
+    "test": "python tests/verify_hope.py && python tests/verify_user_management.py && python tests/verify_qa_fixtures.py && python tests/verify_auth_contract.py",
+    "test:auth": "node --test tests/auth-flow.test.js"
   },
   "keywords": [
     "sqlite",
