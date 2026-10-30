@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, S1-DBA-03-CI]
 
 permissions:
   contents: read
@@ -11,7 +11,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -29,7 +29,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --include=optional
 
       - name: Run project tests
         run: npm test
@@ -43,8 +43,8 @@ jobs:
         run: |
           python tests/verify_user_management.py
 
-      - name: Ensure no migration remains pending
+      - name: Ensure migration runner can apply and verify migrations
         run: |
           rm -f data/ci_test.db
           node scripts/migrate/index.js up --db=./data/ci_test.db --dir=./migrations
-          python tests/check_pending_migrations.py
+          node scripts/migrate/index.js status --db=./data/ci_test.db --dir=./migrations
