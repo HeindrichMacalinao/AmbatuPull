@@ -31,19 +31,18 @@ jobs:
       - name: Install dependencies
         run: npm ci --include=optional
 
-      - name: Run project tests
-        run: npm test
-
-      - name: Rebuild fresh SQLite databases
+      - name: Rebuild fresh SQLite databases from the repo model
         run: |
           rm -f HopeERP.db HOPE_Model1.db
-          python scripts/regenerate_hope.py
+          python scripts/regenerate_hope.py --model1 HOPE_Model1.db
 
-      - name: Validate S1-DBA-03 schema and constraints
+      - name: Run project tests
         run: |
+          python tests/verify_hope.py HopeERP.db HOPE_Model1.db
           python tests/verify_user_management.py
+          python tests/verify_qa_fixtures.py
 
-      - name: Ensure migration runner can apply and verify migrations
+      - name: Validate migration runner
         run: |
           rm -f data/ci_test.db
           node scripts/migrate/index.js up --db=./data/ci_test.db --dir=./migrations
