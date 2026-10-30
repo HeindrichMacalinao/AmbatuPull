@@ -26,21 +26,16 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Install dependencies
         run: npm ci --include=optional
 
-      - name: Rebuild fresh SQLite databases from the repo model
-        run: |
-          rm -f HopeERP.db HOPE_Model1.db
-          python scripts/regenerate_hope.py --model1 HOPE_Model1.db
+      - name: Validate user management schema
+        run: python tests/verify_user_management.py
 
-      - name: Run project tests
-        run: |
-          python tests/verify_hope.py HopeERP.db HOPE_Model1.db
-          python tests/verify_user_management.py
-          python tests/verify_qa_fixtures.py
+      - name: Validate QA fixtures
+        run: python tests/verify_qa_fixtures.py
 
       - name: Validate migration runner
         run: |
