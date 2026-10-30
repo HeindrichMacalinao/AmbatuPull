@@ -26,6 +26,12 @@ SET passwordHash = excluded.passwordHash,
     stamp = excluded.stamp;
 
 -- Grant representative rights to the positive User fixture.
+-- Replace any prior grants so repeated seeds cannot retain stale permissions.
+DELETE FROM user_permission
+WHERE "userId" = (
+  SELECT "userId" FROM app_user WHERE email = 'test_user@hope.com'
+);
+
 INSERT INTO user_permission ("userId", "rightCode", "status", "stamp")
 VALUES
   ((SELECT "userId" FROM app_user WHERE email = 'test_user@hope.com'), 'customer.view', 'Active', 'GRANTED test_seed')

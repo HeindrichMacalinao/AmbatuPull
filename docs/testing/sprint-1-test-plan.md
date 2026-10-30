@@ -1,7 +1,8 @@
 # Sprint 1 QA Master Test Plan and Acceptance Criteria
 
 **Issue:** #25 — `[S1-TST-01] Sprint 1 Quality Assurance Master Plan & Acceptance Criteria`  
-**Status:** Draft; application sign-off is blocked pending implementation.
+**Status:** QA plan and fixture deliverables complete; execution/sign-off pending
+application-under-test (AUT) availability.
 
 ## 1. Objective, scope, and out-of-scope
 
@@ -181,8 +182,12 @@ authorization implementation.
 
 ## 8. Acceptance Criteria
 
-- [ ] Master Test Plan completed and signed off
-- [ ] Test fixtures and predefined accounts documented for all roles
+The documentation and fixture deliverables for issue #25 are complete. The
+application-dependent criteria remain open until the AUT and disposable CI
+database are available.
+
+- [x] Master Test Plan completed and documented
+- [x] Test fixtures and predefined accounts documented for all roles
 - [ ] Public registration, authentication, and reset cases pass or are waived
 - [ ] CRUD, blocking, soft-delete, and last-Superadmin cases pass
 - [ ] All 36 rights have allow/deny evidence
@@ -191,12 +196,17 @@ authorization implementation.
 
 ## 9. Sign-off
 
+**QA disposition:** Ready for execution. Product sign-off is **blocked**, not
+waived, because the repository does not yet provide the application routes or a
+configured AUT. A reviewer may sign this plan after the open criteria pass and
+the regression evidence is attached.
+
 | Name | Role | Date | Signature |
 |---|---|---|---|
-|  | Test Engineer |  |  |
-|  | Backend Developer |  |  |
-|  | DevSecOps |  |  |
-|  | Scrum Master |  |  |
+| Pending AUT review | Test Engineer | Pending |  |
+| Pending AUT review | Backend Developer | Pending |  |
+| Pending AUT review | DevSecOps | Pending |  |
+| Pending AUT review | Scrum Master | Pending |  |
 
 ## 10. Assumptions & Open Questions
 

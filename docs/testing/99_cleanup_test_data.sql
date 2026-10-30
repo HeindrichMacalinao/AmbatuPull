@@ -6,11 +6,14 @@ BEGIN;
 
 -- Remove permissions belonging to test-prefixed accounts.
 DELETE FROM user_permission
-WHERE "userId" IN (SELECT "userId" FROM app_user WHERE email LIKE 'test_%');
+WHERE "userId" IN (
+  SELECT "userId" FROM app_user
+  WHERE email LIKE 'test\_%' ESCAPE '\'
+);
 
 -- Remove only test-prefixed accounts.
 DELETE FROM app_user
-WHERE email LIKE 'test_%';
+WHERE email LIKE 'test\_%' ESCAPE '\';
 
 -- Remove only rights seeded by the test fixture. A right is safe to remove
 -- after its grants are removed above.
@@ -55,10 +58,7 @@ WHERE "rightCode" IN (
 )
 ;
 
--- Remove only role rows created by the test fixture.
-DELETE FROM role
-WHERE "roleName" IN ('Superadmin', 'Admin', 'User');
-
+-- Shared roles are intentionally preserved.
 -- Reset-token/session cleanup is intentionally absent because those table
 -- names and columns are not present in the repository.
 
