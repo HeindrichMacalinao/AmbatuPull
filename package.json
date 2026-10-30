@@ -14,10 +14,11 @@
     "db:setup": "node scripts/migrate/index.js up",
     "db:status": "node scripts/migrate/index.js status",
     "db:reset": "node scripts/migrate/index.js reset",
-    "test": "python tests/verify_hope.py && python tests/verify_user_management.py && python tests/verify_qa_fixtures.py && python tests/verify_auth_contract.py && python tests/verify_permission_matrix.py",
+    "test": "python tests/verify_hope.py && python tests/verify_user_management.py && python tests/verify_qa_fixtures.py && python tests/verify_auth_contract.py && python tests/verify_permission_matrix.py && python tests/verify_smoke_contract.py",
     "test:auth": "node --test tests/auth-flow.test.js",
     "test:user-management": "node --test tests/user-management.test.js",
-    "test:permission-matrix": "node --test tests/permission-matrix.test.js"
+    "test:permission-matrix": "node --test tests/permission-matrix.test.js",
+    "test:smoke": "node --test tests/smoke.test.js"
   },
   "keywords": [
     "sqlite",
