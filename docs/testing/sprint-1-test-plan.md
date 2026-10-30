@@ -219,9 +219,10 @@ the regression evidence is attached.
 - Confirm final routes/status codes for registration, login/logout, reset,
   user CRUD, block/unblock, role/right management, and dashboard.
 - Confirm reset-token hashing, expiry, single-use invalidation, and delivery.
-- The permission matrix documents 36 codes such as `customer.view` and
-  `customer.create`; roadmap prose also mentions `customer.add`. Confirm the
-  migration's canonical codes.
+- - The permission matrix currently uses provisional codes such as
+  `customer.view` and `customer.create`; DevSecOps issue #10/roadmap prose
+  mentions codes such as `customer.add`. Request DevSecOps confirmation before
+  treating the fixture or its 36-right list as authoritative.
 - Confirm whether Admin may assign Admin or only manage User accounts.
 - Confirm dashboard modules, counters, row filters, and field filtering rules.
 - Run test seeds only after migrations are supplied; never run against production.

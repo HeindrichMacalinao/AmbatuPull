@@ -1,6 +1,8 @@
 -- Sprint 1 QA test-only roles and rights fixture.
 -- SQLite-compatible SQL; run only after db/migrations/002_user_management_tables.sql.
 -- This file is documentation/fixture source and is not executed by this task.
+-- The rights list is provisional pending DevSecOps confirmation of issue #10.
+-- Existing canonical rights are never overwritten by this fixture.
 
 BEGIN;
 
@@ -53,9 +55,7 @@ VALUES
   ('reports.financial', 'reports', 'View financial reports'),
   ('reports.export', 'reports', 'Export reports'),
   ('reports.audit', 'reports', 'View report audit')
-ON CONFLICT ("rightCode") DO UPDATE
-SET "moduleCode" = excluded."moduleCode",
-    "description" = excluded."description";
+ON CONFLICT ("rightCode") DO NOTHING;
 
 INSERT INTO "role" ("roleName", "description")
 VALUES

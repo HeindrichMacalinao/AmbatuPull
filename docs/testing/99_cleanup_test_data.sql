@@ -15,50 +15,10 @@ WHERE "userId" IN (
 DELETE FROM app_user
 WHERE email LIKE 'test\_%' ESCAPE '\';
 
--- Remove only rights seeded by the test fixture. A right is safe to remove
--- after its grants are removed above.
-DELETE FROM rights
-WHERE "rightCode" IN (
-  'customer.view',
-  'customer.create',
-  'customer.delete',
-  'product.view',
-  'product.create',
-  'product.edit',
-  'product.delete',
-  'product.import',
-  'product.export',
-  'hr.view',
-  'hr.create',
-  'hr.edit',
-  'hr.delete',
-  'hr.block',
-  'hr.roles',
-  'hr.rights',
-  'hr.attendance',
-  'hr.leave',
-  'hr.payroll',
-  'hr.documents',
-  'hr.export',
-  'hr.audit',
-  'sales.view',
-  'sales.create',
-  'sales.edit',
-  'sales.delete',
-  'sales.refund',
-  'sales.export',
-  'sales.discount',
-  'reports.view',
-  'reports.sales',
-  'reports.inventory',
-  'reports.hr',
-  'reports.financial',
-  'reports.export',
-  'reports.audit'
-)
-;
-
--- Shared roles are intentionally preserved.
+-- Rights and modules are shared/canonical data and are intentionally preserved.
+-- DevSecOps must confirm the authoritative catalog before this fixture is used
+-- against an application database; this fixture does not claim ownership.
+-- Shared roles are also intentionally preserved.
 -- Reset-token/session cleanup is intentionally absent because those table
 -- names and columns are not present in the repository.
 

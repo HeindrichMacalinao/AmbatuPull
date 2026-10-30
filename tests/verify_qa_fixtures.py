@@ -54,7 +54,7 @@ def main() -> None:
     assert "email LIKE 'test\\_%' ESCAPE '\\'" in cleanup
     assert 'DELETE FROM app_user' in cleanup
     assert 'DELETE FROM user_permission' in cleanup
-    assert '"rightCode"' in cleanup
+    assert 'DELETE FROM rights' not in cleanup
     assert 'DELETE FROM role' not in cleanup
     assert "test_user@hope.com" in accounts
 
@@ -87,6 +87,9 @@ def main() -> None:
                 'SELECT COUNT(*) FROM "role"'
             ).fetchone()[0] == 3
             assert connection.execute(
+                'SELECT COUNT(*) FROM rights'
+            ).fetchone()[0] == 36
+            assert connection.execute(
                 'SELECT COUNT(*) FROM app_user WHERE email = ?',
                 ("test_user@hope.com",),
             ).fetchone()[0] == 1
@@ -111,11 +114,17 @@ def main() -> None:
             assert connection.execute(
                 "SELECT COUNT(*) FROM user_permission"
             ).fetchone()[0] == 0
+            assert connection.execute(
+                'SELECT COUNT(*) FROM rights'
+            ).fetchone()[0] == 36
 
             connection.executescript(CLEANUP.read_text(encoding="utf-8"))
             assert connection.execute(
                 'SELECT COUNT(*) FROM "role"'
             ).fetchone()[0] == 3
+            assert connection.execute(
+                'SELECT COUNT(*) FROM rights'
+            ).fetchone()[0] == 36
 
             connection.executescript(ROLES.read_text(encoding="utf-8"))
             connection.executescript(ACCOUNTS.read_text(encoding="utf-8"))
