@@ -1,7 +1,5 @@
 import sqlite3
-import sys
 from pathlib import Path
-
 
 db = Path("data/ci_test.db")
 conn = sqlite3.connect(db)
