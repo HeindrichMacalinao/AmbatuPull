@@ -1,0 +1,36 @@
+S1-DBA-04 -- GitHub patch upload instructions
+===========================================
+Use the S1_DBA_04_GitHub_Upload_Patch.zip (not the full integrated ZIP)
+if Tasks 1, 2 and 3 already exist in your GitHub repository.
+
+1. Create/check out the S1-DBA-04 task branch. Make sure it contains
+   Activity 2 (EMPLOYEE) and Activity 3 (app_user) migrations.
+2. Extract the patch ZIP on your computer.
+3. Copy the CONTENTS of the ZIP into the repository root, keeping paths:
+   db/migrations/003_password_reset_token.sql        (NEW)
+   db/verify/verify_password_reset_token.sql         (NEW)
+   tests/verify_password_reset_token.py              (NEW)
+   scripts/regenerate_hope.py                        (UPDATED)
+   tests/verify_hope.py                              (UPDATED)
+   docs/S1_DBA_04.md                                 (NEW)
+   docs/verification_results_S1_DBA_04.txt           (NEW)
+   NOTE: rebuilt HopeERP.db and HOPE_Model1.db are NOT in this patch.
+   They are included in the FULL INTEGRATED ZIP. Upload these only if
+   your repository intentionally tracks generated SQLite database files.
+4. Do NOT place a duplicate top-level package directory in the repository.
+5. If your project uses a central Node migration runner, register the
+   003 SQL file in its configured migration sequence; the live repository
+   runner was NOT inspected.
+6. Run from the REPOSITORY ROOT:
+   python3 -B tests/verify_password_reset_token.py
+   python3 -B scripts/regenerate_hope.py
+   python3 -B tests/verify_hope.py
+   python3 -B tests/verify_user_management.py
+   python3 -B tests/verify_password_reset_token.py --check-artifacts
+7. In the EXISTING GitHub Actions workflow, add the step described in
+   docs/S1_DBA_04.md AFTER existing migration/test steps; avoid a
+   competing second workflow.
+8. Verify the CI check is green on the real GitHub PR.
+
+Use the FULL INTEGRATED ZIP only to run/inspect a standalone local copy
+that includes all previous reference files and migrations.
