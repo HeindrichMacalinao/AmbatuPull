@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run project tests
+        run: npm test
+
+      - name: Validate user management schema
+        run: python tests/verify_user_management.py
+
+      - name: Validate QA fixtures
+        run: python tests/verify_qa_fixtures.py
+
+      - name: Apply migrations to fresh temporary DB
+        run: |
+          rm -f data/ci_test.db
+          node scripts/migrate/index.js up --db=./data/ci_test.db --dir=./migrations
+
+      - name: Fail if any migration remains pending
+        run: |
+          python tests/check_pending_migrations.py
