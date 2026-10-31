@@ -1,0 +1,121 @@
+BUILT: HopeERP.db (249,856 bytes)
+BUILT: HOPE_Model1.db (425,984 bytes)
+test_01_exact_modules_and_rights (__main__.InitialAccessSeedTests.test_01_exact_modules_and_rights) ... ok
+test_02_idempotence_and_source_integrity (__main__.InitialAccessSeedTests.test_02_idempotence_and_source_integrity) ... ok
+test_03_foreign_keys_and_catalog_drift_detection (__main__.InitialAccessSeedTests.test_03_foreign_keys_and_catalog_drift_detection) ... ok
+test_04_provision_five_superadmins_without_plaintext (__main__.InitialAccessSeedTests.test_04_provision_five_superadmins_without_plaintext) ... ok
+test_05_invalid_or_unsafe_account_configuration (__main__.InitialAccessSeedTests.test_05_invalid_or_unsafe_account_configuration) ... ok
+test_06_conflict_rolls_back_without_privilege_escalation (__main__.InitialAccessSeedTests.test_06_conflict_rolls_back_without_privilege_escalation) ... ok
+test_07_detect_missing_catalog_entry (__main__.InitialAccessSeedTests.test_07_detect_missing_catalog_entry) ... ok
+test_08_regeneration_cannot_destroy_initialized_accounts (__main__.InitialAccessSeedTests.test_08_regeneration_cannot_destroy_initialized_accounts) ... ok
+test_09_provisioning_refuses_tracked_database (__main__.InitialAccessSeedTests.test_09_provisioning_refuses_tracked_database) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.137s
+
+OK
+PASS: integrated artifact HopeERP.db: five modules, 36 rights, historical data intact
+PASS: integrated artifact HOPE_Model1.db: five modules, 36 rights, historical data intact
+ALL S1-DBA-05 SEED VERIFICATIONS PASSED
+PASS: HopeERP.db SQLite integrity and 10 required tables
+PASS: exact SQL schema, PKs, and status/stamp constraints on all 10 tables
+PASS: 928 historical records; every business value matches HopeDB_audit.sql.txt
+PASS: all 9 foreign keys present and reject orphaned INSERTs
+PASS: expected historical IDs/values and relationship joins
+SUCCESS: HopeERP.db
+
+PASS: HOPE_Model1.db SQLite integrity and 10 required tables
+PASS: exact SQL schema, PKs, and status/stamp constraints on all 10 tables
+PASS: 928 historical records; every business value matches HopeDB_audit.sql.txt
+PASS: all 9 foreign keys present and reject orphaned INSERTs
+PASS: expected historical IDs/values and relationship joins
+PASS: original Model1.db preserved (16 tables plus indexes/views)
+SUCCESS: HOPE_Model1.db
+
+ALL TESTS PASSED: 2 database(s); 928 baseline records each
+
+--- HopeERP.db ---
+PASS: five user-management tables, exact columns/PKs and 5 FKs
+PASS: role/default/status/audit constraints and both requested indexes
+PASS: case-insensitive email uniqueness, valid employee FK, restricted values/stamp
+PASS: junction ON DELETE CASCADE for account and rights; restricted module delete
+PASS: soft-disable retains grants; EMPLOYEE deletion sets nullable empNo to NULL
+PASS: original user-management data and seeded catalog remain unchanged
+PASS: SQLite integrity and FK checks
+PASS: five user-management tables, exact columns/PKs and 5 FKs
+PASS: role/default/status/audit constraints and both requested indexes
+PASS: idempotent reapplication
+SUCCESS: HopeERP.db
+
+--- HOPE_Model1.db ---
+PASS: five user-management tables, exact columns/PKs and 5 FKs
+PASS: role/default/status/audit constraints and both requested indexes
+PASS: case-insensitive email uniqueness, valid employee FK, restricted values/stamp
+PASS: junction ON DELETE CASCADE for account and rights; restricted module delete
+PASS: soft-disable retains grants; EMPLOYEE deletion sets nullable empNo to NULL
+PASS: original user-management data and seeded catalog remain unchanged
+PASS: SQLite integrity and FK checks
+PASS: five user-management tables, exact columns/PKs and 5 FKs
+PASS: role/default/status/audit constraints and both requested indexes
+PASS: idempotent reapplication
+SUCCESS: HOPE_Model1.db
+
+ALL S1-DBA-03 VERIFICATIONS PASSED: both databases
+--- Fresh migration on a disposable SQLite database ---
+PASS: 928 historical HOPE records, three roles, and no seeded reset tokens
+PASS: foreign keys, required columns, SHA-256 digest format, flag/date constraints
+PASS: exactly +1 hour default expiry, false/NULL defaults, unique digest lookup
+PASS: first redemption updates exactly one row; replay updates zero
+PASS: active/expired/used classification and pending-token invalidation
+PASS: ON DELETE CASCADE removes only the deleted user’s reset tokens
+PASS: all fixture records rolled back; SQLite integrity remains OK
+PASS: 928 historical HOPE records, three roles, and no seeded reset tokens
+PASS: migration safely reapplies without changing data/indexes
+PASS: schema validator rejects missing mandatory index
+
+--- Verify integrated HopeERP.db ---
+PASS: 928 historical HOPE records, three roles, and no seeded reset tokens
+PASS: foreign keys, required columns, SHA-256 digest format, flag/date constraints
+PASS: exactly +1 hour default expiry, false/NULL defaults, unique digest lookup
+PASS: first redemption updates exactly one row; replay updates zero
+PASS: active/expired/used classification and pending-token invalidation
+PASS: ON DELETE CASCADE removes only the deleted user’s reset tokens
+PASS: all fixture records rolled back; SQLite integrity remains OK
+
+--- Verify integrated HOPE_Model1.db ---
+PASS: 928 historical HOPE records, three roles, and no seeded reset tokens
+PASS: foreign keys, required columns, SHA-256 digest format, flag/date constraints
+PASS: exactly +1 hour default expiry, false/NULL defaults, unique digest lookup
+PASS: first redemption updates exactly one row; replay updates zero
+PASS: active/expired/used classification and pending-token invalidation
+PASS: ON DELETE CASCADE removes only the deleted user’s reset tokens
+PASS: all fixture records rolled back; SQLite integrity remains OK
+
+ALL S1-DBA-04 TESTS PASSED
+test_01_fresh_schema_and_indexes (__main__.UserManagementMigrationCI.test_01_fresh_schema_and_indexes)
+Migration works on a fresh database after Task 2 schema only. ... ok
+test_02_historical_data_integrity (__main__.UserManagementMigrationCI.test_02_historical_data_integrity)
+The original approved Task 2 data remains present and consistent. ... ok
+test_03_constraints_and_junction_behavior (__main__.UserManagementMigrationCI.test_03_constraints_and_junction_behavior)
+Exercise duplicate email, FK rejection, status, cascade and soft disable. ... ok
+test_04_idempotent_user_migration (__main__.UserManagementMigrationCI.test_04_idempotent_user_migration)
+A second application does not fail or create duplicate roles. ... ok
+test_05_negative_control_missing_index_is_detected (__main__.UserManagementMigrationCI.test_05_negative_control_missing_index_is_detected)
+Prove CI fails schema validation if a required index is absent. ... ok
+test_06_negative_control_orphan_is_detected (__main__.UserManagementMigrationCI.test_06_negative_control_orphan_is_detected)
+Prove CI fails integrity validation for a corrupted FK relation. ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.022s
+
+OK
+PASS: five user-management tables, exact columns/PKs and 5 FKs
+PASS: role/default/status/audit constraints and both requested indexes
+PASS: five user-management tables, exact columns/PKs and 5 FKs
+PASS: role/default/status/audit constraints and both requested indexes
+PASS: case-insensitive email uniqueness, valid employee FK, restricted values/stamp
+PASS: junction ON DELETE CASCADE for account and rights; restricted module delete
+PASS: soft-disable retains grants; EMPLOYEE deletion sets nullable empNo to NULL
+PASS: original user-management data and seeded catalog remain unchanged
+PASS: five user-management tables, exact columns/PKs and 5 FKs
+PASS: role/default/status/audit constraints and both requested indexes
