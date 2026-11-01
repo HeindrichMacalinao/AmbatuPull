@@ -278,7 +278,10 @@ function runUp(adapter) {
     const rawSql = fs.readFileSync(m.fullPath, 'utf8');
     // If migration has an embedded -- DOWN block, only execute the UP portion
     const downMarker = /--\s*(?:---+)?\s*(?:DOWN|@down|Rollback)\s*(?:---+)?/i;
-    const upSql = rawSql.split(downMarker)[0];
+    const upSql = rawSql
+      .split(downMarker)[0]
+      .replace(/^[ \t]*BEGIN(?:\s+(?:IMMEDIATE|EXCLUSIVE))?(?:\s+TRANSACTION)?;[ \t]*$/gim, '')
+      .replace(/^[ \t]*(?:COMMIT|END)(?:\s+TRANSACTION)?;[ \t]*$/gim, '');
 
     try {
       adapter.exec('BEGIN IMMEDIATE TRANSACTION;');
