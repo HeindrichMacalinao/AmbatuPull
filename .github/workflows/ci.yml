@@ -2,12 +2,19 @@ name: CI
 
 on:
   push:
+<<<<<<< HEAD
     branches:
       - main
       - S1-DBA-05-Initial-System-Seed-Data
   pull_request:
     branches:
       - main
+=======
+    branches: [main, SI-DBA-04]
+
+permissions:
+  contents: read
+>>>>>>> origin/main
 
 jobs:
   test:
@@ -29,5 +36,22 @@ jobs:
       - name: Run tests
         run: npm test
 
+<<<<<<< HEAD
       - name: Check migrations
         run: npm run migrate:status
+=======
+      - name: Validate user management schema
+        run: python tests/verify_user_management.py
+
+      - name: Validate QA fixtures
+        run: python tests/verify_qa_fixtures.py
+
+      - name: Apply migrations to fresh temporary DB
+        run: |
+          rm -f data/ci_test.db
+          node scripts/migrate/index.js up --db=./data/ci_test.db --dir=./migrations
+
+      - name: Fail if any migration remains pending
+        run: |
+          python tests/check_pending_migrations.py
+>>>>>>> origin/main
