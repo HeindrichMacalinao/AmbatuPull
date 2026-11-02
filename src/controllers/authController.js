@@ -14,6 +14,7 @@ const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 async function registerUser(req, res) {
   try {
     const { firstName, lastName, email, password, confirmPassword } = req.body;
+  const cleanEmail = email.trim().toLowerCase();
 
     // ----- Validation -----
     if (!firstName || !lastName || !email || !password || !confirmPassword) {
