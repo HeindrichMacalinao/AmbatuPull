@@ -2,6 +2,7 @@
 
 const { getPool } = require('../db/pool');
 const bcrypt = require('bcrypt'); // bcrypt should be installed as a dependency
+const bcryptjs = require('bcryptjs');
 
 // Simple email regex (RFC 5322 simplified)
 const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -70,4 +71,32 @@ async function registerUser(req, res) {
   }
 }
 
-module.exports = { registerUser };
+const { loginUser, logoutUser } = require('../services/authService');
+
+/**
+ * POST /api/auth/login
+ */
+async function login(req, res, next) {
+  try {
+    const result = await loginUser(req.body);
+    // In a real app you'd set a secure, httpOnly cookie or return a JWT.
+    // For simplicity we return a token payload in the body.
+    res.status(200).json({ token: result.token, user: result.user });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/auth/logout
+ */
+async function logout(req, res, next) {
+  try {
+    await logoutUser();
+    res.status(200).json({ message: 'Logged out' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { registerUser, login, logout };
