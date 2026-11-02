@@ -1,45 +1,39 @@
 name: CI
 
 on:
-  push:
-<<<<<<< HEAD
-    branches:
-      - main
-      - S1-DBA-05-Initial-System-Seed-Data
   pull_request:
-    branches:
-      - main
-=======
+  push:
     branches: [main, SI-DBA-04]
 
 permissions:
   contents: read
->>>>>>> origin/main
 
 jobs:
-  test:
+  verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
-      - name: Install dependencies
-        run: npm install
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-      - name: Run tests
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run project tests
         run: npm test
 
-<<<<<<< HEAD
-      - name: Check migrations
-        run: npm run migrate:status
-=======
       - name: Validate user management schema
         run: python tests/verify_user_management.py
 
@@ -54,4 +48,3 @@ jobs:
       - name: Fail if any migration remains pending
         run: |
           python tests/check_pending_migrations.py
->>>>>>> origin/main
