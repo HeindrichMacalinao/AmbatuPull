@@ -1,0 +1,17 @@
+S1-DBA-05 | GitHub upload patch
+
+1. Extract S1_DBA_05_GitHub_Upload_Patch.zip.
+2. Upload the CONTENTS to your S1-DBA-05 GitHub branch, preserving db/, scripts/, tests/, and docs/ paths. Do NOT upload the ZIP as one file, or nest the top-level folder in GitHub.
+3. This patch adds the S1-DBA-05 SQL seed, secure Superadmin provisioning script, and tests. It also updates the database regenerator and S1-DBA-03 verifier. Both non-secret SQLite artifacts are regenerated with the static 36 rights and five modules.
+4. It assumes your S1-DBA-02/03/04 SQL files already exist in this branch. If those are not merged, first bring their code into the branch appropriately.
+5. Run from repository root:
+    python3 -B scripts/regenerate_hope.py
+    python3 -B tests/verify_initial_access.py --check-artifacts
+    python3 -B tests/verify_hope.py
+    python3 -B tests/verify_user_management.py
+    python3 -B tests/verify_password_reset_token.py --check-artifacts
+    python3 -B tests/ci_validate_user_management.py
+6. In existing CI, add one validation step: python3 -B tests/verify_initial_access.py
+7. IMPORTANT: Do not upload any personal team emails, precomputed password hashes, private credential JSON files, or privately provisioned database copies. Read docs/S1_DBA_05.md for secure account initialization OUTSIDE Git.
+8. WARNING: All five real Superadmin accounts are not present in the distributed DBs. They require secure on-deployment provisioning with verified emails and app-compatible password hashes. SQL rights/modules and security tests are complete; actual authentication must be verified separately.
+9. No remote GitHub changes were performed; live GitHub runner compatibility was not independently confirmed.
