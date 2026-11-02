@@ -14,13 +14,14 @@ const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 async function registerUser(req, res) {
   try {
     const { firstName, lastName, email, password, confirmPassword } = req.body;
-  const cleanEmail = email.trim().toLowerCase();
+
 
     // ----- Validation -----
     if (!firstName || !lastName || !email || !password || !confirmPassword) {
       return res.status(400).json({ error: 'All fields are required' });
     }
-    if (!EMAIL_REGEX.test(email)) {
+    const cleanEmail = String(email).trim().toLowerCase();
+    if (!EMAIL_REGEX.test(cleanEmail)) {
       return res.status(400).json({ error: 'Invalid email format' });
     }
     if (password.length < 8) {
