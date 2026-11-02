@@ -102,7 +102,7 @@ Other feedback, helper copy, sample account data, and illustrative metric values
 | Flow | Prototype display behavior | Backend/integration responsibility |
 | --- | --- | --- |
 | Auth form | Native required/email validation; focus and error examples; local feedback on submit | Authenticate, validate policy, create/manage a session, safely return errors, and never expose password values |
-| Registration / reset | Form screens and navigation only; no request is sent | Implement registration and one-time reset-token delivery/validation; apply server-side password rules |
+| Registration / reset | Form screens and navigation only; no request is sent | Bind registration to the existing `POST /api/auth/register` contract; implement or confirm one-time reset-token delivery/validation and apply server-side password rules |
 | Active → Blocked | Row badge changes from Active to red Blocked; action changes from Block to Unblock | Verify actor and target role, persist `isBlocked`, audit the change, reject blocked sessions/logins as applicable |
 | Blocked → Active | Unblock returns the display badge/action to Active/Block | Authorize and persist the unblock; confirm session and audit semantics |
 | Inactive account | Distinct gray Inactive badge and shaded, readable row; separate from Blocked | Define retention/soft-delete behavior and which Admins may list or restore inactive records. The current schema has `status` Active/Inactive and `isBlocked`; it has no separate deleted-at flag. Do not equate Inactive with Blocked or assume deletion semantics. |
@@ -110,7 +110,7 @@ Other feedback, helper copy, sample account data, and illustrative metric values
 | Rights selection | Checkbox toggles one right; module master and All/None set that group; mixed selection is indeterminate; Cancel discards draft; Save updates local draft only | Verify caller/target authority, validate canonical right codes, atomically persist grants/revocations, audit changes, and enforce rights server-side (including 403 for denied actions) |
 | Role visibility | User sees example granted actions and hidden/disabled restricted navigation; Admin peer/Superadmin visibility is illustrated in User Management | Apply authorization to both list/read and mutation routes. UI hiding is not security enforcement. |
 
-The DB catalog supplies five modules and 36 right codes. The current Express route module implements only `GET /api/health`; it does not implement these UI flows. `docs/sprints/sprint-1-mid-check.md` records planned auth/user-management routes and a proposed rights contract (`GET/PUT /api/users/:id/rights`), but those are handoff references, not verified live endpoints or finalized request/response schemas. Confirm endpoint paths, payloads, errors, and inactive-row rules with the backend owner before integration; this document does not invent them.
+The DB catalog supplies five modules and 36 right codes. The current Express API exposes `GET /api/health` and `POST /api/auth/register`. The registration controller accepts `firstName`, `lastName`, `email`, `password`, and `confirmPassword`; validates required fields, email format, an eight-character minimum, and matching passwords; forces the `User` role; hashes with bcrypt; returns `201` with the created user and no password hash; and reports validation/duplicate-email errors with `400`/`409`. This prototype does not call that endpoint. Login, password-reset, user-management, block/unblock, and rights routes are not currently mounted. `docs/sprints/sprint-1-mid-check.md` records planned auth/user-management routes and a proposed rights contract (`GET/PUT /api/users/:id/rights`), but those are handoff references, not verified live endpoints or finalized request/response schemas. Confirm remaining endpoint paths, payloads, errors, and inactive-row rules with the backend owner before integration; this document does not invent them.
 
 ## Frontend and backend handoff
 
@@ -124,7 +124,7 @@ The DB catalog supplies five modules and 36 right codes. The current Express rou
 
 ### Backend
 
-1. Confirm with @Tysennn which auth, user, block/unblock, soft-delete, and rights endpoints are implemented, including request/response types and error behavior. The current `src/routes/index.js` exposes health only.
+1. The existing registration endpoint is `POST /api/auth/register`; confirm its contract against `src/controllers/authController.js` before wiring the registration screen. Confirm whether login, password reset, user, block/unblock, soft-delete, and rights endpoints are implemented, including request/response types and error behavior.
 2. Enforce role/right checks on every API operation; do not rely on the role selector, hidden navigation, disabled actions, or dialog state.
 3. Keep `isBlocked` separate from account `status`. Define whether an inactive account is merely disabled or soft-deleted and which role can see/manage it; the current schema does not record a deletion timestamp or deleted-by actor.
 4. For rights changes, validate the canonical catalog and target eligibility on the server, perform grants/revocations atomically, maintain required audit stamps, and return a clear outcome for stale or unauthorized changes.
