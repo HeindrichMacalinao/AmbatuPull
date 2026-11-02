@@ -1,0 +1,836 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hope ERP | High-fidelity UI mockups</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --brand-primary: #1e3a8a;
+      --brand-action: #2563eb;
+      --nav-header: #0f172a;
+      --nav-sidebar: #1e293b;
+      --surface: #fff;
+      --canvas: #f8fafc;
+      --text-primary: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --status-active-bg: #d1fae5;
+      --status-active-text: #065f46;
+      --status-blocked-bg: #fee2e2;
+      --status-blocked-text: #991b1b;
+      --row-inactive: #f1f5f9;
+      --focus-ring: #93c5fd;
+      --danger: #b91c1c;
+      --space-xs: 4px;
+      --space-sm: 8px;
+      --space-md: 16px;
+      --space-lg: 24px;
+      --space-xl: 32px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text-primary);
+      background: var(--canvas);
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; background: var(--canvas); }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled, input:disabled { cursor: not-allowed; }
+    a { color: var(--brand-action); }
+    .icon-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+    .icon { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .prototype-bar { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); padding: 8px 20px; color: #dbeafe; background: var(--nav-header); }
+    .prototype-bar__title { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 700; }
+    .prototype-bar__note { color: #cbd5e1; font-size: 12px; }
+    .screen-picker { display: flex; gap: 6px; flex-wrap: wrap; padding: 12px 20px; background: #eaf0fb; border-bottom: 1px solid #d5deed; }
+    .screen-picker__button { border: 1px solid #cbd5e1; border-radius: 999px; background: #fff; color: #334155; padding: 6px 11px; font-size: 12px; font-weight: 650; }
+    .screen-picker__button:hover { border-color: var(--brand-action); color: var(--brand-primary); }
+    .screen-picker__button:focus-visible, .button:focus-visible, .nav-link:focus-visible, .icon-button:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+    .screen-picker__button[aria-pressed="true"] { color: #fff; background: var(--brand-primary); border-color: var(--brand-primary); }
+    .prototype-note { display: flex; align-items: flex-start; gap: 9px; margin: 16px 20px 0; padding: 10px 12px; border: 1px solid #bfdbfe; border-radius: 8px; color: #1e3a8a; background: #eff6ff; font-size: 12px; line-height: 1.5; }
+    .screen { display: none; min-height: calc(100vh - 106px); }
+    .screen.is-active { display: block; }
+
+    .button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 8px; padding: 9px 14px; border: 1px solid transparent; border-radius: 7px; color: #334155; background: #fff; font-size: 13px; font-weight: 650; line-height: 1.2; text-decoration: none; transition: background-color .15s ease, border-color .15s ease, color .15s ease; }
+    .button--primary { color: #fff; background: var(--brand-action); border-color: var(--brand-action); }
+    .button--primary:hover { background: #1d4ed8; border-color: #1d4ed8; }
+    .button--secondary { border-color: #cbd5e1; background: #fff; }
+    .button--secondary:hover { background: #f1f5f9; border-color: #94a3b8; }
+    .button--danger { color: #fff; background: #b91c1c; border-color: #b91c1c; }
+    .button--danger:hover { background: #991b1b; }
+    .button--success { color: #065f46; background: #ecfdf5; border-color: #a7f3d0; }
+    .button--success:hover { background: #d1fae5; }
+    .button--link { min-height: auto; padding: 4px; color: var(--brand-action); background: transparent; }
+    .button--small { min-height: 32px; padding: 6px 10px; font-size: 12px; }
+    .button:active { transform: translateY(1px); }
+    .button:disabled, .button.is-disabled { color: #94a3b8; background: #e2e8f0; border-color: #e2e8f0; transform: none; }
+    .button--error { color: var(--danger); background: #fef2f2; border-color: #fecaca; }
+    .icon-button { width: 36px; height: 36px; display: inline-grid; place-items: center; border: 1px solid transparent; border-radius: 7px; color: #475569; background: transparent; }
+    .icon-button:hover { color: var(--text-primary); background: #f1f5f9; }
+
+    .app-header { height: 64px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); padding: 0 28px; color: white; background: var(--nav-header); }
+    .brand { display: inline-flex; align-items: center; gap: 10px; color: inherit; font-size: 16px; font-weight: 750; letter-spacing: -.02em; }
+    .brand__mark { width: 30px; height: 30px; display: inline-grid; place-items: center; border-radius: 8px; color: white; background: var(--brand-action); font-size: 12px; font-weight: 800; }
+    .app-header__right { display: flex; align-items: center; gap: 16px; color: #cbd5e1; font-size: 13px; }
+    .role-switch { max-width: 150px; padding: 7px 30px 7px 10px; border: 1px solid #334155; border-radius: 7px; color: white; background: #1e293b; }
+    .user-chip { display: flex; align-items: center; gap: 9px; }
+    .avatar { width: 30px; height: 30px; display: inline-grid; place-items: center; border-radius: 50%; color: #1e3a8a; background: #dbeafe; font-size: 11px; font-weight: 750; }
+    .app-shell { display: grid; grid-template-columns: 238px minmax(0, 1fr); min-height: calc(100vh - 170px); }
+    .sidebar { padding: 20px 14px; color: #cbd5e1; background: var(--nav-sidebar); }
+    .sidebar__label { padding: 8px 11px; color: #94a3b8; font-size: 10px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+    .nav-link { width: 100%; display: flex; align-items: center; gap: 11px; padding: 10px 11px; border: 0; border-radius: 7px; color: #cbd5e1; background: transparent; text-align: left; font-size: 13px; }
+    .nav-link:hover { color: white; background: #334155; }
+    .nav-link.is-current { color: white; background: #263d75; }
+    .nav-link--disabled { color: #64748b; cursor: not-allowed; }
+    .sidebar__divider { height: 1px; margin: 15px 6px; background: #334155; }
+    .sidebar__foot { margin: 22px 10px 0; color: #94a3b8; font-size: 11px; line-height: 1.55; }
+    .workspace { min-width: 0; padding: 28px 32px 40px; }
+    .page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 22px; }
+    .eyebrow { margin: 0 0 5px; color: var(--text-muted); font-size: 11px; font-weight: 650; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 5px; font-size: 25px; letter-spacing: -.035em; }
+    h2 { margin-bottom: 6px; font-size: 17px; letter-spacing: -.02em; }
+    h3 { margin-bottom: 5px; font-size: 14px; }
+    .subheading { margin: 0; color: var(--text-muted); font-size: 13px; line-height: 1.5; }
+    .card { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: 0 1px 2px rgb(15 23 42 / 4%); }
+    .card__header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 17px 20px; border-bottom: 1px solid var(--border); }
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 22px; }
+    .kpi-card { min-height: 116px; padding: 17px; }
+    .kpi-card__top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .kpi-card__label { color: var(--text-muted); font-size: 12px; font-weight: 600; }
+    .kpi-card__icon { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; color: #1d4ed8; background: #eff6ff; }
+    .kpi-card__value { margin: 13px 0 3px; font-size: 25px; font-weight: 750; letter-spacing: -.04em; }
+    .kpi-card__foot { color: var(--text-muted); font-size: 11px; }
+    .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(270px, .8fr); gap: 18px; }
+    .quick-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 18px; }
+    .quick-action { display: flex; min-height: 62px; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); background: white; text-align: left; font-size: 12px; font-weight: 650; }
+    .quick-action:hover { border-color: #93c5fd; background: #f8fbff; }
+    .quick-action__icon { color: var(--brand-action); }
+    .quick-action.is-restricted { color: #94a3b8; background: #f8fafc; border-style: dashed; cursor: not-allowed; }
+    .activity-list { display: grid; gap: 0; padding: 8px 20px 14px; }
+    .activity-item { display: flex; align-items: flex-start; gap: 11px; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+    .activity-item:last-child { border-bottom: 0; }
+    .activity-dot { width: 8px; height: 8px; margin-top: 5px; border-radius: 50%; background: #60a5fa; }
+    .activity-dot--muted { background: #cbd5e1; }
+    .activity-item__text { margin: 0; font-size: 12px; line-height: 1.45; }
+    .activity-item__time { display: block; margin-top: 3px; color: var(--text-muted); font-size: 10px; }
+    .inline-alert { display: flex; align-items: flex-start; gap: 9px; margin: 0 0 17px; padding: 11px 13px; border: 1px solid #bfdbfe; border-radius: 8px; color: #1e40af; background: #eff6ff; font-size: 12px; line-height: 1.45; }
+    .inline-alert--warning { color: #92400e; background: #fffbeb; border-color: #fde68a; }
+    .inline-alert--danger { color: #991b1b; background: #fef2f2; border-color: #fecaca; }
+
+    .status-badge, .role-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .status-badge::before { width: 6px; height: 6px; border-radius: 50%; background: currentColor; content: ""; }
+    .status-badge--active { color: var(--status-active-text); background: var(--status-active-bg); }
+    .status-badge--blocked { color: var(--status-blocked-text); background: var(--status-blocked-bg); }
+    .status-badge--inactive { color: #475569; background: #e2e8f0; }
+    .role-badge--superadmin { color: #5b21b6; background: #ede9fe; }
+    .role-badge--admin { color: #1e40af; background: #dbeafe; }
+    .role-badge--user { color: #475569; background: #f1f5f9; }
+    .table-toolbar { display: flex; align-items: center; gap: 9px; }
+    .search-field { position: relative; }
+    .search-field .icon { position: absolute; top: 10px; left: 10px; color: #94a3b8; }
+    .search-field input { width: 230px; min-height: 38px; padding: 8px 10px 8px 34px; border: 1px solid var(--border); border-radius: 7px; background: white; font-size: 12px; }
+    .table-scroll { overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; text-align: left; white-space: nowrap; }
+    .data-table th { padding: 12px 15px; color: #64748b; background: #f8fafc; font-size: 10px; font-weight: 750; letter-spacing: .07em; text-transform: uppercase; }
+    .data-table td { padding: 14px 15px; border-top: 1px solid #eef2f7; font-size: 12px; }
+    .data-table__person { display: flex; align-items: center; gap: 10px; }
+    .data-table__person strong { display: block; font-size: 12px; font-weight: 650; }
+    .data-table__person small { display: block; margin-top: 3px; color: var(--text-muted); font-size: 10px; }
+    .data-table__row--inactive { color: #475569; background: var(--row-inactive); }
+    .data-table__row--inactive td { border-color: #e2e8f0; }
+    .data-table__row--inactive .avatar { filter: grayscale(.7); }
+    .filter-tabs { display: flex; gap: 6px; padding: 14px 18px 0; }
+    .filter-tab { padding: 7px 11px; border: 0; border-radius: 6px; color: var(--text-muted); background: transparent; font-size: 11px; font-weight: 650; }
+    .filter-tab.is-selected { color: var(--brand-primary); background: #eff6ff; }
+    .table-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 18px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 11px; }
+
+    .auth-screen { min-height: calc(100vh - 106px); display: grid; grid-template-rows: auto 1fr auto; background: var(--canvas); }
+    .auth-header { height: 66px; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(20px, 5vw, 72px); border-bottom: 1px solid var(--border); background: white; }
+    .auth-header .brand { color: var(--text-primary); }
+    .auth-header__links { display: flex; gap: 20px; align-items: center; font-size: 12px; }
+    .auth-header__links a { color: #475569; text-decoration: none; }
+    .auth-main { display: grid; place-items: center; padding: 34px 20px; }
+    .auth-layout { width: min(940px, 100%); display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(340px, .95fr); overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: white; box-shadow: 0 18px 50px rgb(15 23 42 / 8%); }
+    .auth-aside { display: flex; flex-direction: column; justify-content: space-between; min-height: 500px; padding: 38px; color: white; background: linear-gradient(145deg, #1e3a8a, #172554); }
+    .auth-aside__copy { max-width: 360px; }
+    .auth-aside h2 { margin-top: 50px; font-size: 28px; line-height: 1.2; letter-spacing: -.035em; }
+    .auth-aside p { color: #dbeafe; font-size: 13px; line-height: 1.7; }
+    .auth-feature { display: flex; align-items: center; gap: 10px; margin-top: 13px; color: #dbeafe; font-size: 12px; }
+    .auth-form-panel { padding: 38px; }
+    .auth-form-panel__heading { margin-bottom: 23px; }
+    .auth-form-panel__heading h1 { font-size: 23px; }
+    .form-stack { display: grid; gap: 16px; }
+    .form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .form-field { display: grid; gap: 6px; }
+    .form-field__label { color: #334155; font-size: 11px; font-weight: 700; }
+    .form-field__input, .form-field__select { width: 100%; min-height: 41px; padding: 9px 11px; border: 1px solid #cbd5e1; border-radius: 7px; outline: 0; color: var(--text-primary); background: white; font-size: 12px; transition: border-color .15s, box-shadow .15s; }
+    .form-field__input:hover, .form-field__select:hover { border-color: #94a3b8; }
+    .form-field__input:focus, .form-field__select:focus { border-color: var(--brand-action); box-shadow: 0 0 0 3px var(--focus-ring); }
+    .form-field__input:disabled, .form-field__select:disabled { color: #94a3b8; background: #f1f5f9; }
+    .form-field__input.is-error, .form-field__input[aria-invalid="true"] { border-color: #dc2626; background: #fffafa; }
+    .form-field__error { margin: 0; color: #b91c1c; font-size: 10px; }
+    .form-field__hint { margin: 0; color: var(--text-muted); font-size: 10px; line-height: 1.45; }
+    .form-options { display: flex; justify-content: space-between; gap: 12px; color: #475569; font-size: 11px; }
+    .checkbox-label { display: inline-flex; align-items: flex-start; gap: 8px; color: #475569; font-size: 11px; line-height: 1.4; }
+    .checkbox-label input { width: 15px; height: 15px; margin: 0; accent-color: var(--brand-action); }
+    .auth-submit { width: 100%; margin-top: 3px; }
+    .auth-divider { display: flex; align-items: center; gap: 12px; margin: 16px 0; color: #94a3b8; font-size: 10px; }
+    .auth-divider::before, .auth-divider::after { height: 1px; flex: 1; background: var(--border); content: ""; }
+    .auth-footnote { margin: 17px 0 0; color: var(--text-muted); text-align: center; font-size: 11px; }
+    .auth-footer { padding: 15px; color: #64748b; text-align: center; font-size: 10px; }
+    .state-board { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
+    .state-board__item { display: grid; gap: 9px; padding: 14px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+    .state-board__label { color: var(--text-muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+    .button-state-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .demo-feedback { min-height: 18px; margin: 12px 0 0; color: #1e40af; font-size: 11px; }
+
+    .modal-backdrop { position: fixed; z-index: 20; inset: 0; display: none; align-items: center; justify-content: center; padding: 20px; background: rgb(15 23 42 / 55%); }
+    .modal-backdrop.is-open { display: flex; }
+    .modal { width: min(680px, 100%); max-height: min(88vh, 840px); display: flex; flex-direction: column; overflow: hidden; border: 1px solid #dbe2ea; border-radius: 12px; background: white; box-shadow: 0 24px 70px rgb(15 23 42 / 30%); }
+    .modal--wide { width: min(920px, 100%); }
+    .modal__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 19px 22px; border-bottom: 1px solid var(--border); }
+    .modal__body { overflow-y: auto; padding: 20px 22px; }
+    .modal__footer { display: flex; justify-content: flex-end; gap: 9px; padding: 14px 22px; border-top: 1px solid var(--border); background: #fff; }
+    .permission-list { display: grid; gap: 12px; }
+    .permission-group { padding: 13px 14px; border: 1px solid var(--border); border-radius: 9px; }
+    .permission-group__header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .permission-group__title { display: flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 750; }
+    .permission-group__shortcuts { display: flex; gap: 10px; }
+    .permission-group__shortcuts button { padding: 3px; border: 0; color: var(--brand-action); background: transparent; font-size: 10px; font-weight: 700; }
+    .permission-group__items { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 12px; padding-left: 26px; }
+    .permission-group__items .checkbox-label { font-size: 10px; }
+    .screen--landing { background: white; }
+    .state-workspace { max-width: 1280px; margin: 0 auto; padding: 38px 32px 48px; }
+    .state-workspace__heading { margin-bottom: 22px; }
+    .state-section { margin-bottom: 18px; padding: 20px; }
+    .state-section__title { margin-bottom: 15px; }
+    .state-demo-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+    .state-demo-grid .form-field__input { min-width: 0; }
+    .state-demo-grid__item { display: grid; align-content: start; gap: 7px; }
+    .state-demo-grid__caption { color: var(--text-muted); font-size: 10px; font-weight: 700; }
+    .field-hover-demo { border-color: #94a3b8; box-shadow: 0 0 0 2px #f1f5f9; }
+    .field-focus-demo { border-color: var(--brand-action); box-shadow: 0 0 0 3px var(--focus-ring); }
+    .state-demo-grid .form-field__input.is-error { border-color: #dc2626; background: #fffafa; }
+    .state-buttons { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 14px; }
+    .status-example-row { margin-top: 14px; }
+    .state-button-example { display: grid; justify-items: start; gap: 8px; }
+    .state-button-example__caption { color: var(--text-muted); font-size: 10px; font-weight: 700; }
+    .button--focus-demo { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+    .button--hover-demo { background: #1d4ed8; border-color: #1d4ed8; color: white; }
+    .landing-hero { max-width: 1080px; margin: 0 auto; padding: 76px 24px 54px; text-align: center; }
+    .landing-hero__tag { display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; border: 1px solid #bfdbfe; border-radius: 999px; color: #1e40af; background: #eff6ff; font-size: 10px; font-weight: 700; }
+    .landing-hero h1 { max-width: 720px; margin: 20px auto 12px; font-size: clamp(36px, 5vw, 58px); line-height: 1.06; }
+    .landing-hero__lead { max-width: 650px; margin: 0 auto 23px; color: #64748b; font-size: 15px; line-height: 1.7; }
+    .landing-hero__actions { display: flex; justify-content: center; gap: 10px; }
+    .feature-grid { max-width: 1080px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 0 auto; padding: 10px 24px 62px; }
+    .feature-card { padding: 18px; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
+    .feature-card__icon { width: 36px; height: 36px; display: grid; place-items: center; margin-bottom: 13px; border-radius: 9px; color: var(--brand-action); background: #eff6ff; }
+    .feature-card h3 { font-size: 13px; }
+    .feature-card p { margin: 0; color: var(--text-muted); font-size: 11px; line-height: 1.55; }
+    .landing-footer { display: flex; justify-content: space-between; padding: 18px max(24px, calc((100% - 1032px) / 2)); border-top: 1px solid var(--border); color: var(--text-muted); font-size: 10px; }
+    .screen-caption { max-width: 1300px; margin: 0 auto; padding: 11px 32px 0; color: #64748b; font-size: 10px; }
+    .demo-toast { position: fixed; z-index: 30; right: 22px; bottom: 22px; max-width: 360px; display: none; padding: 12px 15px; border: 1px solid #bfdbfe; border-radius: 9px; color: #1e3a8a; background: white; box-shadow: 0 12px 32px rgb(15 23 42 / 15%); font-size: 12px; }
+    .demo-toast.is-visible { display: block; }
+
+    @media (max-width: 1440px) {
+      .app-shell { grid-template-columns: 216px minmax(0, 1fr); }
+      .workspace { padding: 24px 24px 32px; }
+      .app-header { padding: 0 22px; }
+      .kpi-grid { gap: 12px; }
+      .kpi-card { min-height: 106px; padding: 14px; }
+      .dashboard-grid { grid-template-columns: minmax(0, 1.2fr) minmax(250px, .8fr); gap: 14px; }
+    }
+    @media (max-width: 1050px) {
+      .app-shell { grid-template-columns: 70px minmax(0, 1fr); }
+      .sidebar { padding: 17px 9px; }
+      .sidebar__label, .nav-link__text, .sidebar__foot { display: none; }
+      .nav-link { justify-content: center; padding: 11px 7px; }
+      .sidebar__divider { margin: 13px 4px; }
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 720px) {
+      .prototype-bar { align-items: flex-start; flex-direction: column; gap: 4px; padding: 10px 14px; }
+      .prototype-bar__note { font-size: 10px; }
+      .screen-picker { padding: 10px 12px; gap: 5px; }
+      .screen-picker__button { padding: 6px 8px; font-size: 10px; }
+      .prototype-note { margin: 12px 12px 0; }
+      .app-header { height: 56px; padding: 0 13px; }
+      .app-header__right { gap: 8px; font-size: 11px; }
+      .role-switch { max-width: 105px; font-size: 10px; }
+      .user-chip__name { display: none; }
+      .app-shell { grid-template-columns: 54px minmax(0, 1fr); min-height: calc(100vh - 190px); }
+      .sidebar { padding: 13px 5px; }
+      .workspace { padding: 18px 13px 25px; }
+      .page-heading { align-items: flex-start; flex-direction: column; margin-bottom: 16px; }
+      .page-heading > .button { width: 100%; }
+      h1 { font-size: 21px; }
+      .kpi-grid { gap: 9px; margin-bottom: 14px; }
+      .kpi-card { min-height: 94px; padding: 11px; }
+      .kpi-card__label { font-size: 10px; }
+      .kpi-card__icon { width: 29px; height: 29px; }
+      .kpi-card__value { margin-top: 10px; font-size: 21px; }
+      .quick-grid { gap: 7px; padding: 12px; }
+      .quick-action { min-height: 54px; padding: 8px; font-size: 10px; }
+      .card__header { align-items: flex-start; flex-direction: column; padding: 14px; }
+      .table-toolbar { width: 100%; align-items: stretch; flex-wrap: wrap; }
+      .search-field, .search-field input { width: 100%; }
+      .filter-tabs { padding-left: 10px; }
+      .data-table th, .data-table td { padding: 11px 10px; }
+      .table-foot { align-items: flex-start; flex-direction: column; padding: 12px; }
+      .auth-header { height: 58px; padding: 0 15px; }
+      .auth-header__links { gap: 10px; font-size: 10px; }
+      .auth-main { padding: 18px 12px; }
+      .auth-layout { grid-template-columns: 1fr; }
+      .auth-aside { min-height: auto; padding: 22px; }
+      .auth-aside__copy { max-width: none; }
+      .auth-aside h2 { margin: 20px 0 8px; font-size: 21px; }
+      .auth-aside__features { display: none; }
+      .auth-form-panel { padding: 23px 20px; }
+      .state-board { grid-template-columns: 1fr; }
+      .landing-hero { padding: 44px 18px 34px; }
+      .landing-hero__lead { font-size: 13px; }
+      .feature-grid { gap: 9px; padding: 6px 13px 36px; }
+      .feature-card { padding: 13px; }
+      .landing-footer { gap: 12px; padding: 14px; }
+      .permission-group { padding: 11px; }
+      .permission-group__items { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-left: 0; }
+      .modal-backdrop { padding: 8px; }
+      .modal { max-height: 94vh; }
+      .modal__header, .modal__body { padding: 15px; }
+      .modal__footer { padding: 12px 15px; }
+      .screen-caption { padding: 9px 13px 0; }
+      .state-workspace { padding: 25px 13px 35px; }
+      .state-section { padding: 14px; }
+      .state-demo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <svg class="icon-sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="M3 8v9l9 5 9-5V8M12 13v9"/></symbol>
+    <symbol id="i-cart" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></symbol>
+    <symbol id="i-briefcase" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.8 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.8-1l-1.7.7-1.4-2.4 1.4-1.1A8 8 0 0 1 7 13H5v-2h2a8 8 0 0 1 .8-2.1L6.4 7.8 7.8 5.4l1.7.7a8 8 0 0 1 1.8-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.8 1l1.7-.7 1.4 2.4-1.4 1.1A8 8 0 0 1 19 11h2v2h-2a8 8 0 0 1-.6 2Z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 1 1 8 0v3"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m18 6-12 12M6 6l12 12"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></symbol>
+    <symbol id="i-trend" viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></symbol>
+  </svg>
+
+  <div class="prototype-bar">
+    <div class="prototype-bar__title"><span class="brand__mark">H</span> Hope ERP · UIX-04 High-fidelity prototype</div>
+    <div class="prototype-bar__note">Static, client-side mockup · no authentication, API, or database calls</div>
+  </div>
+  <nav class="screen-picker" aria-label="Mockup screen selector">
+    <button class="screen-picker__button" data-show-screen="landing" aria-pressed="true">Landing</button>
+    <button class="screen-picker__button" data-show-screen="login" aria-pressed="false">Login</button>
+    <button class="screen-picker__button" data-show-screen="register" aria-pressed="false">Register</button>
+    <button class="screen-picker__button" data-show-screen="forgot" aria-pressed="false">Forgot password</button>
+    <button class="screen-picker__button" data-show-screen="reset" aria-pressed="false">Reset password</button>
+    <button class="screen-picker__button" data-show-screen="superadmin" aria-pressed="false">Superadmin</button>
+    <button class="screen-picker__button" data-show-screen="admin" aria-pressed="false">Admin</button>
+    <button class="screen-picker__button" data-show-screen="user" aria-pressed="false">User</button>
+    <button class="screen-picker__button" data-show-screen="users" aria-pressed="false">User Management</button>
+    <button class="screen-picker__button" data-show-screen="states" aria-pressed="false">UI States</button>
+  </nav>
+  <div class="prototype-note"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg><span><strong>Prototype only:</strong> Interactions update local display state for handoff review. They do not authenticate users, persist records or grants, call an API, or enforce permissions.</span></div>
+
+  <main>
+    <section class="screen screen--landing is-active" data-screen="landing">
+      <header class="auth-header">
+        <a class="brand" href="#" data-show-screen="landing"><span class="brand__mark">H</span> HOPE ERP</a>
+        <nav class="auth-header__links" aria-label="Public navigation">
+          <a href="#overview">Overview</a><a href="#" data-show-screen="login">Sign In</a><a href="#" data-show-screen="register">Register</a>
+        </nav>
+      </header>
+      <div class="landing-hero" id="overview">
+        <span class="landing-hero__tag"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg> Hope, Inc. business platform</span>
+        <h1>Run your entire business with confidence</h1>
+        <p class="landing-hero__lead">Hope, Inc. ERP brings your business operations together in one unified system, helping your team manage work with clarity.</p>
+        <div class="landing-hero__actions">
+          <button class="button button--primary" data-show-screen="login">Sign In to Dashboard <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+          <button class="button button--secondary" data-show-screen="register">Register</button>
+        </div>
+      </div>
+      <div class="feature-grid">
+        <article class="feature-card"><div class="feature-card__icon"><svg class="icon" aria-hidden="true"><use href="#i-cart"/></svg></div><h3>Sales &amp; Orders</h3><p>Review sales and manage orders.</p></article>
+        <article class="feature-card"><div class="feature-card__icon"><svg class="icon" aria-hidden="true"><use href="#i-users"/></svg></div><h3>Customers</h3><p>Keep customer records together.</p></article>
+        <article class="feature-card"><div class="feature-card__icon"><svg class="icon" aria-hidden="true"><use href="#i-box"/></svg></div><h3>Inventory</h3><p>Track products and stock.</p></article>
+        <article class="feature-card"><div class="feature-card__icon"><svg class="icon" aria-hidden="true"><use href="#i-briefcase"/></svg></div><h3>People &amp; Jobs</h3><p>Organize employee and job records.</p></article>
+      </div>
+      <footer class="landing-footer"><span>Hope, Inc. ERP</span><span>© Hope, Inc.</span></footer>
+    </section>
+
+    <section class="screen" data-screen="login">
+      <div class="auth-screen">
+        <header class="auth-header"><a class="brand" href="#" data-show-screen="landing"><span class="brand__mark">H</span> HOPE ERP</a><div class="auth-header__links"><a href="#" data-show-screen="landing">Back to Landing</a></div></header>
+        <div class="auth-main">
+          <div class="auth-layout">
+            <aside class="auth-aside"><div class="auth-aside__copy"><span class="landing-hero__tag">HOPE ERP · SECURE WORKSPACE</span><h2>One place to keep your business moving.</h2><p>Sign in to access the tools and information assigned to your account.</p></div><div class="auth-aside__features"><div class="auth-feature"><svg class="icon"><use href="#i-check"/></svg> Role-aware workspace</div><div class="auth-feature"><svg class="icon"><use href="#i-check"/></svg> Connected business modules</div></div></aside>
+            <div class="auth-form-panel">
+              <div class="auth-form-panel__heading"><p class="eyebrow">WELCOME BACK</p><h1>Sign in to Hope ERP</h1><p class="subheading">Enter your account details to continue.</p></div>
+              <form class="form-stack mock-form" data-message="Mockup only: no sign-in request was sent.">
+                <label class="form-field"><span class="form-field__label">Email Address</span><input class="form-field__input" type="email" placeholder="you@company.com" required></label>
+                <label class="form-field"><span class="form-field__label">Password</span><input class="form-field__input" type="password" placeholder="Enter your password" required></label>
+                <div class="form-options"><label class="checkbox-label"><input type="checkbox"> Remember me</label><a href="#" data-show-screen="forgot">Forgot password?</a></div>
+                <button class="button button--primary auth-submit" type="submit">Sign In</button><p class="demo-feedback" aria-live="polite"></p>
+              </form>
+              <div class="auth-divider">DEMO ACCOUNT</div>
+              <p class="form-field__hint">No approved evaluation account is configured. Do not enter real credentials in this prototype.</p>
+              <p class="auth-footnote">New to Hope ERP? <a href="#" data-show-screen="register">Register</a></p>
+            </div>
+          </div>
+        </div>
+        <footer class="auth-footer">© Hope, Inc. · Authentication behavior is not implemented in this mockup.</footer>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="register">
+      <div class="auth-screen">
+        <header class="auth-header"><a class="brand" href="#" data-show-screen="landing"><span class="brand__mark">H</span> HOPE ERP</a><div class="auth-header__links"><a href="#" data-show-screen="landing">Back to Landing</a></div></header>
+        <div class="auth-main"><div class="auth-layout">
+          <aside class="auth-aside"><div class="auth-aside__copy"><span class="landing-hero__tag">GET STARTED</span><h2>Your team’s work, organized.</h2><p>Create an account to join your organization’s Hope ERP workspace.</p></div><div class="auth-feature"><svg class="icon"><use href="#i-shield"/></svg> New accounts are assigned the User role.</div></aside>
+          <div class="auth-form-panel"><div class="auth-form-panel__heading"><p class="eyebrow">ACCOUNT SETUP</p><h1>Create your account</h1><p class="subheading">Join your team on Hope, Inc. ERP.</p></div>
+            <div class="inline-alert"><svg class="icon"><use href="#i-shield"/></svg><span>New accounts are created as User. Superadmin and Admin roles can only be assigned by existing administrators.</span></div>
+            <form class="form-stack mock-form" data-message="Mockup only: no registration request was sent.">
+              <div class="form-row"><label class="form-field"><span class="form-field__label">First Name</span><input class="form-field__input" placeholder="First name" required></label><label class="form-field"><span class="form-field__label">Last Name</span><input class="form-field__input" placeholder="Last name" required></label></div>
+              <label class="form-field"><span class="form-field__label">Email Address</span><input class="form-field__input" type="email" placeholder="you@company.com" required></label>
+              <label class="form-field"><span class="form-field__label">Password</span><input class="form-field__input" type="password" placeholder="Create a password" required><span class="form-field__hint">Use the password policy configured by your organization.</span></label>
+              <button class="button button--primary auth-submit" type="submit">Register</button><p class="demo-feedback" aria-live="polite"></p>
+            </form><div class="auth-divider">OR</div><button class="button button--secondary auth-submit" data-demo-action="Google sign-in is a visual placeholder; no provider is connected.">Continue with Google</button>
+            <p class="auth-footnote">Already have an account? <a href="#" data-show-screen="login">Sign In</a></p>
+          </div>
+        </div></div>
+        <footer class="auth-footer">© Hope, Inc. · Registration is not connected to a backend.</footer>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="forgot">
+      <div class="auth-screen">
+        <header class="auth-header"><a class="brand" href="#" data-show-screen="landing"><span class="brand__mark">H</span> HOPE ERP</a><div class="auth-header__links"><a href="#" data-show-screen="landing">Back to Landing</a></div></header>
+        <div class="auth-main"><div class="auth-layout">
+          <aside class="auth-aside"><div class="auth-aside__copy"><span class="landing-hero__tag">ACCOUNT RECOVERY</span><h2>Get back to work securely.</h2><p>Use the email address associated with your account to request a reset link.</p></div><div class="auth-feature"><svg class="icon"><use href="#i-lock"/></svg> Reset tokens and delivery are backend responsibilities.</div></aside>
+          <div class="auth-form-panel"><div class="auth-form-panel__heading"><p class="eyebrow">ACCOUNT RECOVERY</p><h1>Forgot your password?</h1><p class="subheading">We'll send you a secure link to reset it.</p></div>
+            <form class="form-stack mock-form" data-message="Mockup only: no reset email was requested."><label class="form-field"><span class="form-field__label">Email Address</span><input class="form-field__input" type="email" placeholder="you@company.com" required></label><button class="button button--primary auth-submit" type="submit">Submit</button><p class="demo-feedback" aria-live="polite"></p></form>
+            <p class="auth-footnote"><a href="#" data-show-screen="login">Back to Sign In</a></p>
+          </div>
+        </div></div><footer class="auth-footer">© Hope, Inc. · Password recovery is not connected to a backend.</footer>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="reset">
+      <div class="auth-screen">
+        <header class="auth-header"><a class="brand" href="#" data-show-screen="landing"><span class="brand__mark">H</span> HOPE ERP</a><div class="auth-header__links"><a href="#" data-show-screen="landing">Back to Landing</a></div></header>
+        <div class="auth-main"><div class="auth-layout">
+          <aside class="auth-aside"><div class="auth-aside__copy"><span class="landing-hero__tag">SECURE ACCOUNT</span><h2>Choose a new password.</h2><p>Reset links and their expiry are verified by the backend in an integrated application.</p></div><div class="auth-feature"><svg class="icon"><use href="#i-lock"/></svg> Never share a password reset link.</div></aside>
+          <div class="auth-form-panel"><div class="auth-form-panel__heading"><p class="eyebrow">ACCOUNT RECOVERY</p><h1>Reset your password</h1><p class="subheading">Enter and confirm your new password.</p></div>
+            <form class="form-stack mock-form" data-message="Mockup only: no password was changed."><label class="form-field"><span class="form-field__label">New Password</span><input class="form-field__input" type="password" placeholder="New password" required></label><div class="form-field"><span class="form-field__label">Password strength</span><div class="button-state-row"><span class="status-badge status-badge--blocked">Weak</span><span class="status-badge status-badge--inactive">Fair</span><span class="status-badge status-badge--inactive">Strong</span><span class="status-badge status-badge--inactive">Very strong</span></div><span class="form-field__hint">Strength indicators are visual placeholders, not a password-strength evaluator.</span></div><label class="form-field"><span class="form-field__label">Confirm New Password</span><input class="form-field__input" type="password" placeholder="Confirm new password" required></label><button class="button button--primary auth-submit" type="submit">Reset Password</button><p class="demo-feedback" aria-live="polite"></p></form>
+            <p class="auth-footnote"><a href="#" data-show-screen="login">Return to Sign In</a></p>
+          </div>
+        </div></div><footer class="auth-footer">© Hope, Inc. · Reset behavior is not connected to a backend.</footer>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="superadmin">
+      <div class="app-header"><a class="brand" href="#" data-show-screen="landing"><span class="brand__mark">H</span> HOPE ERP</a><div class="app-header__right"><span>Full administrative access</span><span class="user-chip"><span class="avatar">SA</span><span class="user-chip__name">Alex Morgan</span></span></div></div>
+      <div class="app-shell"><aside class="sidebar"><div class="sidebar__label">Workspace</div><button class="nav-link is-current"><svg class="icon"><use href="#i-grid"/></svg><span class="nav-link__text">Dashboard</span></button><button class="nav-link"><svg class="icon"><use href="#i-users"/></svg><span class="nav-link__text">Customers</span></button><button class="nav-link"><svg class="icon"><use href="#i-box"/></svg><span class="nav-link__text">Products</span></button><button class="nav-link"><svg class="icon"><use href="#i-briefcase"/></svg><span class="nav-link__text">HR</span></button><button class="nav-link"><svg class="icon"><use href="#i-cart"/></svg><span class="nav-link__text">Sales</span></button><button class="nav-link" data-show-screen="users"><svg class="icon"><use href="#i-users"/></svg><span class="nav-link__text">User Management</span></button><div class="sidebar__divider"></div><button class="nav-link"><svg class="icon"><use href="#i-settings"/></svg><span class="nav-link__text">System Settings</span></button><div class="sidebar__foot">Signed in as<br><strong>Superadmin</strong></div></aside>
+        <div class="workspace"><div class="page-heading"><div><p class="eyebrow">MONDAY, NOVEMBER 2</p><h1>Good morning, Alex</h1><p class="subheading">Here’s your organization’s overview.</p></div><span class="role-badge role-badge--superadmin">Superadmin</span></div>
+          <div class="kpi-grid">
+            <article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Customers</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-users"/></svg></span></div><div class="kpi-card__value">1,284</div><div class="kpi-card__foot">Across all active accounts</div></article>
+            <article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Products</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-box"/></svg></span></div><div class="kpi-card__value">368</div><div class="kpi-card__foot">In the product catalog</div></article>
+            <article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Open Orders</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-cart"/></svg></span></div><div class="kpi-card__value">42</div><div class="kpi-card__foot">Awaiting completion</div></article>
+            <article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Revenue</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-trend"/></svg></span></div><div class="kpi-card__value">₱2.48M</div><div class="kpi-card__foot">Current reporting period</div></article>
+          </div>
+          <div class="dashboard-grid"><article class="card"><div class="card__header"><div><h2>Quick Actions</h2><p class="subheading">Shortcuts across all modules</p></div><span class="role-badge role-badge--superadmin">All modules</span></div><div class="quick-grid">
+            <button class="quick-action"><svg class="icon quick-action__icon"><use href="#i-users"/></svg>Add Customer</button><button class="quick-action"><svg class="icon quick-action__icon"><use href="#i-box"/></svg>Add Product</button><button class="quick-action"><svg class="icon quick-action__icon"><use href="#i-briefcase"/></svg>Add Employee</button><button class="quick-action"><svg class="icon quick-action__icon"><use href="#i-cart"/></svg>Create Sale</button><button class="quick-action" data-show-screen="users"><svg class="icon quick-action__icon"><use href="#i-shield"/></svg>Manage Users</button><button class="quick-action"><svg class="icon quick-action__icon"><use href="#i-settings"/></svg>System Settings</button>
+          </div></article><article class="card"><div class="card__header"><div><h2>Recent Activity</h2><p class="subheading">Organization updates</p></div><button class="button button--link">View all</button></div><div class="activity-list"><div class="activity-item"><span class="activity-dot"></span><p class="activity-item__text"><strong>New customer added</strong><span class="activity-item__time">Customer module · 12 min ago</span></p></div><div class="activity-item"><span class="activity-dot"></span><p class="activity-item__text"><strong>Sale recorded</strong><span class="activity-item__time">Sales module · 48 min ago</span></p></div><div class="activity-item"><span class="activity-dot"></span><p class="activity-item__text"><strong>Product updated</strong><span class="activity-item__time">Product module · Today</span></p></div></div></article></div>
+        </div>
+      </div>
+      <p class="screen-caption">Illustrative metrics and activity are mock data only. System Settings is Superadmin-only in this role comparison.</p>
+    </section>
+
+    <section class="screen" data-screen="admin">
+      <div class="app-header"><a class="brand" href="#" data-show-screen="landing"><span class="brand__mark">H</span> HOPE ERP</a><div class="app-header__right"><span>Administrative workspace</span><span class="user-chip"><span class="avatar">AD</span><span class="user-chip__name">Jordan Lee</span></span></div></div>
+      <div class="app-shell"><aside class="sidebar"><div class="sidebar__label">Workspace</div><button class="nav-link is-current"><svg class="icon"><use href="#i-grid"/></svg><span class="nav-link__text">Dashboard</span></button><button class="nav-link"><svg class="icon"><use href="#i-users"/></svg><span class="nav-link__text">Customers</span></button><button class="nav-link"><svg class="icon"><use href="#i-box"/></svg><span class="nav-link__text">Products</span></button><button class="nav-link"><svg class="icon"><use href="#i-briefcase"/></svg><span class="nav-link__text">HR</span></button><button class="nav-link"><svg class="icon"><use href="#i-cart"/></svg><span class="nav-link__text">Sales</span></button><button class="nav-link" data-show-screen="users"><svg class="icon"><use href="#i-users"/></svg><span class="nav-link__text">User Management</span></button></aside>
+        <div class="workspace"><div class="page-heading"><div><p class="eyebrow">MONDAY, NOVEMBER 2</p><h1>Good morning, Jordan</h1><p class="subheading">Here’s your team’s operational overview.</p></div><span class="role-badge role-badge--admin">Admin</span></div>
+          <div class="kpi-grid"><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Customers</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-users"/></svg></span></div><div class="kpi-card__value">1,284</div><div class="kpi-card__foot">Across active accounts</div></article><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Products</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-box"/></svg></span></div><div class="kpi-card__value">368</div><div class="kpi-card__foot">In the product catalog</div></article><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Open Orders</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-cart"/></svg></span></div><div class="kpi-card__value">42</div><div class="kpi-card__foot">Awaiting completion</div></article><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Revenue</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-trend"/></svg></span></div><div class="kpi-card__value">₱2.48M</div><div class="kpi-card__foot">Current reporting period</div></article></div>
+          <div class="dashboard-grid"><article class="card"><div class="card__header"><div><h2>Quick Actions</h2><p class="subheading">Available business modules</p></div><span class="role-badge role-badge--admin">Admin access</span></div><div class="quick-grid"><button class="quick-action"><svg class="icon quick-action__icon"><use href="#i-users"/></svg>Add Customer</button><button class="quick-action"><svg class="icon quick-action__icon"><use href="#i-box"/></svg>Add Product</button><button class="quick-action"><svg class="icon quick-action__icon"><use href="#i-briefcase"/></svg>Add Employee</button><button class="quick-action"><svg class="icon quick-action__icon"><use href="#i-cart"/></svg>Create Sale</button><button class="quick-action" data-show-screen="users"><svg class="icon quick-action__icon"><use href="#i-shield"/></svg>Manage Users</button></div></article><article class="card"><div class="card__header"><div><h2>Recent Activity</h2><p class="subheading">Your team’s updates</p></div></div><div class="activity-list"><div class="activity-item"><span class="activity-dot"></span><p class="activity-item__text"><strong>Customer record updated</strong><span class="activity-item__time">Customer module · 12 min ago</span></p></div><div class="activity-item"><span class="activity-dot"></span><p class="activity-item__text"><strong>Sale recorded</strong><span class="activity-item__time">Sales module · 48 min ago</span></p></div><div class="activity-item"><span class="activity-dot"></span><p class="activity-item__text"><strong>Employee added</strong><span class="activity-item__time">HR module · Today</span></p></div></div></article></div>
+        </div>
+      </div>
+      <p class="screen-caption">Admin has no System Settings navigation or quick action. Sample metrics are illustrative.</p>
+    </section>
+
+    <section class="screen" data-screen="user">
+      <div class="app-header"><a class="brand" href="#" data-show-screen="landing"><span class="brand__mark">H</span> HOPE ERP</a><div class="app-header__right"><span>Personal workspace</span><span class="user-chip"><span class="avatar">US</span><span class="user-chip__name">Taylor Reed</span></span></div></div>
+      <div class="app-shell"><aside class="sidebar"><div class="sidebar__label">Workspace</div><button class="nav-link is-current"><svg class="icon"><use href="#i-grid"/></svg><span class="nav-link__text">Dashboard</span></button><button class="nav-link"><svg class="icon"><use href="#i-users"/></svg><span class="nav-link__text">Customers</span></button><button class="nav-link nav-link--disabled" aria-disabled="true" title="No assigned product rights"><svg class="icon"><use href="#i-box"/></svg><span class="nav-link__text">Products · No access</span></button><button class="nav-link"><svg class="icon"><use href="#i-cart"/></svg><span class="nav-link__text">Sales</span></button><div class="sidebar__foot">Menu items reflect this mock user’s assigned rights.</div></aside>
+        <div class="workspace"><div class="page-heading"><div><p class="eyebrow">MONDAY, NOVEMBER 2</p><h1>Welcome back, Taylor</h1><p class="subheading">Your workspace is tailored to your assigned rights.</p></div><span class="role-badge role-badge--user">User</span></div>
+          <div class="kpi-grid"><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Customers</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-users"/></svg></span></div><div class="kpi-card__value">1,284</div><div class="kpi-card__foot">Illustrative total</div></article><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Products</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-box"/></svg></span></div><div class="kpi-card__value">368</div><div class="kpi-card__foot">Illustrative total</div></article><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Open Orders</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-cart"/></svg></span></div><div class="kpi-card__value">42</div><div class="kpi-card__foot">Illustrative total</div></article><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Revenue</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-trend"/></svg></span></div><div class="kpi-card__value">₱2.48M</div><div class="kpi-card__foot">Illustrative total</div></article></div>
+          <div class="dashboard-grid"><article class="card"><div class="card__header"><div><h2>Quick Actions</h2><p class="subheading">Enabled actions have assigned rights</p></div></div><div class="quick-grid"><button class="quick-action"><svg class="icon quick-action__icon"><use href="#i-users"/></svg>Add Customer</button><button class="quick-action"><svg class="icon quick-action__icon"><use href="#i-cart"/></svg>Create Sale</button><button class="quick-action is-restricted" disabled title="No product.add permission"><svg class="icon"><use href="#i-box"/></svg>Add Product · No access</button><button class="quick-action is-restricted" disabled title="No emp.add permission"><svg class="icon"><use href="#i-briefcase"/></svg>Add Employee · No access</button></div></article><article class="card"><div class="card__header"><div><h2>Access summary</h2><p class="subheading">Example rights assigned for this mockup</p></div></div><div class="activity-list"><div class="activity-item"><span class="activity-dot"></span><p class="activity-item__text"><strong>Customer</strong><span class="activity-item__time">Add Customer enabled</span></p></div><div class="activity-item"><span class="activity-dot"></span><p class="activity-item__text"><strong>Sales</strong><span class="activity-item__time">Add Sale enabled</span></p></div><div class="activity-item"><span class="activity-dot activity-dot--muted"></span><p class="activity-item__text"><strong>Products</strong><span class="activity-item__time">No assigned rights</span></p></div></div></article></div>
+        </div>
+      </div>
+      <p class="screen-caption">Example grants are illustrative; front-end hiding is not authorization enforcement.</p>
+    </section>
+
+    <section class="screen" data-screen="users">
+      <div class="app-header"><a class="brand" href="#" data-show-screen="landing"><span class="brand__mark">H</span> HOPE ERP</a><div class="app-header__right"><label for="user-role-view">Viewing as</label><select class="role-switch" id="user-role-view"><option value="superadmin">Superadmin</option><option value="admin">Admin</option></select><span class="user-chip"><span class="avatar">AD</span><span class="user-chip__name">Jordan Lee</span></span></div></div>
+      <div class="app-shell"><aside class="sidebar"><div class="sidebar__label">Workspace</div><button class="nav-link" data-show-screen="superadmin"><svg class="icon"><use href="#i-grid"/></svg><span class="nav-link__text">Dashboard</span></button><button class="nav-link"><svg class="icon"><use href="#i-users"/></svg><span class="nav-link__text">Customers</span></button><button class="nav-link"><svg class="icon"><use href="#i-box"/></svg><span class="nav-link__text">Products</span></button><button class="nav-link"><svg class="icon"><use href="#i-briefcase"/></svg><span class="nav-link__text">HR</span></button><button class="nav-link"><svg class="icon"><use href="#i-cart"/></svg><span class="nav-link__text">Sales</span></button><button class="nav-link is-current"><svg class="icon"><use href="#i-users"/></svg><span class="nav-link__text">User Management</span></button><div class="sidebar__foot">Access and data shown here are frontend mock states.</div></aside>
+        <div class="workspace"><div class="page-heading"><div><p class="eyebrow">ADMINISTRATION</p><h1>User Management</h1><p class="subheading">Manage team accounts, status, and assigned rights.</p></div><button class="button button--primary" data-open-user="add"><svg class="icon"><use href="#i-plus"/></svg>Add User</button></div>
+          <div class="inline-alert inline-alert--warning"><svg class="icon"><use href="#i-shield"/></svg><span><strong>Demo view:</strong> Status changes and user edits are local prototype interactions only. No account data is persisted.</span></div>
+          <article class="card"><div class="card__header"><div><h2>Team accounts</h2><p class="subheading"><span id="visible-count">5 accounts</span> · Active, blocked, and inactive states</p></div><div class="table-toolbar"><label class="search-field"><svg class="icon"><use href="#i-search"/></svg><input id="user-search" type="search" placeholder="Search name or email" aria-label="Search users"></label></div></div>
+            <div class="filter-tabs" role="tablist" aria-label="User status filter"><button class="filter-tab is-selected" data-user-filter="all">All (5)</button><button class="filter-tab" data-user-filter="active">Active</button><button class="filter-tab" data-user-filter="blocked">Blocked</button><button class="filter-tab" data-user-filter="inactive">Inactive</button></div>
+            <div class="table-scroll"><table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Account state</th><th>Actions</th></tr></thead><tbody id="user-table-body">
+              <tr data-role="Superadmin" data-status="Active"><td><div class="data-table__person"><span class="avatar">AM</span><span><strong>Alex Morgan</strong><small>Joined Oct 12, 2026</small></span></div></td><td>alex.morgan@example.test</td><td><span class="role-badge role-badge--superadmin">Superadmin</span></td><td><span class="status-badge status-badge--active">Active</span></td><td>Current</td><td class="row-actions"></td></tr>
+              <tr data-role="Admin" data-status="Active"><td><div class="data-table__person"><span class="avatar">JL</span><span><strong>Jordan Lee</strong><small>Joined Oct 16, 2026</small></span></div></td><td>jordan.lee@example.test</td><td><span class="role-badge role-badge--admin">Admin</span></td><td><span class="status-badge status-badge--active">Active</span></td><td>Current</td><td class="row-actions"></td></tr>
+              <tr data-role="User" data-status="Active"><td><div class="data-table__person"><span class="avatar">TR</span><span><strong>Taylor Reed</strong><small>Joined Oct 20, 2026</small></span></div></td><td>taylor.reed@example.test</td><td><span class="role-badge role-badge--user">User</span></td><td><span class="status-badge status-badge--active">Active</span></td><td>Current</td><td class="row-actions"></td></tr>
+              <tr data-role="User" data-status="Blocked"><td><div class="data-table__person"><span class="avatar">SC</span><span><strong>Sam Chen</strong><small>Joined Oct 22, 2026</small></span></div></td><td>sam.chen@example.test</td><td><span class="role-badge role-badge--user">User</span></td><td><span class="status-badge status-badge--blocked">Blocked</span></td><td>Current</td><td class="row-actions"></td></tr>
+              <tr class="data-table__row--inactive" data-role="User" data-status="Inactive" data-inactive="true"><td><div class="data-table__person"><span class="avatar">MK</span><span><strong>Morgan Kim</strong><small>Account marked inactive</small></span></div></td><td>morgan.kim@example.test</td><td><span class="role-badge role-badge--user">User</span></td><td><span class="status-badge status-badge--inactive">Inactive</span></td><td>Inactive (retained row)</td><td class="row-actions"></td></tr>
+            </tbody></table></div><div class="table-foot"><span>Inactive row is shaded, remains readable, and is distinct from Blocked.</span><span>Showing mock data</span></div>
+          </article>
+        </div>
+      </div><p class="screen-caption">When viewing as Admin, Superadmin rows are hidden and peer Admin actions render as —. The role selector is a visual comparison control, not authentication.</p>
+    </section>
+
+    <section class="screen" data-screen="states">
+      <div class="state-workspace">
+        <div class="state-workspace__heading"><p class="eyebrow">COMPONENT HANDOFF</p><h1>Input &amp; button states</h1><p class="subheading">Reference states for authentication and user-management forms. Focus, hover, disabled, and validation examples are shown together for comparison.</p></div>
+        <article class="card state-section"><div class="state-section__title"><h2>Form input states</h2><p class="subheading">Labels remain visible; error states pair color with clear validation text.</p></div>
+          <div class="state-demo-grid">
+            <label class="state-demo-grid__item"><span class="state-demo-grid__caption">Active</span><input class="form-field__input" value="alex@example.test" aria-label="Active input example"></label>
+            <label class="state-demo-grid__item"><span class="state-demo-grid__caption">Hover</span><input class="form-field__input field-hover-demo" value="Pointer over field" aria-label="Hover input example"></label>
+            <label class="state-demo-grid__item"><span class="state-demo-grid__caption">Focus</span><input class="form-field__input field-focus-demo" value="Keyboard focus" aria-label="Focus input example"></label>
+            <label class="state-demo-grid__item"><span class="state-demo-grid__caption">Disabled</span><input class="form-field__input" value="Not editable" disabled aria-label="Disabled input example"></label>
+            <label class="state-demo-grid__item"><span class="state-demo-grid__caption">Error</span><input class="form-field__input is-error" value="not-an-email" aria-invalid="true" aria-describedby="state-email-error" aria-label="Error input example"><span class="form-field__error" id="state-email-error">Enter a valid email address.</span></label>
+          </div>
+        </article>
+        <article class="card state-section"><div class="state-section__title"><h2>Button states</h2><p class="subheading">Primary, secondary, disabled, and validation/error treatments.</p></div>
+          <div class="state-buttons">
+            <div class="state-button-example"><span class="state-button-example__caption">Active</span><button class="button button--primary">Save changes</button></div>
+            <div class="state-button-example"><span class="state-button-example__caption">Hover</span><button class="button button--primary button--hover-demo">Save changes</button></div>
+            <div class="state-button-example"><span class="state-button-example__caption">Focus</span><button class="button button--primary button--focus-demo">Save changes</button></div>
+            <div class="state-button-example"><span class="state-button-example__caption">Disabled</span><button class="button button--primary" disabled>Save changes</button></div>
+            <div class="state-button-example"><span class="state-button-example__caption">Error</span><button class="button button--error" aria-label="Save failed">Save failed</button></div>
+          </div>
+        </article>
+        <article class="card state-section"><h2>Accessible status treatments</h2><p class="subheading">Text labels accompany color; inactive is distinct from blocked. Soft-delete semantics require backend confirmation.</p><div class="button-state-row status-example-row"><span class="status-badge status-badge--active">Active</span><span class="status-badge status-badge--blocked">Blocked</span><span class="status-badge status-badge--inactive">Inactive</span><span class="role-badge role-badge--superadmin">Superadmin</span><span class="role-badge role-badge--admin">Admin</span><span class="role-badge role-badge--user">User</span></div></article>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="user-modal-backdrop" role="presentation">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
+      <header class="modal__header"><div><h2 id="user-modal-title">Add User</h2><p class="subheading">Account details are not sent to a server.</p></div><button class="icon-button" data-close-modal aria-label="Close dialog"><svg class="icon"><use href="#i-close"/></svg></button></header>
+      <div class="modal__body"><form id="user-form" class="form-stack"><div class="form-row"><label class="form-field"><span class="form-field__label">First Name</span><input class="form-field__input" name="firstName" required placeholder="First name"></label><label class="form-field"><span class="form-field__label">Last Name</span><input class="form-field__input" name="lastName" required placeholder="Last name"></label></div><label class="form-field"><span class="form-field__label">Email Address</span><input class="form-field__input" name="email" type="email" required placeholder="name@company.com"></label><label class="form-field"><span class="form-field__label">Role</span><select class="form-field__select" name="role"><option>User</option><option>Admin</option><option>Superadmin</option></select></label><p class="form-field__hint">This is a visual form only. Role assignment and validation must be enforced by the integrated backend.</p></form></div>
+      <footer class="modal__footer"><button class="button button--secondary" data-close-modal>Cancel</button><button class="button button--primary" id="user-form-save">Save User</button></footer>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="rights-modal-backdrop" role="presentation">
+    <section class="modal modal--wide" role="dialog" aria-modal="true" aria-labelledby="rights-modal-title">
+      <header class="modal__header"><div><h2 id="rights-modal-title">User Rights</h2><p class="subheading" id="rights-user-name">[Selected user]</p></div><button class="icon-button" data-close-modal aria-label="Close dialog"><svg class="icon"><use href="#i-close"/></svg></button></header>
+      <div class="modal__body"><div class="inline-alert"><svg class="icon"><use href="#i-shield"/></svg><span>Selections are staged in this browser only. The server must validate and persist rights in an integrated application.</span></div><div class="permission-list" id="permission-groups"></div></div>
+      <footer class="modal__footer"><button class="button button--secondary" data-close-modal>Cancel</button><button class="button button--primary" id="rights-save">Save Rights</button></footer>
+    </section>
+  </div>
+  <div class="demo-toast" id="demo-toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (() => {
+      const rightsCatalog = [
+        { module: "Customer", rights: [["customer.add", "Add Customer"], ["customer.edit", "Edit Customer"], ["customer.delete", "Delete Customer (Soft delete)"]] },
+        { module: "Product", rights: [["product.add", "Add Product"], ["product.edit", "Edit Product"], ["product.delete", "Delete Product"], ["price.add", "Add Price"], ["price.edit", "Edit Price"], ["price.delete", "Delete Price"]] },
+        { module: "Human Resources", rights: [["job.add", "Add Job"], ["job.edit", "Edit Job"], ["job.delete", "Delete Job"], ["dept.add", "Add Department"], ["dept.edit", "Edit Department"], ["dept.delete", "Delete Department"], ["emp.add", "Add Employee"], ["emp.edit", "Edit Employee"], ["emp.delete", "Delete Employee"], ["jobhistory.view", "View Job History (Data Privacy Act gatekeeper)"], ["jobhistory.add", "Add Job History"], ["jobhistory.edit", "Edit Job History"], ["jobhistory.delete", "Delete Job History"]] },
+        { module: "Sales", rights: [["sale.add", "Add Sale"], ["sale.edit", "Edit Sale"], ["sale.delete", "Delete Sale"], ["saledetail.view", "View Sale Detail"], ["saledetail.add", "Add Sale Detail"], ["saledetail.edit", "Edit Sale Detail"], ["saledetail.delete", "Delete Sale Detail"]] },
+        { module: "Reports", rights: [["report.top_customers", "Top Customers Report"], ["report.product_master", "Product Master Report"], ["report.top_products", "Top Products Report"], ["report.active_emp", "Active Employees Report"], ["report.all_emp", "All Employees Report"], ["report.emp_job_history", "Employee Job History Report"], ["report.top_sales", "Top Sales Report"]] }
+      ];
+      const allRightCodes = rightsCatalog.flatMap((group) => group.rights.map(([code]) => code));
+      const savedRightsByUser = new Map([
+        ["taylor.reed@example.test", new Set(["customer.add", "customer.edit", "sale.add"])]
+      ]);
+      let selectedRightsUser = "";
+      let draftRights = new Set();
+      let currentFilter = "all";
+      let toastTimer;
+
+      const toast = (message) => {
+        const element = document.getElementById("demo-toast");
+        element.textContent = message;
+        element.classList.add("is-visible");
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(() => element.classList.remove("is-visible"), 3200);
+      };
+
+      const showScreen = (name) => {
+        document.querySelectorAll(".screen").forEach((screen) => {
+          screen.classList.toggle("is-active", screen.dataset.screen === name);
+        });
+        document.querySelectorAll("[data-show-screen]").forEach((button) => {
+          if (button.matches(".screen-picker__button")) {
+            button.setAttribute("aria-pressed", String(button.dataset.showScreen === name));
+          }
+        });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      };
+
+      document.addEventListener("click", (event) => {
+        const target = event.target.closest("[data-show-screen]");
+        if (target) {
+          event.preventDefault();
+          showScreen(target.dataset.showScreen);
+        }
+        const action = event.target.closest("[data-demo-action]");
+        if (action) toast(action.dataset.demoAction);
+      });
+
+      document.querySelectorAll(".mock-form").forEach((form) => {
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          const feedback = form.querySelector(".demo-feedback");
+          if (feedback) feedback.textContent = form.dataset.message;
+        });
+      });
+
+      const userBackdrop = document.getElementById("user-modal-backdrop");
+      const rightsBackdrop = document.getElementById("rights-modal-backdrop");
+      const openModal = (backdrop) => {
+        backdrop.classList.add("is-open");
+        backdrop.querySelector("input, button")?.focus();
+      };
+      const closeModal = (backdrop) => backdrop.classList.remove("is-open");
+      document.querySelectorAll("[data-close-modal]").forEach((button) => {
+        button.addEventListener("click", () => {
+          closeModal(userBackdrop);
+          closeModal(rightsBackdrop);
+        });
+      });
+      [userBackdrop, rightsBackdrop].forEach((backdrop) => {
+        backdrop.addEventListener("click", (event) => {
+          if (event.target === backdrop) closeModal(backdrop);
+        });
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeModal(userBackdrop);
+          closeModal(rightsBackdrop);
+        }
+      });
+
+      const roleView = document.getElementById("user-role-view");
+      const tableBody = document.getElementById("user-table-body");
+      const search = document.getElementById("user-search");
+      const updateRows = () => {
+        const role = roleView.value;
+        const query = search.value.toLowerCase();
+        const rows = [...tableBody.querySelectorAll("tr")];
+        const roleVisibleRows = rows.filter((row) => role !== "admin" || row.dataset.role !== "Superadmin");
+        const filterCounts = {
+          all: roleVisibleRows.length,
+          active: roleVisibleRows.filter((row) => row.dataset.status === "Active").length,
+          blocked: roleVisibleRows.filter((row) => row.dataset.status === "Blocked").length,
+          inactive: roleVisibleRows.filter((row) => row.dataset.status === "Inactive").length
+        };
+        document.querySelectorAll("[data-user-filter]").forEach((tab) => {
+          const label = tab.dataset.userFilter[0].toUpperCase() + tab.dataset.userFilter.slice(1);
+          tab.textContent = `${label} (${filterCounts[tab.dataset.userFilter]})`;
+        });
+        let visible = 0;
+        rows.forEach((row) => {
+          const isPeerAdmin = role === "admin" && row.dataset.role === "Admin";
+          const hiddenSuperadmin = role === "admin" && row.dataset.role === "Superadmin";
+          const statusMatches = currentFilter === "all" || row.dataset.status.toLowerCase() === currentFilter;
+          const queryMatches = row.textContent.toLowerCase().includes(query);
+          const shown = !hiddenSuperadmin && statusMatches && queryMatches;
+          row.hidden = !shown;
+          visible += Number(shown);
+          const actions = row.querySelector(".row-actions");
+          actions.replaceChildren();
+          if (isPeerAdmin) {
+            actions.textContent = "—";
+            return;
+          }
+          const status = row.dataset.status;
+          if (status === "Inactive") {
+            actions.textContent = "—";
+            return;
+          }
+          const blockButton = document.createElement("button");
+          blockButton.className = `button button--small ${status === "Blocked" ? "button--success" : "button--danger"}`;
+          blockButton.setAttribute("data-toggle-block", "");
+          blockButton.textContent = status === "Blocked" ? "Unblock" : "Block";
+          actions.append(blockButton);
+          const rightsButton = document.createElement("button");
+          rightsButton.className = "button button--secondary button--small";
+          rightsButton.setAttribute("data-open-rights", "");
+          rightsButton.textContent = "Rights";
+          actions.append(rightsButton);
+          const editButton = document.createElement("button");
+          editButton.className = "button button--secondary button--small";
+          editButton.setAttribute("data-edit-user", "");
+          editButton.textContent = "Edit";
+          actions.append(editButton);
+        });
+        document.getElementById("visible-count").textContent = `${visible} ${visible === 1 ? "account" : "accounts"}`;
+      };
+      roleView.addEventListener("change", updateRows);
+      search.addEventListener("input", updateRows);
+      document.querySelectorAll("[data-user-filter]").forEach((button) => {
+        button.addEventListener("click", () => {
+          currentFilter = button.dataset.userFilter;
+          document.querySelectorAll("[data-user-filter]").forEach((tab) => tab.classList.toggle("is-selected", tab === button));
+          updateRows();
+        });
+      });
+      tableBody.addEventListener("click", (event) => {
+        const button = event.target.closest("button");
+        if (!button) return;
+        const row = button.closest("tr");
+        if (button.hasAttribute("data-toggle-block")) {
+          row.dataset.status = row.dataset.status === "Blocked" ? "Active" : "Blocked";
+          const badge = row.querySelector(".status-badge");
+          badge.className = `status-badge status-badge--${row.dataset.status.toLowerCase()}`;
+          badge.textContent = row.dataset.status;
+          updateRows();
+          toast(`Prototype state only: account display changed to ${row.dataset.status}. No backend request was sent.`);
+        }
+        if (button.hasAttribute("data-open-rights")) {
+          selectedRightsUser = row.cells[1].textContent;
+          document.getElementById("rights-user-name").textContent = `${row.querySelector(".data-table__person strong").textContent} · ${selectedRightsUser}`;
+          draftRights = new Set(savedRightsByUser.get(selectedRightsUser) ?? []);
+          renderRights();
+          openModal(rightsBackdrop);
+        }
+        if (button.hasAttribute("data-edit-user")) {
+          document.getElementById("user-modal-title").textContent = "Edit User";
+          const form = document.getElementById("user-form");
+          form.elements.firstName.value = row.querySelector(".data-table__person strong").textContent.split(" ")[0];
+          form.elements.lastName.value = row.querySelector(".data-table__person strong").textContent.split(" ").slice(1).join(" ");
+          form.elements.email.value = row.cells[1].textContent;
+          form.elements.role.value = row.dataset.role;
+          openModal(userBackdrop);
+        }
+      });
+
+      const renderRights = () => {
+        const host = document.getElementById("permission-groups");
+        host.replaceChildren();
+        rightsCatalog.forEach((group, groupIndex) => {
+          const wrapper = document.createElement("section");
+          wrapper.className = "permission-group";
+          const heading = document.createElement("div");
+          heading.className = "permission-group__header";
+          const title = document.createElement("label");
+          title.className = "permission-group__title";
+          const master = document.createElement("input");
+          master.type = "checkbox";
+          master.dataset.master = String(groupIndex);
+          master.setAttribute("aria-label", `Select all ${group.module} rights`);
+          title.append(master, document.createTextNode(group.module));
+          const shortcuts = document.createElement("div");
+          shortcuts.className = "permission-group__shortcuts";
+          [["All", true], ["None", false]].forEach(([label, checked]) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = label;
+            button.dataset.setGroup = String(groupIndex);
+            button.dataset.checked = String(checked);
+            shortcuts.append(button);
+          });
+          heading.append(title, shortcuts);
+          const items = document.createElement("div");
+          items.className = "permission-group__items";
+          group.rights.forEach(([code, label]) => {
+            const itemLabel = document.createElement("label");
+            itemLabel.className = "checkbox-label";
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.value = code;
+            checkbox.checked = draftRights.has(code);
+            checkbox.dataset.right = "";
+            itemLabel.append(checkbox, document.createTextNode(label));
+            items.append(itemLabel);
+          });
+          wrapper.append(heading, items);
+          host.append(wrapper);
+          syncMaster(wrapper);
+        });
+      };
+      const syncMaster = (groupElement) => {
+        const master = groupElement.querySelector("[data-master]");
+        const children = [...groupElement.querySelectorAll("[data-right]")];
+        const count = children.filter((checkbox) => checkbox.checked).length;
+        master.checked = count === children.length;
+        master.indeterminate = count > 0 && count < children.length;
+      };
+      document.getElementById("permission-groups").addEventListener("change", (event) => {
+        const groupElement = event.target.closest(".permission-group");
+        if (!groupElement) return;
+        if (event.target.matches("[data-master]")) {
+          groupElement.querySelectorAll("[data-right]").forEach((checkbox) => {
+            checkbox.checked = event.target.checked;
+            if (event.target.checked) draftRights.add(checkbox.value);
+            else draftRights.delete(checkbox.value);
+          });
+        } else if (event.target.matches("[data-right]")) {
+          if (event.target.checked) draftRights.add(event.target.value);
+          else draftRights.delete(event.target.value);
+        }
+        syncMaster(groupElement);
+      });
+      document.getElementById("permission-groups").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-set-group]");
+        if (!button) return;
+        const index = Number(button.dataset.setGroup);
+        const groupElement = button.closest(".permission-group");
+        groupElement.querySelectorAll("[data-right]").forEach((checkbox) => {
+          checkbox.checked = button.dataset.checked === "true";
+          if (checkbox.checked) draftRights.add(checkbox.value);
+          else draftRights.delete(checkbox.value);
+        });
+        syncMaster(groupElement);
+      });
+      document.getElementById("rights-save").addEventListener("click", () => {
+        savedRightsByUser.set(selectedRightsUser, new Set(draftRights));
+        closeModal(rightsBackdrop);
+        toast(`Prototype only: ${draftRights.size} rights staged for this user in the browser; none were saved to a server.`);
+      });
+
+      document.querySelectorAll("[data-open-user]").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.getElementById("user-modal-title").textContent = "Add User";
+          document.getElementById("user-form").reset();
+          openModal(userBackdrop);
+        });
+      });
+      document.getElementById("user-form-save").addEventListener("click", () => {
+        const form = document.getElementById("user-form");
+        if (!form.reportValidity()) return;
+        closeModal(userBackdrop);
+        form.reset();
+        toast("Prototype only: user form submitted locally; no account was created or updated.");
+      });
+
+      updateRows();
+      renderRights();
+      if (allRightCodes.length !== 36 || new Set(allRightCodes).size !== 36) {
+        document.body.dataset.catalogError = "Permission catalog must contain exactly 36 unique codes.";
+      }
+    })();
+  </script>
+</body>
+</html>
