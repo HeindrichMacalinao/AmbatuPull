@@ -33,7 +33,7 @@ async function registerUser(req, res) {
     const pool = getPool();
 
     // Check for existing email (case‑insensitive due to COLLATE NOCASE in schema)
-    const existing = await pool.query('SELECT 1 FROM app_user WHERE email = $1', [email.trim()]);
+    const existing = await pool.query('SELECT 1 FROM app_user WHERE email = $1', [cleanEmail]);
     if (existing.rowCount > 0) {
       return res.status(409).json({ error: 'Email already registered' });
     }
@@ -50,7 +50,7 @@ async function registerUser(req, res) {
       [
         firstName.trim(),
         lastName.trim(),
-        email.trim(),
+        cleanEmail,
         passwordHash,
         `CREATED self ${new Date().toISOString()}`,
       ]
