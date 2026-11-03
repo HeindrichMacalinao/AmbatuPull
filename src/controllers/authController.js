@@ -1,20 +1,20 @@
 'use strict';
 
 const { getPool } = require('../db/pool');
-const bcrypt = require('bcrypt'); // bcrypt should be installed as a dependency
+const bcrypt = require('bcryptjs');
+const { loginUser, logoutUser } = require('../services/authService');
 
 // Simple email regex (RFC 5322 simplified)
 const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 /**
  * Register a new user.
- * Validates input, hashes password with bcrypt (cost 10), and inserts into the app_user table.
+ * Validates input, hashes password with bcryptjs (cost 10), and inserts into the app_user table.
  * Enforces default role "User" regardless of any client‑provided role.
  */
 async function registerUser(req, res) {
   try {
     const { firstName, lastName, email, password, confirmPassword } = req.body;
-
 
     // ----- Validation -----
     if (!firstName || !lastName || !email || !password || !confirmPassword) {
@@ -70,4 +70,31 @@ async function registerUser(req, res) {
   }
 }
 
-module.exports = { registerUser };
+/**
+ * POST /api/auth/login
+ */
+async function login(req, res, next) {
+  try {
+    const result = await loginUser(req.body);
+    // Issue an httpOnly session cookie for QA contract tests & web security
+    res.cookie('token', result.token, { httpOnly: true, sameSite: 'lax' });
+    res.status(200).json({ token: result.token, user: result.user });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/auth/logout
+ */
+async function logout(req, res, next) {
+  try {
+    await logoutUser();
+    res.clearCookie('token');
+    res.status(200).json({ message: 'Logged out' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { registerUser, login, logout };
