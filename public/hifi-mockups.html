@@ -410,9 +410,10 @@
           <div class="auth-form-panel"><div class="auth-form-panel__heading"><p class="eyebrow">ACCOUNT SETUP</p><h1>Create your account</h1><p class="subheading">Join your team on Hope, Inc. ERP.</p></div>
             <div class="inline-alert"><svg class="icon"><use href="#i-shield"/></svg><span>New accounts are created as User. Superadmin and Admin roles can only be assigned by existing administrators.</span></div>
             <form class="form-stack mock-form" data-message="Mockup only: no registration request was sent.">
-              <div class="form-row"><label class="form-field"><span class="form-field__label">First Name</span><input class="form-field__input" placeholder="First name" required></label><label class="form-field"><span class="form-field__label">Last Name</span><input class="form-field__input" placeholder="Last name" required></label></div>
-              <label class="form-field"><span class="form-field__label">Email Address</span><input class="form-field__input" type="email" placeholder="you@company.com" required></label>
-              <label class="form-field"><span class="form-field__label">Password</span><input class="form-field__input" type="password" placeholder="Create a password" required><span class="form-field__hint">Use the password policy configured by your organization.</span></label>
+              <div class="form-row"><label class="form-field"><span class="form-field__label">First Name</span><input class="form-field__input" name="firstName" placeholder="First name" required></label><label class="form-field"><span class="form-field__label">Last Name</span><input class="form-field__input" name="lastName" placeholder="Last name" required></label></div>
+              <label class="form-field"><span class="form-field__label">Email Address</span><input class="form-field__input" name="email" type="email" placeholder="you@company.com" required></label>
+              <label class="form-field"><span class="form-field__label">Password</span><input class="form-field__input" name="password" type="password" placeholder="Create a password" required><span class="form-field__hint">Use the password policy configured by your organization.</span></label>
+              <label class="form-field"><span class="form-field__label">Confirm Password</span><input class="form-field__input" name="confirmPassword" type="password" placeholder="Confirm your password" aria-describedby="register-confirm-password-error" required><span class="form-field__error" id="register-confirm-password-error" hidden>Passwords do not match.</span></label>
               <button class="button button--primary auth-submit" type="submit">Register</button><p class="demo-feedback" aria-live="polite"></p>
             </form><div class="auth-divider">OR</div><button class="button button--secondary auth-submit" data-demo-action="Google sign-in is a visual placeholder; no provider is connected.">Continue with Google</button>
             <p class="auth-footnote">Already have an account? <a href="#" data-show-screen="login">Sign In</a></p>
@@ -598,9 +599,30 @@
         if (action) toast(action.dataset.demoAction);
       });
 
+      const registerForm = document.querySelector('[data-screen="register"] .mock-form');
+      const registerPassword = registerForm.elements.password;
+      const registerConfirmPassword = registerForm.elements.confirmPassword;
+      const registerConfirmPasswordError = registerForm.querySelector("#register-confirm-password-error");
+      const validateConfirmPassword = () => {
+        const hasMismatch = registerConfirmPassword.value.length > 0
+          && registerPassword.value !== registerConfirmPassword.value;
+        registerConfirmPassword.setCustomValidity(hasMismatch ? "Passwords do not match." : "");
+        registerConfirmPassword.setAttribute("aria-invalid", String(hasMismatch));
+        registerConfirmPasswordError.hidden = !hasMismatch;
+      };
+      registerPassword.addEventListener("input", validateConfirmPassword);
+      registerConfirmPassword.addEventListener("input", validateConfirmPassword);
+
       document.querySelectorAll(".mock-form").forEach((form) => {
         form.addEventListener("submit", (event) => {
           event.preventDefault();
+          if (form === registerForm) {
+            validateConfirmPassword();
+            if (!form.checkValidity()) {
+              form.reportValidity();
+              return;
+            }
+          }
           const feedback = form.querySelector(".demo-feedback");
           if (feedback) feedback.textContent = form.dataset.message;
         });

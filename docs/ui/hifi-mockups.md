@@ -90,7 +90,7 @@ The reference Student Guide itself (PDF or image set for Figures 2–8 and 35–
 The following available wireframe text is retained in the mockup:
 
 - Landing: “Run your entire business with confidence”; “Hope, Inc. ERP brings your business operations together in one unified system, helping your team manage work with clarity.”; “Sign In to Dashboard”; “Sales & Orders”; “Review sales and manage orders.”; “Customers”; “Keep customer records together.”; “Inventory”; “Track products and stock.”; “People & Jobs”; “Organize employee and job records.”
-- Registration: “Create your account”; “Join your team on Hope, Inc. ERP”; “First Name”; “Last Name”; “Email Address”; “Password”; “Register”; “Continue with Google”; “Already have an account? Sign In”; “New accounts are created as User. Superadmin and Admin roles can only be assigned by existing administrators.”
+- Registration: “Create your account”; “Join your team on Hope, Inc. ERP”; “First Name”; “Last Name”; “Email Address”; “Password”; “Confirm Password”; “Register”; “Continue with Google”; “Already have an account? Sign In”; “New accounts are created as User. Superadmin and Admin roles can only be assigned by existing administrators.”
 - Login: “Sign in to Hope ERP”; “Remember me”; “Forgot password?”; “Sign In”; “New to Hope ERP? Register.”
 - Recovery: “Forgot your password?”; “We'll send you a secure link to reset it”; “Submit”; “Back to Sign In”; “Reset your password”; “New Password”; “Password strength”; “Confirm New Password”; “Reset Password”; “Return to Sign In.”
 - User/rights: “User Management”; “Add User”; “Name”; “Email”; “Role”; “Status”; “Actions”; “Active”; “Blocked”; “Block”; “Unblock”; “Rights”; “Edit”; “All”; “None”; “Cancel”; “Save Rights.” Rights labels and codes match `db/seeds/003_initial_access_catalog.sql`.
@@ -102,7 +102,7 @@ Other feedback, helper copy, sample account data, and illustrative metric values
 | Flow | Prototype display behavior | Backend/integration responsibility |
 | --- | --- | --- |
 | Auth form | Native required/email validation; focus and error examples; local feedback on submit | Authenticate, validate policy, create/manage a session, safely return errors, and never expose password values |
-| Registration / reset | Form screens and navigation only; no request is sent | Bind registration to the existing `POST /api/auth/register` contract; implement or confirm one-time reset-token delivery/validation and apply server-side password rules |
+| Registration / reset | Registration uses native required/email validation and local password-match feedback; reset remains a visual form. No request is sent. | Bind registration to the existing `POST /api/auth/register` contract; implement or confirm one-time reset-token delivery/validation and apply server-side password rules |
 | Active → Blocked | Row badge changes from Active to red Blocked; action changes from Block to Unblock | Verify actor and target role, persist `isBlocked`, audit the change, reject blocked sessions/logins as applicable |
 | Blocked → Active | Unblock returns the display badge/action to Active/Block | Authorize and persist the unblock; confirm session and audit semantics |
 | Inactive account | Distinct gray Inactive badge and shaded, readable row; separate from Blocked | Define retention/soft-delete behavior and which Admins may list or restore inactive records. The current schema has `status` Active/Inactive and `isBlocked`; it has no separate deleted-at flag. Do not equate Inactive with Blocked or assume deletion semantics. |
