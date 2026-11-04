@@ -14,7 +14,7 @@
     "db:setup": "node scripts/migrate/index.js up",
     "db:status": "node scripts/migrate/index.js status",
     "db:reset": "node scripts/migrate/index.js reset",
-    "test": "python tests/verify_hope.py && python tests/verify_user_management.py && python tests/verify_qa_fixtures.py && python tests/verify_auth_contract.py",
+    "test": "python tests/verify_hope.py && python tests/verify_user_management.py && python tests/verify_qa_fixtures.py && python tests/verify_auth_contract.py && python tests/verify_password_reset_token.py",
     "test:auth": "node --test tests/auth-flow.test.js"
   },
   "keywords": [
@@ -30,6 +30,7 @@
   "author": "Hope, Inc. ERP Team",
   "license": "ISC",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "dotenv": "^16.4.7",
     "express": "^4.19.2",
     "pg": "^8.12.0"
