@@ -17,7 +17,7 @@ the authentication routes and a disposable test server are available.
 | TC-AUTH-03 | Blocked account | 403 with blocked notification; no session | `tests/auth-flow.test.js` |
 | TC-AUTH-04 | Logout | Session is invalidated; protected request is 401 | `tests/auth-flow.test.js` |
 | TC-RST-01 | Request reset | Reset request succeeds without token disclosure | `tests/auth-flow.test.js` |
-| TC-RST-02 | Complete reset | New password works; old password fails | Pending route implementation |
+| TC-RST-02 | Complete reset | New password works; old password fails | `tests/auth-flow.test.js` |
 | TC-RST-03 | Expired token | Reset is rejected | `tests/auth-flow.test.js` |
 | TC-RST-04 | Reused token | Reset is rejected | `tests/auth-flow.test.js` |
 

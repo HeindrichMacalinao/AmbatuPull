@@ -2,7 +2,12 @@
 
 const { getPool } = require('../db/pool');
 const bcrypt = require('bcryptjs');
-const { loginUser, logoutUser } = require('../services/authService');
+const {
+  loginUser,
+  logoutUser,
+  requestPasswordReset,
+  resetPassword: resetPasswordService,
+} = require('../services/authService');
 
 // Simple email regex (RFC 5322 simplified)
 const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -97,4 +102,34 @@ async function logout(req, res, next) {
   }
 }
 
-module.exports = { registerUser, login, logout };
+/**
+ * POST /api/auth/forgot-password (S1-DEV-04)
+ */
+async function forgotPassword(req, res, next) {
+  try {
+    const result = await requestPasswordReset(req.body);
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/auth/reset-password (S1-DEV-04)
+ */
+async function resetPassword(req, res, next) {
+  try {
+    const result = await resetPasswordService(req.body);
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = {
+  registerUser,
+  login,
+  logout,
+  forgotPassword,
+  resetPassword,
+};
