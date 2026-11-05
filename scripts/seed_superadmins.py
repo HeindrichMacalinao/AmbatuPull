@@ -6,7 +6,7 @@ JSON file OUTSIDE the repository. Never accepts plaintext passwords, invents
 email addresses, echoes secret contents, or auto-promotes existing accounts.
 
 Run: python3 -B scripts/seed_superadmins.py --db /secure/local/hope-team.db \
-     --accounts-file /secure/local/initial-admins.json
+     --accounts-file /secure/local/initial-admins.json --actor admin-operator
 """
 from __future__ import annotations
 
@@ -17,6 +17,8 @@ import re
 import sqlite3
 import stat
 from pathlib import Path
+
+from audit_sqlite import bind_audit_actor
 
 ROOT = Path(__file__).resolve().parents[1]
 HANDLES = frozenset({
@@ -111,7 +113,7 @@ def load_accounts(path: Path) -> list[dict[str, str]]:
     return raw
 
 
-def provision(database: Path, accounts: list[dict[str, str]]) -> tuple[int, int]:
+def provision(database: Path, accounts: list[dict[str, str]], *, actor: str) -> tuple[int, int]:
     db = database.expanduser().resolve(strict=True)
     if db == ROOT or ROOT in db.parents:
         raise SetupError('provisioned database must be outside the Git repository')
@@ -119,7 +121,7 @@ def provision(database: Path, accounts: list[dict[str, str]]) -> tuple[int, int]
         raise SetupError('SQLite database is missing')
     conn = sqlite3.connect(f'file:{db.as_posix()}?mode=rw', uri=True, timeout=10)
     try:
-        conn.execute('PRAGMA foreign_keys=ON')
+        bind_audit_actor(conn, actor)
         if conn.execute('PRAGMA foreign_keys').fetchone() != (1,):
             raise SetupError('SQLite foreign-key enforcement is disabled')
         conn.execute('BEGIN IMMEDIATE')
@@ -171,11 +173,13 @@ def main() -> None:
                         help='private SQLite copy OUTSIDE the repository; never commit initialized accounts')
     parser.add_argument('--accounts-file', required=True, type=Path,
                         help='owner-only secret JSON OUTSIDE the repository; contains only precomputed hashes')
+    parser.add_argument('--actor', required=True,
+                        help='verified OS/admin operator identifier (not from a client request)')
     args = parser.parse_args()
     try:
         accounts = load_accounts(args.accounts_file)
-        created, existing = provision(args.db, accounts)
-    except (SetupError, OSError, sqlite3.DatabaseError) as exc:
+        created, existing = provision(args.db, accounts, actor=args.actor)
+    except (SetupError, ValueError, OSError, sqlite3.DatabaseError) as exc:
         # Do not dump JSON, SQL parameters, token hashes or other secret fields.
         if isinstance(exc, SetupError):
             parser.exit(1, f'ERROR: {exc}\n')

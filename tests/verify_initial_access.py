@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 from seed_superadmins import HANDLES, SetupError, load_accounts, provision  # noqa: E402
 from regenerate_hope import rebuild  # noqa: E402
+from audit_sqlite import bind_audit_actor  # noqa: E402
 
 BASE = ROOT / 'db/migrations/001_hope_base_tables.sql'
 HISTORY = ROOT / 'db/seeds/002_hope_historical_data.sql'
@@ -116,6 +117,7 @@ class InitialAccessSeedTests(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.db = Path(self.directory.name) / 'fresh.db'
         self.conn = sqlite3.connect(self.db)
+        bind_audit_actor(self.conn, 'test-S1-DBA-05')
         self.addCleanup(self.conn.close)
         self.conn.execute('PRAGMA foreign_keys=ON')
         for sql in FILES:
@@ -171,8 +173,8 @@ class InitialAccessSeedTests(unittest.TestCase):
         config = self.account_file(accounts)
         verified = load_accounts(config)
         self.assertEqual({a['handle'] for a in verified}, HANDLES)
-        self.assertEqual(provision(self.db, verified), (5, 0))
-        self.assertEqual(provision(self.db, verified), (0, 5))
+        self.assertEqual(provision(self.db, verified, actor='test-S1-DBA-05'), (5, 0))
+        self.assertEqual(provision(self.db, verified, actor='test-S1-DBA-05'), (0, 5))
         self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM app_user WHERE role='Superadmin' AND isBlocked=0 AND status='Active'").fetchone(), (5,))
         self.assertEqual(self.conn.execute('SELECT COUNT(*) FROM user_permission').fetchone(), (0,))
         self.assertEqual(self.conn.execute('PRAGMA foreign_key_check').fetchall(), [])
@@ -215,7 +217,7 @@ class InitialAccessSeedTests(unittest.TestCase):
              accounts[-1]['passwordHash'], 'User', 'TEST ONLY'))
         self.conn.commit()
         with self.assertRaisesRegex(SetupError, 'conflicting existing account'):
-            provision(self.db, load_accounts(self.account_file(accounts)))
+            provision(self.db, load_accounts(self.account_file(accounts)), actor='test-S1-DBA-05')
         self.assertEqual(self.conn.execute('SELECT COUNT(*) FROM app_user').fetchone(), (1,))
         self.assertEqual(self.conn.execute("SELECT role FROM app_user WHERE email=?", (accounts[-1]['email'],)).fetchone(), ('User',))
         self.assertEqual(self.conn.execute('PRAGMA foreign_key_check').fetchall(), [])
@@ -226,11 +228,11 @@ class InitialAccessSeedTests(unittest.TestCase):
         with self.assertRaises(AssertionError):
             check_catalog(self.conn)
         with self.assertRaisesRegex(SetupError, 'catalog seed'):
-            provision(self.db, load_accounts(self.account_file(example_test_accounts())))
+            provision(self.db, load_accounts(self.account_file(example_test_accounts())), actor='test-S1-DBA-05')
 
     def test_08_regeneration_cannot_destroy_initialized_accounts(self) -> None:
         accounts = load_accounts(self.account_file(example_test_accounts()))
-        provision(self.db, accounts)
+        provision(self.db, accounts, actor='test-S1-DBA-05')
         with self.assertRaisesRegex(RuntimeError, 'Refusing to overwrite'):
             rebuild(self.db, None)
         self.assertEqual(self.conn.execute('SELECT COUNT(*) FROM app_user').fetchone(), (5,))
@@ -238,7 +240,7 @@ class InitialAccessSeedTests(unittest.TestCase):
     def test_09_provisioning_refuses_tracked_database(self) -> None:
         accounts = load_accounts(self.account_file(example_test_accounts()))
         with self.assertRaisesRegex(SetupError, 'outside the Git repository'):
-            provision(ROOT / 'HopeERP.db', accounts)
+            provision(ROOT / 'HopeERP.db', accounts, actor='test-S1-DBA-05')
 
 
 def check_artifacts() -> None:
