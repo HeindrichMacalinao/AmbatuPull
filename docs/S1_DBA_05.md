@@ -78,7 +78,8 @@ The above is a **field-layout illustration only**, not a complete accepted file.
 ```bash
 python3 -B scripts/seed_superadmins.py \
   --db /secure/local/hope-team.db \
-  --accounts-file /secure/local/initial-admins.json
+  --accounts-file /secure/local/initial-admins.json \
+  --actor verified-operator-id
 ```
 
 Provisioning fails if any account already exists with conflicting identity, hash, role, block state, or status. It is atomic and idempotent for exactly matching accounts; it does not elevate preexisting regular users. No secrets are printed.
@@ -86,7 +87,7 @@ Provisioning fails if any account already exists with conflicting identity, hash
 6. Confirm all five account rows have `role='Superadmin'`, `isBlocked=0`, and `status='Active'`, and verify actual login and access in an approved test environment using the real app. The `app_user` table **does not include a separate handle/username column**, so the handles serve only as a secure provisioning checklist, not as database login identifiers. Login may use email if that is what the application supports.
 7. After onboarding, delete the temporary secret JSON file through your organization's secure secret-retention procedure. Do not commit private DBs, exported hashes, emails, reset tokens or invite secrets to GitHub.
 
-**Do not rerun the destructive database regeneration script against an initialized database.** The script now refuses to overwrite databases containing users, grants, or reset tokens. Instead, migrate the live database using your authoritative migration runner.
+**Do not rerun the destructive database regeneration script against an initialized database.** The script now refuses to overwrite databases containing users, grants, reset tokens, or audit events. Instead, migrate the live database using your authoritative migration runner.
 
 ## Security and residual risks
 
