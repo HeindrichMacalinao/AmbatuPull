@@ -1,0 +1,150 @@
+S1-DBA-06 verification, locally executed
+UTC: 2026-11-05T10:48:49Z
+Python: Python 3.13.5
+Node: v22.16.0
+SQLite: 3.46.1
+
+BUILT: HopeERP.db (274,432 bytes)
+BUILT: HOPE_Model1.db (450,560 bytes)
+PASS: HopeERP.db SQLite integrity and 10 required tables
+PASS: exact SQL schema, PKs, and status/stamp constraints on all 10 tables
+PASS: 928 historical records; every business value matches HopeDB_audit.sql.txt
+PASS: all 9 foreign keys present and reject orphaned INSERTs
+PASS: expected historical IDs/values and relationship joins
+SUCCESS: HopeERP.db
+
+PASS: HOPE_Model1.db SQLite integrity and 10 required tables
+PASS: exact SQL schema, PKs, and status/stamp constraints on all 10 tables
+PASS: 928 historical records; every business value matches HopeDB_audit.sql.txt
+PASS: all 9 foreign keys present and reject orphaned INSERTs
+PASS: expected historical IDs/values and relationship joins
+PASS: original Model1.db preserved (16 tables plus indexes/views)
+SUCCESS: HOPE_Model1.db
+
+ALL TESTS PASSED: 2 database(s); 928 baseline records each
+
+--- HopeERP.db ---
+PASS: five user-management tables, exact columns/PKs and 5 FKs
+PASS: role/default/status/audit constraints and both requested indexes
+PASS: case-insensitive email uniqueness, valid employee FK, restricted values/stamp
+PASS: junction ON DELETE CASCADE for account and rights; restricted module delete
+PASS: soft-disable retains grants; EMPLOYEE deletion sets nullable empNo to NULL
+PASS: original user-management data and seeded catalog remain unchanged
+PASS: SQLite integrity and FK checks
+PASS: five user-management tables, exact columns/PKs and 5 FKs
+PASS: role/default/status/audit constraints and both requested indexes
+PASS: idempotent reapplication
+SUCCESS: HopeERP.db
+
+--- HOPE_Model1.db ---
+PASS: five user-management tables, exact columns/PKs and 5 FKs
+PASS: role/default/status/audit constraints and both requested indexes
+PASS: case-insensitive email uniqueness, valid employee FK, restricted values/stamp
+PASS: junction ON DELETE CASCADE for account and rights; restricted module delete
+PASS: soft-disable retains grants; EMPLOYEE deletion sets nullable empNo to NULL
+PASS: original user-management data and seeded catalog remain unchanged
+PASS: SQLite integrity and FK checks
+PASS: five user-management tables, exact columns/PKs and 5 FKs
+PASS: role/default/status/audit constraints and both requested indexes
+PASS: idempotent reapplication
+SUCCESS: HOPE_Model1.db
+
+ALL S1-DBA-03 VERIFICATIONS PASSED: both databases
+--- Fresh migration on a disposable SQLite database ---
+PASS: 928 historical HOPE records, three roles, and no seeded reset tokens
+PASS: foreign keys, required columns, SHA-256 digest format, flag/date constraints
+PASS: exactly +1 hour default expiry, false/NULL defaults, unique digest lookup
+PASS: first redemption updates exactly one row; replay updates zero
+PASS: active/expired/used classification and pending-token invalidation
+PASS: ON DELETE CASCADE removes only the deleted user’s reset tokens
+PASS: all fixture records rolled back; SQLite integrity remains OK
+PASS: 928 historical HOPE records, three roles, and no seeded reset tokens
+PASS: migration safely reapplies without changing data/indexes
+PASS: schema validator rejects missing mandatory index
+
+--- Verify integrated HopeERP.db ---
+PASS: 928 historical HOPE records, three roles, and no seeded reset tokens
+PASS: foreign keys, required columns, SHA-256 digest format, flag/date constraints
+PASS: exactly +1 hour default expiry, false/NULL defaults, unique digest lookup
+PASS: first redemption updates exactly one row; replay updates zero
+PASS: active/expired/used classification and pending-token invalidation
+PASS: ON DELETE CASCADE removes only the deleted user’s reset tokens
+PASS: all fixture records rolled back; SQLite integrity remains OK
+
+--- Verify integrated HOPE_Model1.db ---
+PASS: 928 historical HOPE records, three roles, and no seeded reset tokens
+PASS: foreign keys, required columns, SHA-256 digest format, flag/date constraints
+PASS: exactly +1 hour default expiry, false/NULL defaults, unique digest lookup
+PASS: first redemption updates exactly one row; replay updates zero
+PASS: active/expired/used classification and pending-token invalidation
+PASS: ON DELETE CASCADE removes only the deleted user’s reset tokens
+PASS: all fixture records rolled back; SQLite integrity remains OK
+
+ALL S1-DBA-04 TESTS PASSED
+test_01_exact_modules_and_rights (__main__.InitialAccessSeedTests.test_01_exact_modules_and_rights) ... ok
+test_02_idempotence_and_source_integrity (__main__.InitialAccessSeedTests.test_02_idempotence_and_source_integrity) ... ok
+test_03_foreign_keys_and_catalog_drift_detection (__main__.InitialAccessSeedTests.test_03_foreign_keys_and_catalog_drift_detection) ... ok
+test_04_provision_five_superadmins_without_plaintext (__main__.InitialAccessSeedTests.test_04_provision_five_superadmins_without_plaintext) ... ok
+test_05_invalid_or_unsafe_account_configuration (__main__.InitialAccessSeedTests.test_05_invalid_or_unsafe_account_configuration) ... ok
+test_06_conflict_rolls_back_without_privilege_escalation (__main__.InitialAccessSeedTests.test_06_conflict_rolls_back_without_privilege_escalation) ... ok
+test_07_detect_missing_catalog_entry (__main__.InitialAccessSeedTests.test_07_detect_missing_catalog_entry) ... ok
+test_08_regeneration_cannot_destroy_initialized_accounts (__main__.InitialAccessSeedTests.test_08_regeneration_cannot_destroy_initialized_accounts) ... ok
+test_09_provisioning_refuses_tracked_database (__main__.InitialAccessSeedTests.test_09_provisioning_refuses_tracked_database) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.289s
+
+OK
+PASS: integrated artifact HopeERP.db: five modules, 36 rights, historical data intact
+PASS: integrated artifact HOPE_Model1.db: five modules, 36 rights, historical data intact
+ALL S1-DBA-05 SEED VERIFICATIONS PASSED
+test_01_schema_and_required_indexes (__main__.AuditTrailTests.test_01_schema_and_required_indexes) ... ok
+test_02_grant_revoke_reactivate_actor_and_stamp (__main__.AuditTrailTests.test_02_grant_revoke_reactivate_actor_and_stamp) ... ok
+test_03_actor_context_mandatory_fail_closed (__main__.AuditTrailTests.test_03_actor_context_mandatory_fail_closed) ... ok
+test_04_user_actions_and_password_safety (__main__.AuditTrailTests.test_04_user_actions_and_password_safety) ... ok
+test_05_catalog_and_fk_cascade (__main__.AuditTrailTests.test_05_catalog_and_fk_cascade) ... ok
+test_06_atomic_rollback_and_append_only_history (__main__.AuditTrailTests.test_06_atomic_rollback_and_append_only_history) ... ok
+test_07_explicit_stamp_write_is_attributed (__main__.AuditTrailTests.test_07_explicit_stamp_write_is_attributed) ... ok
+test_08_repeatable_migration_and_artifacts (__main__.AuditTrailTests.test_08_repeatable_migration_and_artifacts) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.132s
+
+OK
+PASS artifact: HopeERP.db
+PASS artifact: HOPE_Model1.db
+S1-DBA-06: ALL AUDIT TESTS PASSED
+TAP version 13
+# (node:1126) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: actor is mandatory and isolated by AsyncLocalStorage
+ok 1 - actor is mandatory and isolated by AsyncLocalStorage
+  ---
+  duration_ms: 5.142159
+  type: 'test'
+  ...
+# Subtest: SQL trigger stamps and logs rights changes using trusted actor
+ok 2 - SQL trigger stamps and logs rights changes using trusted actor
+  ---
+  duration_ms: 10.212717
+  type: 'test'
+  ...
+# Subtest: middleware uses authenticated identity, never user-submitted headers
+ok 3 - middleware uses authenticated identity, never user-submitted headers
+  ---
+  duration_ms: 7.239859
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 105.268287
+DB artifact: HopeERP.db bytes= 274432 users= 0 grants= 0 audit= 0 history= 928
+DB artifact: HOPE_Model1.db bytes= 450560 users= 0 grants= 0 audit= 0 history= 928
+
+ALL COMMANDS EXITED 0
