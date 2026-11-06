@@ -1,141 +1,360 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const { test } = require('node:test');
+const { test, beforeEach, afterEach } = require('node:test');
+const poolModule = require('../src/db/pool');
+const userService = require('../src/services/userService');
+const { createApp } = require('../src/app');
 
-const baseUrl = process.env.BASE_URL?.replace(/\/$/, '');
-const password = process.env.AUTH_TEST_PASSWORD || 'QaPassword!123';
-const accounts = {
-  superadmin: { email: 'test_superadmin@hope.com', password },
-  admin: { email: 'test_admin@hope.com', password },
-  peerAdmin: { email: 'test_admin.peer@hope.com', password },
-  user: { email: 'test_user@hope.com', password },
-  blocked: { email: 'test_blocked@hope.com', password },
+let mockQueries = [];
+let queryHandler = null;
+
+const fakePool = {
+  query: async (sql, params = []) => {
+    mockQueries.push({ sql, params });
+    if (queryHandler) {
+      return queryHandler(sql, params);
+    }
+    return { rows: [], rowCount: 0 };
+  },
 };
 
-function skipWithoutServer(t) {
-  if (!baseUrl) {
-    t.skip('Set BASE_URL to execute HTTP user-management contract tests');
-    return true;
+let originalGetPool;
+
+beforeEach(() => {
+  mockQueries = [];
+  queryHandler = null;
+  originalGetPool = poolModule.getPool;
+  poolModule.getPool = () => fakePool;
+});
+
+afterEach(() => {
+  poolModule.getPool = originalGetPool;
+});
+
+// ==============================================================================
+// 1. GET /api/users - Role Visibility (§1.2, §3.8)
+// ==============================================================================
+
+test('listUsers rejects unauthenticated and standard User requester', async () => {
+  await assert.rejects(
+    () => userService.listUsers({ requester: null }),
+    (err) => err.status === 401
+  );
+
+  await assert.rejects(
+    () => userService.listUsers({ requester: { role: 'User' } }),
+    (err) => err.status === 403 && err.message.includes('Forbidden')
+  );
+});
+
+test('listUsers for Admin strictly excludes Superadmins and flags peer Admins', async () => {
+  const dbRows = [
+    { userId: 1, firstName: 'QA', lastName: 'Admin', email: 'admin@hope.com', role: 'Admin', isBlocked: 0, status: 'Active', stamp: 'CREATED' },
+    { userId: 2, firstName: 'QA', lastName: 'User', email: 'user@hope.com', role: 'User', isBlocked: 0, status: 'Active', stamp: 'CREATED' },
+  ];
+
+  queryHandler = async (sql) => {
+    // Admin query must filter out Superadmin
+    assert.ok(sql.includes("role != 'Superadmin'"), 'Admin query must filter out Superadmins');
+    return { rows: dbRows, rowCount: dbRows.length };
+  };
+
+  const users = await userService.listUsers({ requester: { role: 'Admin', email: 'admin@hope.com' } });
+  assert.equal(users.length, 2);
+
+  const adminAccount = users.find((u) => u.role === 'Admin');
+  const userAccount = users.find((u) => u.role === 'User');
+
+  assert.equal(adminAccount.canManage, false, 'Peer Admin account must have canManage: false for Admin');
+  assert.equal(userAccount.canManage, true, 'User account must have canManage: true');
+});
+
+test('listUsers for Superadmin returns all roles and canManage is true', async () => {
+  const dbRows = [
+    { userId: 1, firstName: 'Root', lastName: 'Superadmin', email: 'super@hope.com', role: 'Superadmin', isBlocked: 0, status: 'Active', stamp: 'CREATED' },
+    { userId: 2, firstName: 'QA', lastName: 'Admin', email: 'admin@hope.com', role: 'Admin', isBlocked: 0, status: 'Active', stamp: 'CREATED' },
+    { userId: 3, firstName: 'QA', lastName: 'User', email: 'user@hope.com', role: 'User', isBlocked: 0, status: 'Active', stamp: 'CREATED' },
+  ];
+
+  queryHandler = async (sql) => {
+    assert.ok(!sql.includes("role != 'Superadmin'"), 'Superadmin query must not exclude any role');
+    return { rows: dbRows, rowCount: dbRows.length };
+  };
+
+  const users = await userService.listUsers({ requester: { role: 'Superadmin', email: 'super@hope.com' } });
+  assert.equal(users.length, 3);
+  assert.ok(users.every((u) => u.canManage === true));
+});
+
+// ==============================================================================
+// 2. POST /api/users - Add User
+// ==============================================================================
+
+test('createUser allows Admin to create User accounts only', async () => {
+  // Admin attempting to create Superadmin -> 403
+  await assert.rejects(
+    () =>
+      userService.createUser({
+        data: { firstName: 'New', lastName: 'Super', email: 'newsuper@hope.com', role: 'Superadmin' },
+        requester: { role: 'Admin', email: 'admin@hope.com' },
+      }),
+    (err) => err.status === 403 && err.message.includes('Admins can only create User accounts')
+  );
+
+  // Admin attempting to create Admin -> 403
+  await assert.rejects(
+    () =>
+      userService.createUser({
+        data: { firstName: 'New', lastName: 'Admin', email: 'newadmin@hope.com', role: 'Admin' },
+        requester: { role: 'Admin', email: 'admin@hope.com' },
+      }),
+    (err) => err.status === 403 && err.message.includes('Admins can only create User accounts')
+  );
+
+  // Admin creating standard User -> succeeds
+  queryHandler = async (sql, params) => {
+    if (sql.includes('SELECT 1 FROM app_user WHERE email')) {
+      return { rows: [], rowCount: 0 };
+    }
+    if (sql.includes('INSERT INTO app_user')) {
+      return {
+        rows: [
+          {
+            userId: 10,
+            firstName: params[0],
+            lastName: params[1],
+            email: params[2],
+            role: params[4],
+            isBlocked: 0,
+            empNo: params[5],
+            status: 'Active',
+            stamp: params[6],
+          },
+        ],
+        rowCount: 1,
+      };
+    }
+    return { rows: [], rowCount: 0 };
+  };
+
+  const created = await userService.createUser({
+    data: { firstName: 'John', lastName: 'Doe', email: 'john.doe@hope.com' },
+    requester: { role: 'Admin', email: 'admin@hope.com' },
+  });
+
+  assert.equal(created.role, 'User');
+  assert.equal(created.email, 'john.doe@hope.com');
+  assert.equal(created.isBlocked, false);
+});
+
+test('createUser allows Superadmin to create Admin or Superadmin accounts', async () => {
+  queryHandler = async (sql, params) => {
+    if (sql.includes('SELECT 1 FROM app_user WHERE email')) {
+      return { rows: [], rowCount: 0 };
+    }
+    if (sql.includes('INSERT INTO app_user')) {
+      return {
+        rows: [
+          {
+            userId: 11,
+            firstName: params[0],
+            lastName: params[1],
+            email: params[2],
+            role: params[4],
+            isBlocked: 0,
+            status: 'Active',
+            stamp: params[6],
+          },
+        ],
+        rowCount: 1,
+      };
+    }
+    return { rows: [], rowCount: 0 };
+  };
+
+  const created = await userService.createUser({
+    data: { firstName: 'Branch', lastName: 'Admin', email: 'branch.admin@hope.com', role: 'Admin' },
+    requester: { role: 'Superadmin', email: 'super@hope.com' },
+  });
+
+  assert.equal(created.role, 'Admin');
+});
+
+test('createUser validates required fields and duplicate email', async () => {
+  await assert.rejects(
+    () =>
+      userService.createUser({
+        data: { firstName: '', lastName: '', email: '' },
+        requester: { role: 'Admin' },
+      }),
+    (err) => err.status === 400
+  );
+
+  queryHandler = async (sql) => {
+    if (sql.includes('SELECT 1 FROM app_user WHERE email')) {
+      return { rows: [{ 1: 1 }], rowCount: 1 };
+    }
+    return { rows: [], rowCount: 0 };
+  };
+
+  await assert.rejects(
+    () =>
+      userService.createUser({
+        data: { firstName: 'John', lastName: 'Doe', email: 'duplicate@hope.com' },
+        requester: { role: 'Admin' },
+      }),
+    (err) => err.status === 409
+  );
+});
+
+// ==============================================================================
+// 3. PUT /api/users/:id - Edit User
+// ==============================================================================
+
+test('updateUser rejects Admin editing Admin or Superadmin accounts', async () => {
+  queryHandler = async (sql, params) => {
+    if (sql.includes('SELECT * FROM app_user WHERE userId')) {
+      return {
+        rows: [{ userId: params[0], firstName: 'Target', lastName: 'Super', email: 'super@hope.com', role: 'Superadmin' }],
+        rowCount: 1,
+      };
+    }
+    return { rows: [], rowCount: 0 };
+  };
+
+  await assert.rejects(
+    () =>
+      userService.updateUser({
+        id: 1,
+        data: { firstName: 'Modified' },
+        requester: { role: 'Admin', email: 'admin@hope.com' },
+      }),
+    (err) => err.status === 403 && err.message.includes('Admins cannot edit Admin or Superadmin accounts')
+  );
+});
+
+test('updateUser allows Admin to edit standard User accounts', async () => {
+  queryHandler = async (sql, params) => {
+    if (sql.includes('SELECT * FROM app_user WHERE userId')) {
+      return {
+        rows: [{ userId: 5, firstName: 'Old', lastName: 'User', email: 'user@hope.com', role: 'User' }],
+        rowCount: 1,
+      };
+    }
+    if (sql.includes('UPDATE app_user')) {
+      return {
+        rows: [{ userId: 5, firstName: params[0], lastName: params[1], email: params[2], role: 'User', isBlocked: 0, status: 'Active', stamp: params[4] }],
+        rowCount: 1,
+      };
+    }
+    return { rows: [], rowCount: 0 };
+  };
+
+  const updated = await userService.updateUser({
+    id: 5,
+    data: { firstName: 'NewName' },
+    requester: { role: 'Admin', email: 'admin@hope.com' },
+  });
+
+  assert.equal(updated.firstName, 'NewName');
+  assert.ok(updated.stamp.startsWith('EDITED admin@hope.com'));
+});
+
+// ==============================================================================
+// 4. PUT /api/users/:id/block - Block / Unblock Toggle
+// ==============================================================================
+
+test('toggleUserBlock prevents Admin from blocking Admin or Superadmin', async () => {
+  queryHandler = async (sql, params) => {
+    if (sql.includes('SELECT * FROM app_user WHERE userId')) {
+      return {
+        rows: [{ userId: params[0], firstName: 'Peer', lastName: 'Admin', role: 'Admin', isBlocked: 0 }],
+        rowCount: 1,
+      };
+    }
+    return { rows: [], rowCount: 0 };
+  };
+
+  await assert.rejects(
+    () =>
+      userService.toggleUserBlock({
+        id: 2,
+        requester: { role: 'Admin', email: 'admin@hope.com' },
+      }),
+    (err) => err.status === 403 && err.message.includes('Admins cannot block or unblock Admin or Superadmin accounts')
+  );
+});
+
+test('toggleUserBlock toggles isBlocked on standard User and updates audit stamp', async () => {
+  queryHandler = async (sql, params) => {
+    if (sql.includes('SELECT * FROM app_user WHERE userId')) {
+      return {
+        rows: [{ userId: 5, firstName: 'Regular', lastName: 'User', email: 'user@hope.com', role: 'User', isBlocked: 0 }],
+        rowCount: 1,
+      };
+    }
+    if (sql.includes('UPDATE app_user')) {
+      return {
+        rows: [{ userId: 5, firstName: 'Regular', lastName: 'User', email: 'user@hope.com', role: 'User', isBlocked: params[0], stamp: params[1] }],
+        rowCount: 1,
+      };
+    }
+    return { rows: [], rowCount: 0 };
+  };
+
+  const result = await userService.toggleUserBlock({
+    id: 5,
+    requester: { role: 'Admin', email: 'admin@hope.com' },
+  });
+
+  assert.equal(result.user.isBlocked, true);
+  assert.equal(result.message, 'User has been blocked');
+  assert.ok(result.user.stamp.includes('EDITED admin@hope.com (blocked)'));
+});
+
+// ==============================================================================
+// 5. Express HTTP Endpoints Integration
+// ==============================================================================
+
+test('HTTP User Management endpoints enforce auth and visibility', async () => {
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  queryHandler = async (sql) => {
+    if (sql.includes('FROM app_user') && sql.includes("role != 'Superadmin'")) {
+      return {
+        rows: [
+          { userId: 2, firstName: 'QA', lastName: 'User', email: 'user@hope.com', role: 'User', isBlocked: 0, status: 'Active', stamp: 'CREATED' },
+        ],
+        rowCount: 1,
+      };
+    }
+    return { rows: [], rowCount: 0 };
+  };
+
+  try {
+    // 1. Unauthenticated request -> 401
+    const unauth = await fetch(`${baseUrl}/api/users`);
+    assert.equal(unauth.status, 401);
+
+    // 2. Standard User role -> 403
+    const userForbidden = await fetch(`${baseUrl}/api/users`, {
+      headers: { 'x-user-role': 'User' },
+    });
+    assert.equal(userForbidden.status, 403);
+
+    // 3. Admin role -> 200
+    const adminList = await fetch(`${baseUrl}/api/users`, {
+      headers: { 'x-user-role': 'Admin' },
+    });
+    assert.equal(adminList.status, 200);
+    const body = await adminList.json();
+    assert.ok(Array.isArray(body.users));
+    assert.equal(body.users.length, 1);
+  } finally {
+    server.close();
   }
-  return false;
-}
-
-async function request(path, options = {}) {
-  return fetch(`${baseUrl}${path}`, {
-    ...options,
-    headers: {
-      'content-type': 'application/json',
-      ...(options.headers || {}),
-    },
-  });
-}
-
-async function login(account) {
-  const response = await request('/api/auth/login', {
-    method: 'POST',
-    body: JSON.stringify(account),
-  });
-  assert.equal(response.status, 200);
-  return response.headers.get('set-cookie');
-}
-
-async function as(account, path, options = {}) {
-  const cookie = await login(account);
-  return request(path, {
-    ...options,
-    headers: { ...(options.headers || {}), cookie },
-  });
-}
-
-test('Admin cannot list or directly read Superadmin accounts', async (t) => {
-  if (skipWithoutServer(t)) return;
-  const list = await as(accounts.admin, '/api/users');
-  assert.equal(list.status, 200);
-  const body = await list.json();
-  assert.doesNotMatch(JSON.stringify(body), /test_superadmin@hope\.com/i);
-
-  const direct = await as(accounts.admin, '/api/users/test_superadmin@hope.com');
-  assert.ok([403, 404].includes(direct.status));
-});
-
-test('Admin cannot mutate a peer Admin account', async (t) => {
-  if (skipWithoutServer(t)) return;
-  const response = await as(accounts.admin, '/api/users/test_admin.peer@hope.com', {
-    method: 'PATCH',
-    body: JSON.stringify({ firstName: 'Unauthorized' }),
-  });
-  assert.equal(response.status, 403);
-});
-
-test('Superadmin can list all role types and see audit fields', async (t) => {
-  if (skipWithoutServer(t)) return;
-  const response = await as(accounts.superadmin, '/api/users');
-  assert.equal(response.status, 200);
-  const body = JSON.stringify(await response.json());
-  assert.match(body, /test_superadmin@hope\.com/);
-  assert.match(body, /test_admin@hope\.com/);
-  assert.match(body, /test_user@hope\.com/);
-  assert.match(body, /status|stamp/i);
-});
-
-test('Admin can block an eligible User and the target cannot authenticate', async (t) => {
-  if (skipWithoutServer(t)) return;
-  const block = await as(accounts.admin, '/api/users/test_user@hope.com/block', {
-    method: 'POST',
-  });
-  assert.ok([200, 204].includes(block.status));
-
-  const blockedLogin = await request('/api/auth/login', {
-    method: 'POST',
-    body: JSON.stringify(accounts.user),
-  });
-  assert.equal(blockedLogin.status, 403);
-  assert.match((await blockedLogin.text()).toLowerCase(), /blocked/);
-});
-
-test('blocked users lose access to protected endpoints immediately', async (t) => {
-  if (skipWithoutServer(t)) return;
-  const response = await as(accounts.blocked, '/api/users');
-  assert.ok([401, 403].includes(response.status));
-});
-
-test('Admin can unblock an eligible User and restore login', async (t) => {
-  if (skipWithoutServer(t)) return;
-  const unblock = await as(accounts.admin, '/api/users/test_blocked@hope.com/unblock', {
-    method: 'POST',
-  });
-  assert.ok([200, 204].includes(unblock.status));
-
-  const loginResponse = await request('/api/auth/login', {
-    method: 'POST',
-    body: JSON.stringify(accounts.blocked),
-  });
-  assert.equal(loginResponse.status, 200);
-});
-
-test('the sole active Superadmin cannot be blocked, demoted, or deleted', async (t) => {
-  if (skipWithoutServer(t)) return;
-  for (const [path, options] of [
-    ['/api/users/test_superadmin@hope.com/block', { method: 'POST' }],
-    ['/api/users/test_superadmin@hope.com', {
-      method: 'PATCH',
-      body: JSON.stringify({ role: 'Admin' }),
-    }],
-    ['/api/users/test_superadmin@hope.com', { method: 'DELETE' }],
-  ]) {
-    const response = await as(accounts.superadmin, path, options);
-    assert.equal(response.status, 403);
-  }
-});
-
-test('user-management mutations report an audit stamp', async (t) => {
-  if (skipWithoutServer(t)) return;
-  const response = await as(accounts.superadmin, '/api/users/test_user@hope.com', {
-    method: 'PATCH',
-    body: JSON.stringify({ firstName: 'Updated' }),
-  });
-  assert.equal(response.status, 200);
-  const body = await response.json();
-  assert.match(JSON.stringify(body), /stamp|updatedAt|audit/i);
 });

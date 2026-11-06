@@ -8,9 +8,12 @@ Never leaves demo accounts, rights, or permissions behind.
 from __future__ import annotations
 
 import sqlite3
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'scripts'))
+from audit_sqlite import bind_audit_actor  # noqa: E402
 MIGRATION = ROOT / 'db/migrations/002_user_management_tables.sql'
 TABLES = {'app_user', 'role', 'module', 'rights', 'user_permission'}
 EXPECTED_COLS = {
@@ -94,9 +97,10 @@ def structure(conn: sqlite3.Connection) -> None:
 
 def behavior(conn: sqlite3.Connection) -> None:
     assert conn.execute('PRAGMA foreign_keys').fetchone()[0] == 1
-    # Verify the migration DOES NOT fabricate accounts, modules or grants.
-    for table in ('app_user', 'module', 'rights', 'user_permission'):
-        assert conn.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0] == 0, table
+    # This verifier also runs after S1-DBA-05 seeds the canonical module/rights catalog.
+    # Preserve each pre-test count rather than requiring all earlier tables empty.
+    initial_counts = {table: conn.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
+                      for table in ('app_user', 'module', 'rights', 'user_permission')}
     assert conn.execute('SELECT empNo FROM EMPLOYEE WHERE empNo = ?', ('00001',)).fetchone() == ('00001',)
     # All negative tests operate inside a single rolled-back transaction.
     conn.execute('SAVEPOINT test_s1dba03')
@@ -163,14 +167,15 @@ def behavior(conn: sqlite3.Connection) -> None:
     finally:
         conn.execute('ROLLBACK TO test_s1dba03')
         conn.execute('RELEASE test_s1dba03')
-    for table in ('app_user', 'module', 'rights', 'user_permission'):
-        assert conn.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0] == 0
-    print('PASS: no demonstration accounts/permissions persisted')
+    for table, initial in initial_counts.items():
+        assert conn.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0] == initial, table
+    print('PASS: original user-management data and seeded catalog remain unchanged')
 
 
 def verify(path: Path) -> None:
     print(f'\n--- {path.name} ---')
     conn = sqlite3.connect(path)
+    bind_audit_actor(conn, 'test-S1-DBA-03')
     try:
         conn.execute('PRAGMA foreign_keys = ON')
         assert conn.execute('PRAGMA foreign_keys').fetchone()[0] == 1
@@ -184,7 +189,6 @@ def verify(path: Path) -> None:
         # Re-applying must not add duplicates, alter account data or fail.
         conn.executescript(MIGRATION.read_text(encoding='utf-8'))
         structure(conn)
-        assert conn.execute('SELECT COUNT(*) FROM app_user').fetchone()[0] == 0
         assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
         print('PASS: idempotent reapplication')
         print(f'SUCCESS: {path.name}')

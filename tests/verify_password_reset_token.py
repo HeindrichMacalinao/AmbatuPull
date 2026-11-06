@@ -14,11 +14,14 @@ from __future__ import annotations
 import argparse
 import hashlib
 import sqlite3
+import sys
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'scripts'))
+from audit_sqlite import bind_audit_actor  # noqa: E402
 SQL_FILES = (
     ROOT / 'db/migrations/001_hope_base_tables.sql',
     ROOT / 'db/seeds/002_hope_historical_data.sql',
@@ -254,6 +257,7 @@ def check_mutation_detection(conn: sqlite3.Connection) -> None:
 
 def open_db(path: Path) -> sqlite3.Connection:
     conn = sqlite3.connect(path)
+    bind_audit_actor(conn, 'test-S1-DBA-04')
     conn.execute('PRAGMA foreign_keys=ON')
     assert conn.execute('PRAGMA foreign_keys').fetchone() == (1,)
     return conn
