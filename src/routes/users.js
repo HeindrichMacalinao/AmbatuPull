@@ -7,6 +7,7 @@ const {
   createUser,
   updateUser,
   toggleBlock,
+  updateRole,
 } = require('../controllers/userController');
 const {
   authenticate,
@@ -24,5 +25,6 @@ router.post('/', createUser);
 router.get('/:id', getUser);
 router.put('/:id', updateUser);
 router.put('/:id/block', toggleBlock);
+router.put('/:id/role', updateRole);
 
 module.exports = router;
