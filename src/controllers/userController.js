@@ -70,10 +70,27 @@ async function toggleBlock(req, res, next) {
   }
 }
 
+/**
+ * PUT /api/users/:id/role (S1-DEV-06)
+ */
+async function updateRole(req, res, next) {
+  try {
+    const result = await userService.updateUserRole({
+      id: req.params.id,
+      role: req.body ? req.body.role : undefined,
+      requester: req.user,
+    });
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getUsers,
   getUser,
   createUser,
   updateUser,
   toggleBlock,
+  updateRole,
 };
