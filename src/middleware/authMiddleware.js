@@ -108,7 +108,70 @@ function requireAdminOrSuperadmin(req, res, next) {
   next();
 }
 
+/**
+ * RBAC middleware: verifies that the authenticated user possesses one of the allowed roles (§4.2 & S1-DEV-08).
+ * @param  {...string|string[]} allowedRoles
+ */
+function requireRole(...allowedRoles) {
+  const roles = allowedRoles.flat();
+
+  return (req, res, next) => {
+    if (!req.user || !req.user.role) {
+      return res.status(401).json({ error: 'Unauthorized: authentication required' });
+    }
+
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ error: 'Forbidden: insufficient role permissions' });
+    }
+
+    next();
+  };
+}
+
+/**
+ * Granular Right middleware (§4.2 & S1-DEV-08).
+ * Checks if user has specific permission in user_permission (or is Superadmin/Admin).
+ * @param {string} rightCode
+ */
+function requireRight(rightCode) {
+  if (!rightCode || typeof rightCode !== 'string') {
+    throw new TypeError('requireRight expects a non-empty string rightCode');
+  }
+
+  return async (req, res, next) => {
+    if (!req.user || !req.user.role) {
+      return res.status(401).json({ error: 'Unauthorized: authentication required' });
+    }
+
+    // Superadmin and Admin roles bypass granular rights checks per §4.2 & S1-DEV-08
+    if (req.user.role === 'Superadmin' || req.user.role === 'Admin') {
+      return next();
+    }
+
+    try {
+      const pool = dbPool.getPool();
+      const userId = req.user.userId ?? req.user.userid;
+      const { rows } = await pool.query(
+        "SELECT 1 FROM user_permission WHERE userId = $1 AND rightCode = $2 AND status = 'Active'",
+        [userId, rightCode]
+      );
+
+      if (rows.length === 0) {
+        return res.status(403).json({
+          error: `Forbidden: missing required permission '${rightCode}'`,
+        });
+      }
+
+      next();
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
 module.exports = {
   authenticate,
   requireAdminOrSuperadmin,
+  requireRole,
+  requireRight,
 };
