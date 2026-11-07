@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Hope ERP | High-fidelity UI mockups</title>
+  <title>Hope ERP | Interactive frontend prototype</title>
+  <link rel="icon" href="data:,">
   <style>
     :root {
       color-scheme: light;
@@ -181,6 +182,13 @@
     .auth-submit { width: 100%; margin-top: 3px; }
     .auth-divider { display: flex; align-items: center; gap: 12px; margin: 16px 0; color: #94a3b8; font-size: 10px; }
     .auth-divider::before, .auth-divider::after { height: 1px; flex: 1; background: var(--border); content: ""; }
+    .demo-account-helper { margin-top: 17px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: #f8fafc; }
+    .demo-account-helper__heading { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px; color: #334155; font-size: 11px; font-weight: 750; }
+    .demo-account-helper__hint { margin: 0 0 9px; color: var(--text-muted); font-size: 10px; line-height: 1.45; }
+    .demo-account-helper__options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+    .demo-account-option { min-height: 42px; padding: 6px 7px; border: 1px solid #cbd5e1; border-radius: 6px; color: #334155; background: white; font-size: 10px; font-weight: 700; }
+    .demo-account-option:hover, .demo-account-option[aria-pressed="true"] { border-color: var(--brand-action); color: var(--brand-primary); background: #eff6ff; }
+    .demo-account-option:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
     .auth-footnote { margin: 17px 0 0; color: var(--text-muted); text-align: center; font-size: 11px; }
     .auth-footer { padding: 15px; color: #64748b; text-align: center; font-size: 10px; }
     .state-board { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
@@ -188,6 +196,10 @@
     .state-board__label { color: var(--text-muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
     .button-state-row { display: flex; flex-wrap: wrap; gap: 8px; }
     .demo-feedback { min-height: 18px; margin: 12px 0 0; color: #1e40af; font-size: 11px; }
+    .demo-feedback[data-state="error"] { color: #b91c1c; }
+    .demo-feedback[data-state="success"] { color: #047857; }
+    .auth-submit.is-loading::after { width: 13px; height: 13px; border: 2px solid rgb(255 255 255 / 45%); border-top-color: white; border-radius: 50%; content: ""; animation: auth-spinner .7s linear infinite; }
+    @keyframes auth-spinner { to { transform: rotate(360deg); } }
 
     .modal-backdrop { position: fixed; z-index: 20; inset: 0; display: none; align-items: center; justify-content: center; padding: 20px; background: rgb(15 23 42 / 55%); }
     .modal-backdrop.is-open { display: flex; }
@@ -335,8 +347,8 @@
   </svg>
 
   <div class="prototype-bar">
-    <div class="prototype-bar__title"><span class="brand__mark">H</span> Hope ERP · UIX-04 High-fidelity prototype</div>
-    <div class="prototype-bar__note">Static, client-side mockup · no authentication, API, or database calls</div>
+    <div class="prototype-bar__title"><span class="brand__mark">H</span> Hope ERP · UIX-05 Interactive prototype</div>
+    <div class="prototype-bar__note">Interactive browser-only prototype · no API authentication or data persistence</div>
   </div>
   <nav class="screen-picker" aria-label="Mockup screen selector">
     <button class="screen-picker__button" data-show-screen="landing" aria-pressed="true">Landing</button>
@@ -386,19 +398,26 @@
             <aside class="auth-aside"><div class="auth-aside__copy"><span class="landing-hero__tag">HOPE ERP · SECURE WORKSPACE</span><h2>One place to keep your business moving.</h2><p>Sign in to access the tools and information assigned to your account.</p></div><div class="auth-aside__features"><div class="auth-feature"><svg class="icon"><use href="#i-check"/></svg> Role-aware workspace</div><div class="auth-feature"><svg class="icon"><use href="#i-check"/></svg> Connected business modules</div></div></aside>
             <div class="auth-form-panel">
               <div class="auth-form-panel__heading"><p class="eyebrow">WELCOME BACK</p><h1>Sign in to Hope ERP</h1><p class="subheading">Enter your account details to continue.</p></div>
-              <form class="form-stack mock-form" data-message="Mockup only: no sign-in request was sent.">
-                <label class="form-field"><span class="form-field__label">Email Address</span><input class="form-field__input" type="email" placeholder="you@company.com" required></label>
-                <label class="form-field"><span class="form-field__label">Password</span><input class="form-field__input" type="password" placeholder="Enter your password" required></label>
+              <form class="form-stack mock-form" id="login-form" data-message="Mockup only: no sign-in request was sent.">
+                <label class="form-field"><span class="form-field__label">Email Address</span><input class="form-field__input" name="email" type="email" autocomplete="username" placeholder="you@company.com" required></label>
+                <label class="form-field"><span class="form-field__label">Password</span><input class="form-field__input" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required></label>
                 <div class="form-options"><label class="checkbox-label"><input type="checkbox"> Remember me</label><a href="#" data-show-screen="forgot">Forgot password?</a></div>
-                <button class="button button--primary auth-submit" type="submit">Sign In</button><p class="demo-feedback" aria-live="polite"></p>
+                <button class="button button--primary auth-submit" type="submit">Sign In</button><p class="demo-feedback" id="login-feedback" role="status" aria-live="polite"></p>
               </form>
-              <div class="auth-divider">DEMO ACCOUNT</div>
-              <p class="form-field__hint">No approved evaluation account is configured. Do not enter real credentials in this prototype.</p>
+              <div class="demo-account-helper" role="group" aria-labelledby="demo-account-heading">
+                <div class="demo-account-helper__heading" id="demo-account-heading">Evaluation Accounts Quick-Select</div>
+                <p class="demo-account-helper__hint">Fill a browser-only demo account to preview a role. Password: <code>DemoPass123!</code>. These sample credentials are not real accounts.</p>
+                <div class="demo-account-helper__options">
+                  <button class="demo-account-option" type="button" data-demo-account="superadmin" aria-pressed="false">Superadmin</button>
+                  <button class="demo-account-option" type="button" data-demo-account="admin" aria-pressed="false">Admin</button>
+                  <button class="demo-account-option" type="button" data-demo-account="user" aria-pressed="false">User</button>
+                </div>
+              </div>
               <p class="auth-footnote">New to Hope ERP? <a href="#" data-show-screen="register">Register</a></p>
             </div>
           </div>
         </div>
-        <footer class="auth-footer">© Hope, Inc. · Authentication behavior is not implemented in this mockup.</footer>
+        <footer class="auth-footer">© Hope, Inc. · Demo sign-in checks local sample credentials only; no backend authentication is connected.</footer>
       </div>
     </section>
 
@@ -456,7 +475,7 @@
           <div class="kpi-grid">
             <article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Customers</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-users"/></svg></span></div><div class="kpi-card__value">1,284</div><div class="kpi-card__foot">Across all active accounts</div></article>
             <article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Products</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-box"/></svg></span></div><div class="kpi-card__value">368</div><div class="kpi-card__foot">In the product catalog</div></article>
-            <article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Open Orders</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-cart"/></svg></span></div><div class="kpi-card__value">42</div><div class="kpi-card__foot">Awaiting completion</div></article>
+            <article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Sales</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-cart"/></svg></span></div><div class="kpi-card__value">42</div><div class="kpi-card__foot">Recorded transactions</div></article>
             <article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Revenue</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-trend"/></svg></span></div><div class="kpi-card__value">₱2.48M</div><div class="kpi-card__foot">Current reporting period</div></article>
           </div>
           <div class="dashboard-grid"><article class="card"><div class="card__header"><div><h2>Quick Actions</h2><p class="subheading">Shortcuts across all modules</p></div><span class="role-badge role-badge--superadmin">All modules</span></div><div class="quick-grid">
@@ -471,7 +490,7 @@
       <div class="app-header"><a class="brand" href="#" data-show-screen="landing"><span class="brand__mark">H</span> HOPE ERP</a><div class="app-header__right"><span>Administrative workspace</span><span class="user-chip"><span class="avatar">AD</span><span class="user-chip__name">Jordan Lee</span></span></div></div>
       <div class="app-shell"><aside class="sidebar"><div class="sidebar__label">Workspace</div><button class="nav-link is-current"><svg class="icon"><use href="#i-grid"/></svg><span class="nav-link__text">Dashboard</span></button><button class="nav-link"><svg class="icon"><use href="#i-users"/></svg><span class="nav-link__text">Customers</span></button><button class="nav-link"><svg class="icon"><use href="#i-box"/></svg><span class="nav-link__text">Products</span></button><button class="nav-link"><svg class="icon"><use href="#i-briefcase"/></svg><span class="nav-link__text">HR</span></button><button class="nav-link"><svg class="icon"><use href="#i-cart"/></svg><span class="nav-link__text">Sales</span></button><button class="nav-link" data-show-screen="users"><svg class="icon"><use href="#i-users"/></svg><span class="nav-link__text">User Management</span></button></aside>
         <div class="workspace"><div class="page-heading"><div><p class="eyebrow">MONDAY, NOVEMBER 2</p><h1>Good morning, Jordan</h1><p class="subheading">Here’s your team’s operational overview.</p></div><span class="role-badge role-badge--admin">Admin</span></div>
-          <div class="kpi-grid"><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Customers</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-users"/></svg></span></div><div class="kpi-card__value">1,284</div><div class="kpi-card__foot">Across active accounts</div></article><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Products</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-box"/></svg></span></div><div class="kpi-card__value">368</div><div class="kpi-card__foot">In the product catalog</div></article><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Open Orders</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-cart"/></svg></span></div><div class="kpi-card__value">42</div><div class="kpi-card__foot">Awaiting completion</div></article><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Revenue</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-trend"/></svg></span></div><div class="kpi-card__value">₱2.48M</div><div class="kpi-card__foot">Current reporting period</div></article></div>
+          <div class="kpi-grid"><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Customers</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-users"/></svg></span></div><div class="kpi-card__value">1,284</div><div class="kpi-card__foot">Across active accounts</div></article><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Products</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-box"/></svg></span></div><div class="kpi-card__value">368</div><div class="kpi-card__foot">In the product catalog</div></article><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Sales</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-cart"/></svg></span></div><div class="kpi-card__value">42</div><div class="kpi-card__foot">Recorded transactions</div></article><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Revenue</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-trend"/></svg></span></div><div class="kpi-card__value">₱2.48M</div><div class="kpi-card__foot">Current reporting period</div></article></div>
           <div class="dashboard-grid"><article class="card"><div class="card__header"><div><h2>Quick Actions</h2><p class="subheading">Available business modules</p></div><span class="role-badge role-badge--admin">Admin access</span></div><div class="quick-grid"><button class="quick-action"><svg class="icon quick-action__icon"><use href="#i-users"/></svg>Add Customer</button><button class="quick-action"><svg class="icon quick-action__icon"><use href="#i-box"/></svg>Add Product</button><button class="quick-action"><svg class="icon quick-action__icon"><use href="#i-briefcase"/></svg>Add Employee</button><button class="quick-action"><svg class="icon quick-action__icon"><use href="#i-cart"/></svg>Create Sale</button><button class="quick-action" data-show-screen="users"><svg class="icon quick-action__icon"><use href="#i-shield"/></svg>Manage Users</button></div></article><article class="card"><div class="card__header"><div><h2>Recent Activity</h2><p class="subheading">Your team’s updates</p></div></div><div class="activity-list"><div class="activity-item"><span class="activity-dot"></span><p class="activity-item__text"><strong>Customer record updated</strong><span class="activity-item__time">Customer module · 12 min ago</span></p></div><div class="activity-item"><span class="activity-dot"></span><p class="activity-item__text"><strong>Sale recorded</strong><span class="activity-item__time">Sales module · 48 min ago</span></p></div><div class="activity-item"><span class="activity-dot"></span><p class="activity-item__text"><strong>Employee added</strong><span class="activity-item__time">HR module · Today</span></p></div></div></article></div>
         </div>
       </div>
@@ -482,7 +501,7 @@
       <div class="app-header"><a class="brand" href="#" data-show-screen="landing"><span class="brand__mark">H</span> HOPE ERP</a><div class="app-header__right"><span>Personal workspace</span><span class="user-chip"><span class="avatar">US</span><span class="user-chip__name">Taylor Reed</span></span></div></div>
       <div class="app-shell"><aside class="sidebar"><div class="sidebar__label">Workspace</div><button class="nav-link is-current"><svg class="icon"><use href="#i-grid"/></svg><span class="nav-link__text">Dashboard</span></button><button class="nav-link"><svg class="icon"><use href="#i-users"/></svg><span class="nav-link__text">Customers</span></button><button class="nav-link nav-link--disabled" aria-disabled="true" title="No assigned product rights"><svg class="icon"><use href="#i-box"/></svg><span class="nav-link__text">Products · No access</span></button><button class="nav-link"><svg class="icon"><use href="#i-cart"/></svg><span class="nav-link__text">Sales</span></button><div class="sidebar__foot">Menu items reflect this mock user’s assigned rights.</div></aside>
         <div class="workspace"><div class="page-heading"><div><p class="eyebrow">MONDAY, NOVEMBER 2</p><h1>Welcome back, Taylor</h1><p class="subheading">Your workspace is tailored to your assigned rights.</p></div><span class="role-badge role-badge--user">User</span></div>
-          <div class="kpi-grid"><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Customers</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-users"/></svg></span></div><div class="kpi-card__value">1,284</div><div class="kpi-card__foot">Illustrative total</div></article><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Products</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-box"/></svg></span></div><div class="kpi-card__value">368</div><div class="kpi-card__foot">Illustrative total</div></article><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Open Orders</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-cart"/></svg></span></div><div class="kpi-card__value">42</div><div class="kpi-card__foot">Illustrative total</div></article><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Revenue</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-trend"/></svg></span></div><div class="kpi-card__value">₱2.48M</div><div class="kpi-card__foot">Illustrative total</div></article></div>
+          <div class="kpi-grid"><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Customers</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-users"/></svg></span></div><div class="kpi-card__value">1,284</div><div class="kpi-card__foot">Illustrative total</div></article><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Products</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-box"/></svg></span></div><div class="kpi-card__value">368</div><div class="kpi-card__foot">Illustrative total</div></article><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Sales</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-cart"/></svg></span></div><div class="kpi-card__value">42</div><div class="kpi-card__foot">Illustrative total</div></article><article class="card kpi-card"><div class="kpi-card__top"><span class="kpi-card__label">Total Revenue</span><span class="kpi-card__icon"><svg class="icon"><use href="#i-trend"/></svg></span></div><div class="kpi-card__value">₱2.48M</div><div class="kpi-card__foot">Illustrative total</div></article></div>
           <div class="dashboard-grid"><article class="card"><div class="card__header"><div><h2>Quick Actions</h2><p class="subheading">Enabled actions have assigned rights</p></div></div><div class="quick-grid"><button class="quick-action"><svg class="icon quick-action__icon"><use href="#i-users"/></svg>Add Customer</button><button class="quick-action"><svg class="icon quick-action__icon"><use href="#i-cart"/></svg>Create Sale</button><button class="quick-action is-restricted" disabled title="No product.add permission"><svg class="icon"><use href="#i-box"/></svg>Add Product · No access</button><button class="quick-action is-restricted" disabled title="No emp.add permission"><svg class="icon"><use href="#i-briefcase"/></svg>Add Employee · No access</button></div></article><article class="card"><div class="card__header"><div><h2>Access summary</h2><p class="subheading">Example rights assigned for this mockup</p></div></div><div class="activity-list"><div class="activity-item"><span class="activity-dot"></span><p class="activity-item__text"><strong>Customer</strong><span class="activity-item__time">Add Customer enabled</span></p></div><div class="activity-item"><span class="activity-dot"></span><p class="activity-item__text"><strong>Sales</strong><span class="activity-item__time">Add Sale enabled</span></p></div><div class="activity-item"><span class="activity-dot activity-dot--muted"></span><p class="activity-item__text"><strong>Products</strong><span class="activity-item__time">No assigned rights</span></p></div></div></article></div>
         </div>
       </div>
@@ -599,6 +618,91 @@
         if (action) toast(action.dataset.demoAction);
       });
 
+      const loginForm = document.getElementById("login-form");
+      const loginEmail = loginForm.elements.email;
+      const loginPassword = loginForm.elements.password;
+      const loginButton = loginForm.querySelector('[type="submit"]');
+      const loginFeedback = document.getElementById("login-feedback");
+      const evaluationAccounts = {
+        superadmin: { email: "alex.morgan@example.test", password: "DemoPass123!", screen: "superadmin", role: "Superadmin" },
+        admin: { email: "jordan.lee@example.test", password: "DemoPass123!", screen: "admin", role: "Admin" },
+        user: { email: "taylor.reed@example.test", password: "DemoPass123!", screen: "user", role: "User" }
+      };
+      let loginState = "idle";
+      let pendingAccount = null;
+      let loginTimer;
+      const resetLoginFeedback = () => {
+        window.clearTimeout(loginTimer);
+        loginTimer = null;
+        loginState = "idle";
+        pendingAccount = null;
+        loginFeedback.textContent = "";
+        loginFeedback.dataset.state = "";
+        loginEmail.removeAttribute("aria-invalid");
+        loginPassword.removeAttribute("aria-invalid");
+        loginButton.textContent = "Sign In";
+        loginButton.classList.remove("is-loading");
+        loginButton.disabled = false;
+        loginForm.removeAttribute("aria-busy");
+      };
+      document.querySelectorAll("[data-demo-account]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const account = evaluationAccounts[button.dataset.demoAccount];
+          loginEmail.value = account.email;
+          loginPassword.value = account.password;
+          document.querySelectorAll("[data-demo-account]").forEach((option) => {
+            option.setAttribute("aria-pressed", String(option === button));
+          });
+          resetLoginFeedback();
+          loginEmail.focus();
+        });
+      });
+      [loginEmail, loginPassword].forEach((input) => {
+        input.addEventListener("input", () => {
+          document.querySelectorAll("[data-demo-account]").forEach((button) => button.setAttribute("aria-pressed", "false"));
+          resetLoginFeedback();
+        });
+      });
+      loginForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        if (loginState === "success" && pendingAccount) {
+          showScreen(pendingAccount.screen);
+          toast(`Demo sign-in complete: ${pendingAccount.role} dashboard.`);
+          return;
+        }
+        loginState = "loading";
+        loginButton.disabled = true;
+        loginButton.classList.add("is-loading");
+        loginButton.textContent = "Signing in";
+        loginForm.setAttribute("aria-busy", "true");
+        loginFeedback.dataset.state = "";
+        loginFeedback.textContent = "Checking demo credentials…";
+        loginTimer = window.setTimeout(() => {
+          loginTimer = null;
+          const account = Object.values(evaluationAccounts).find((candidate) =>
+            candidate.email === loginEmail.value.trim().toLowerCase()
+            && candidate.password === loginPassword.value
+          );
+          loginButton.disabled = false;
+          loginButton.classList.remove("is-loading");
+          loginForm.removeAttribute("aria-busy");
+          if (!account) {
+            loginState = "error";
+            loginButton.textContent = "Try again";
+            loginFeedback.dataset.state = "error";
+            loginFeedback.textContent = "Those demo credentials were not recognized. Select an evaluation account or check the email and password.";
+            loginEmail.setAttribute("aria-invalid", "true");
+            loginPassword.setAttribute("aria-invalid", "true");
+            return;
+          }
+          loginState = "success";
+          pendingAccount = account;
+          loginButton.textContent = `Continue to ${account.role} Dashboard`;
+          loginFeedback.dataset.state = "success";
+          loginFeedback.textContent = `Demo sign-in successful. Continue to the ${account.role} dashboard.`;
+        }, 550);
+      });
+
       const registerForm = document.querySelector('[data-screen="register"] .mock-form');
       const registerPassword = registerForm.elements.password;
       const registerConfirmPassword = registerForm.elements.confirmPassword;
@@ -616,6 +720,7 @@
       document.querySelectorAll(".mock-form").forEach((form) => {
         form.addEventListener("submit", (event) => {
           event.preventDefault();
+          if (form === loginForm) return;
           if (form === registerForm) {
             validateConfirmPassword();
             if (!form.checkValidity()) {
