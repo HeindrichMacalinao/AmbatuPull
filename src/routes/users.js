@@ -8,6 +8,8 @@ const {
   updateUser,
   toggleBlock,
   updateRole,
+  getUserRights,
+  updateUserRights,
 } = require('../controllers/userController');
 const {
   authenticate,
@@ -26,5 +28,7 @@ router.get('/:id', getUser);
 router.put('/:id', updateUser);
 router.put('/:id/block', toggleBlock);
 router.put('/:id/role', updateRole);
+router.get('/:id/rights', getUserRights);
+router.put('/:id/rights', updateUserRights);
 
 module.exports = router;

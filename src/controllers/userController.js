@@ -86,6 +86,38 @@ async function updateRole(req, res, next) {
   }
 }
 
+/**
+ * GET /api/users/:id/rights (S1-DEV-07)
+ */
+async function getUserRights(req, res, next) {
+  try {
+    const result = await userService.getUserRights({
+      id: req.params.id,
+      requester: req.user,
+    });
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PUT /api/users/:id/rights (S1-DEV-07)
+ */
+async function updateUserRights(req, res, next) {
+  try {
+    const rightCodes = req.body?.rightCodes ?? req.body?.rights;
+    const result = await userService.updateUserRights({
+      id: req.params.id,
+      rightCodes,
+      requester: req.user,
+    });
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getUsers,
   getUser,
@@ -93,4 +125,6 @@ module.exports = {
   updateUser,
   toggleBlock,
   updateRole,
+  getUserRights,
+  updateUserRights,
 };

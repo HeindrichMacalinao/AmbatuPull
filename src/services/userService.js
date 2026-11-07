@@ -605,6 +605,217 @@ async function updateUserRole({ id, role, requester }) {
   };
 }
 
+/**
+ * GET /api/users/:id/rights (S1-DEV-07).
+ * - Admin can only inspect rights of User accounts.
+ * - Superadmin can inspect rights of any account.
+ * - User role cannot inspect rights (403).
+ */
+async function getUserRights({ id, requester }) {
+  if (!requester || !requester.role) {
+    const err = new Error('Unauthorized');
+    err.status = 401;
+    throw err;
+  }
+
+  if (requester.role !== 'Admin' && requester.role !== 'Superadmin') {
+    const err = new Error('Forbidden: insufficient permissions');
+    err.status = 403;
+    throw err;
+  }
+
+  const targetId = Number(id);
+  if (!targetId || isNaN(targetId) || targetId <= 0) {
+    const err = new Error('Invalid user ID');
+    err.status = 400;
+    throw err;
+  }
+
+  const pool = dbPool.getPool();
+  const targetRes = await pool.query('SELECT * FROM app_user WHERE userId = $1', [targetId]);
+  if (targetRes.rows.length === 0) {
+    const err = new Error('User not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const targetUser = targetRes.rows[0];
+
+  // Crucial rule (§3.8 & S1-DEV-07): Admin can only inspect rights of User accounts
+  if (requester.role === 'Admin' && (targetUser.role === 'Admin' || targetUser.role === 'Superadmin')) {
+    const err = new Error('Forbidden: Admins can only view rights of standard User accounts');
+    err.status = 403;
+    throw err;
+  }
+
+  const rightsRes = await pool.query(
+    "SELECT rightCode FROM user_permission WHERE userId = $1 AND status = 'Active' ORDER BY rightCode ASC",
+    [targetId]
+  );
+
+  const rightCodes = rightsRes.rows.map((r) => r.rightCode ?? r.rightcode);
+
+  return {
+    userId: targetId,
+    rightCodes,
+    rights: rightCodes,
+  };
+}
+
+/**
+ * PUT /api/users/:id/rights (S1-DEV-07).
+ * - Request payload: { rightCodes: ['customer.add', ...] }
+ * - Validate that all submitted codes exist in the rights table.
+ * - Synchronize with user_permission junction table (insert missing, remove/deactivate unchecked).
+ * - Only Admin or Superadmin can modify rights; Admins restricted to User accounts.
+ * - Update user stamp and record entry in audit_log.
+ */
+async function updateUserRights({ id, rightCodes, requester }) {
+  if (!requester || !requester.role) {
+    const err = new Error('Unauthorized');
+    err.status = 401;
+    throw err;
+  }
+
+  if (requester.role !== 'Admin' && requester.role !== 'Superadmin') {
+    const err = new Error('Forbidden: insufficient permissions');
+    err.status = 403;
+    throw err;
+  }
+
+  const targetId = Number(id);
+  if (!targetId || isNaN(targetId) || targetId <= 0) {
+    const err = new Error('Invalid user ID');
+    err.status = 400;
+    throw err;
+  }
+
+  if (!Array.isArray(rightCodes)) {
+    const err = new Error('rightCodes must be an array of right codes');
+    err.status = 400;
+    throw err;
+  }
+
+  for (const code of rightCodes) {
+    if (typeof code !== 'string' || !code.trim()) {
+      const err = new Error('Each rightCode must be a non-empty string');
+      err.status = 400;
+      throw err;
+    }
+  }
+
+  const requestedCodes = [...new Set(rightCodes.map((c) => c.trim()))];
+
+  const pool = dbPool.getPool();
+  const targetRes = await pool.query('SELECT * FROM app_user WHERE userId = $1', [targetId]);
+  if (targetRes.rows.length === 0) {
+    const err = new Error('User not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const targetUser = targetRes.rows[0];
+
+  // Crucial rule: Admins can only modify rights of standard User accounts
+  if (requester.role === 'Admin' && (targetUser.role === 'Admin' || targetUser.role === 'Superadmin')) {
+    const err = new Error('Forbidden: Admins can only modify rights of standard User accounts');
+    err.status = 403;
+    throw err;
+  }
+
+  // Validate that all submitted codes exist in the rights table
+  const allRightsRes = await pool.query('SELECT rightCode FROM rights');
+  const validCodes = new Set(allRightsRes.rows.map((r) => r.rightCode ?? r.rightcode));
+
+  if (validCodes.size > 0) {
+    const invalidCodes = requestedCodes.filter((c) => !validCodes.has(c));
+    if (invalidCodes.length > 0) {
+      const err = new Error(`Invalid right code(s): ${invalidCodes.join(', ')}`);
+      err.status = 400;
+      throw err;
+    }
+  }
+
+  // Synchronize with user_permission junction table
+  const existingRes = await pool.query(
+    'SELECT rightCode, status FROM user_permission WHERE userId = $1',
+    [targetId]
+  );
+  const existingMap = new Map();
+  for (const row of existingRes.rows) {
+    existingMap.set(row.rightCode ?? row.rightcode, row.status);
+  }
+
+  const requestedSet = new Set(requestedCodes);
+  const grantedRights = [];
+  const revokedRights = [];
+
+  const actorName = requester.email || requester.role || 'system';
+  const stamp = `RIGHTS_UPDATED ${actorName} ${new Date().toISOString()}`;
+
+  // 1. Insert missing or reactivate inactive rights
+  for (const code of requestedCodes) {
+    if (!existingMap.has(code)) {
+      await pool.query(
+        'INSERT INTO user_permission (userId, rightCode, status, stamp) VALUES ($1, $2, $3, $4)',
+        [targetId, code, 'Active', stamp]
+      );
+      grantedRights.push(code);
+    } else if (existingMap.get(code) !== 'Active') {
+      await pool.query(
+        'UPDATE user_permission SET status = $1, stamp = $2 WHERE userId = $3 AND rightCode = $4',
+        ['Active', stamp, targetId, code]
+      );
+      grantedRights.push(code);
+    }
+  }
+
+  // 2. Deactivate unchecked active rights (soft revocation per §2.4, §3.8)
+  for (const [code, status] of existingMap.entries()) {
+    if (!requestedSet.has(code) && status === 'Active') {
+      await pool.query(
+        'UPDATE user_permission SET status = $1, stamp = $2 WHERE userId = $3 AND rightCode = $4',
+        ['Inactive', stamp, targetId, code]
+      );
+      revokedRights.push(code);
+    }
+  }
+
+  // 3. Update user's stamp and audit log if rights were modified
+  if (grantedRights.length > 0 || revokedRights.length > 0) {
+    await pool.query(
+      'UPDATE app_user SET stamp = $1 WHERE userId = $2',
+      [stamp, targetId]
+    );
+
+    try {
+      await pool.query(
+        `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+         VALUES ($1, 'RIGHTS_UPDATED', 'user_permission', $2, $3, CURRENT_TIMESTAMP)`,
+        [
+          actorName,
+          String(targetId),
+          JSON.stringify({
+            granted: grantedRights,
+            revoked: revokedRights,
+          }),
+        ]
+      );
+    } catch {
+      // Non-fatal if audit_log table is absent or handled by trigger
+    }
+  }
+
+  return {
+    message: 'User rights updated successfully',
+    userId: targetId,
+    rightCodes: requestedCodes,
+    rights: requestedCodes,
+    granted: grantedRights,
+    revoked: revokedRights,
+  };
+}
+
 module.exports = {
   assertNotLastActiveSuperadmin,
   listUsers,
@@ -613,4 +824,6 @@ module.exports = {
   updateUser,
   toggleUserBlock,
   updateUserRole,
+  getUserRights,
+  updateUserRights,
 };
