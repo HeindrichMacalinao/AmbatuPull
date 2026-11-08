@@ -29,7 +29,7 @@ import type { RoleName, AppUser } from '@/types/erp';
 
 export default function DashboardPage() {
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
-  const [activeRole, setActiveRole] = useState<RoleName>('Superadmin');
+  const [activeRole, setActiveRole] = useState<RoleName>('User');
   const [metrics, setMetrics] = useState<any>(null);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
 
@@ -82,25 +82,6 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Role View Toggle (Student Guide §3.2) */}
-        <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-          <span className="text-[11px] font-semibold text-slate-500 px-2 uppercase tracking-wider">
-            Preview Role:
-          </span>
-          {(['Superadmin', 'Admin', 'User'] as RoleName[]).map((role) => (
-            <button
-              key={role}
-              onClick={() => setActiveRole(role)}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
-                activeRole === role
-                  ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              {role}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* KPI Cards (Live SQL Record Counts) */}

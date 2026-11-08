@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  ShieldCheck,
   LayoutDashboard,
   Users,
   LogOut,
@@ -177,14 +176,6 @@ export default function Navbar() {
                     ERP Workspace
                   </Link>
 
-                  <Link
-                    href="/users"
-                    onClick={() => setUserDropdownOpen(false)}
-                    className="flex items-center gap-2 px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 transition"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
-                    Access Governance
-                  </Link>
 
                   <div className="border-t border-slate-100 my-1" />
 
