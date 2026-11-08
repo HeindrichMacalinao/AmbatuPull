@@ -1,41 +1,6 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { getAdminClient } from '@/lib/supabase/admin';
-
-// Fallback seed accounts for zero-friction local/offline testing
-const FALLBACK_ACCOUNTS = [
-  {
-    userId: 1,
-    email: 'superadmin@hope-erp.local',
-    firstName: 'Super',
-    lastName: 'Admin',
-    role: 'Superadmin',
-    isBlocked: false,
-    status: 'Active',
-    // bcrypt hash of 'Admin@123456'
-    passwordHash: '$2a$12$4mPZ6w51Q6uL3kR6r.K96uD8pU8k2fL3J9f5oN9R.X9KzL6o6sC7U',
-  },
-  {
-    userId: 2,
-    email: 'admin@hope-erp.local',
-    firstName: 'Operations',
-    lastName: 'Admin',
-    role: 'Admin',
-    isBlocked: false,
-    status: 'Active',
-    passwordHash: '$2a$12$4mPZ6w51Q6uL3kR6r.K96uD8pU8k2fL3J9f5oN9R.X9KzL6o6sC7U',
-  },
-  {
-    userId: 3,
-    email: 'user@hope-erp.local',
-    firstName: 'Standard',
-    lastName: 'Staff',
-    role: 'User',
-    isBlocked: false,
-    status: 'Active',
-    passwordHash: '$2a$12$4mPZ6w51Q6uL3kR6r.K96uD8pU8k2fL3J9f5oN9R.X9KzL6o6sC7U',
-  },
-];
+import { getUserByEmail } from '@/lib/erp-db';
 
 export async function POST(request: Request) {
   try {
@@ -43,88 +8,68 @@ export async function POST(request: Request) {
 
     if (!email || !password) {
       return NextResponse.json(
-        { error: 'Email and password are required' },
+        { error: 'Corporate email and password are required' },
         { status: 400 }
       );
     }
 
     const cleanEmail = String(email).trim().toLowerCase();
+    const user = await getUserByEmail(cleanEmail);
 
-    // 1. Try Supabase query
-    try {
-      const supabase = getAdminClient();
-      const { data, error } = await supabase
-        .from('app_user')
-        .select('*')
-        .ilike('email', cleanEmail)
-        .maybeSingle();
-
-      if (data && !error) {
-        if (data.isBlocked) {
-          return NextResponse.json(
-            { error: 'Your account has been blocked. Please contact an administrator.' },
-            { status: 403 }
-          );
-        }
-
-        const valid = await bcrypt.compare(password, data.passwordHash);
-        if (!valid) {
-          return NextResponse.json(
-            { error: 'Invalid email or password' },
-            { status: 401 }
-          );
-        }
-
-        // Return user profile
-        const { passwordHash, ...userProfile } = data;
-        return NextResponse.json({
-          message: 'Login successful',
-          user: userProfile,
-          token: `erp-session-${userProfile.userId}-${Date.now()}`,
-        });
-      }
-    } catch {
-      // Supabase not reachable or credentials not yet set, proceed to fallback
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Invalid corporate email or password' },
+        { status: 401 }
+      );
     }
 
-    // 2. Fallback check for offline / initial testing
-    const fallbackUser = FALLBACK_ACCOUNTS.find(
-      (u) => u.email.toLowerCase() === cleanEmail
-    );
-
-    if (fallbackUser) {
-      if (fallbackUser.isBlocked) {
-        return NextResponse.json(
-          { error: 'Your account has been blocked. Please contact an administrator.' },
-          { status: 403 }
-        );
-      }
-
-      // Password matches Admin@123456 or bcrypt check
-      const valid =
-        password === 'Admin@123456' ||
-        (await bcrypt.compare(password, fallbackUser.passwordHash));
-
-      if (!valid) {
-        return NextResponse.json(
-          { error: 'Invalid email or password' },
-          { status: 401 }
-        );
-      }
-
-      const { passwordHash, ...userProfile } = fallbackUser;
-      return NextResponse.json({
-        message: 'Login successful (Offline/Demo Mode)',
-        user: userProfile,
-        token: `erp-demo-token-${userProfile.userId}`,
-      });
+    // Account Status & Block Checks
+    if (user.isBlocked) {
+      return NextResponse.json(
+        { error: 'Your account has been blocked. Please contact a system administrator.' },
+        { status: 403 }
+      );
     }
 
-    return NextResponse.json(
-      { error: 'Invalid email or password' },
-      { status: 401 }
-    );
+    if (user.status !== 'Active') {
+      return NextResponse.json(
+        { error: 'Your account is inactive. Please contact system support.' },
+        { status: 403 }
+      );
+    }
+
+    // Password verification
+    const isValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isValid) {
+      return NextResponse.json(
+        { error: 'Invalid corporate email or password' },
+        { status: 401 }
+      );
+    }
+
+    const { passwordHash, ...userProfile } = user;
+    const sessionToken = Buffer.from(
+      JSON.stringify({ userId: userProfile.userId, email: userProfile.email, role: userProfile.role, ts: Date.now() })
+    ).toString('base64');
+
+    const response = NextResponse.json({
+      message: 'Authentication successful',
+      user: userProfile,
+      token: sessionToken,
+    });
+
+    // Set HTTP-only cookie for session persistence
+    response.cookies.set('erp_session', sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
+
+    return response;
   } catch (err: any) {
+    console.error('[API /api/auth/login] error:', err);
     return NextResponse.json(
       { error: err.message || 'Authentication failed' },
       { status: 500 }

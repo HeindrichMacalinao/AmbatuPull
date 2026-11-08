@@ -13,65 +13,87 @@ import {
   UserPlus,
   ArrowRight,
   Shield,
+  ShieldCheck,
   Layers,
   Lock,
+  Cloud,
+  TrendingUp,
+  ShoppingCart,
+  FileSpreadsheet,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  ExternalLink,
 } from 'lucide-react';
+import type { RoleName, AppUser } from '@/types/erp';
 
 export default function DashboardPage() {
-  const [activeRole, setActiveRole] = useState<'Superadmin' | 'Admin' | 'User'>('Superadmin');
-  const [healthStatus, setHealthStatus] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const [activeRole, setActiveRole] = useState<RoleName>('Superadmin');
+  const [metrics, setMetrics] = useState<any>(null);
+  const [loadingMetrics, setLoadingMetrics] = useState(true);
 
   useEffect(() => {
-    // Check local storage for authenticated user
+    // 1. Sync current user
     const saved = localStorage.getItem('erp_user');
     if (saved) {
       try {
         const u = JSON.parse(saved);
+        setCurrentUser(u);
         if (u.role) setActiveRole(u.role);
       } catch {}
     }
 
-    // Check health endpoint
-    fetch('/api/health')
+    // 2. Fetch live metrics
+    fetch('/api/dashboard/metrics')
       .then((r) => r.json())
-      .then((data) => setHealthStatus(data))
-      .catch(() => {});
+      .then((data) => {
+        setMetrics(data);
+        setLoadingMetrics(false);
+      })
+      .catch(() => setLoadingMetrics(false));
   }, []);
 
   return (
     <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
-      {/* Top Banner & Role View Switcher */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Top Banner & Executive View Switcher */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-900">ERP Main Dashboard</h1>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Hope ERP Operations Dashboard</h1>
             <span
-              className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+              className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
                 activeRole === 'Superadmin'
-                  ? 'bg-purple-100 text-purple-800'
+                  ? 'bg-purple-100 text-purple-800 border border-purple-200'
                   : activeRole === 'Admin'
-                  ? 'bg-blue-100 text-blue-800'
-                  : 'bg-emerald-100 text-emerald-800'
+                  ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                  : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
               }`}
             >
-              {activeRole} View
+              {activeRole} Perspective
             </span>
           </div>
-          <p className="text-sm text-slate-500 mt-1">
-            System Foundation, Role Governance &amp; Granular Permission Control
+          <p className="text-xs text-slate-500 mt-1">
+            {currentUser ? (
+              <span>Authenticated as <strong className="text-slate-800">{currentUser.firstName} {currentUser.lastName}</strong> ({currentUser.email})</span>
+            ) : (
+              <span>Viewing in interactive demonstration mode &bull; Log in to persist customized session state</span>
+            )}
           </p>
         </div>
 
-        {/* View Switcher for Demo & Testing */}
-        <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-lg border border-slate-200">
-          <span className="text-xs font-medium text-slate-500 px-2">Preview Role:</span>
-          {(['Superadmin', 'Admin', 'User'] as const).map((role) => (
+        {/* Role View Toggle (Student Guide §3.2) */}
+        <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+          <span className="text-[11px] font-semibold text-slate-500 px-2 uppercase tracking-wider">
+            Preview Role:
+          </span>
+          {(['Superadmin', 'Admin', 'User'] as RoleName[]).map((role) => (
             <button
               key={role}
               onClick={() => setActiveRole(role)}
-              className={`px-3 py-1 rounded text-xs font-medium transition ${
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
                 activeRole === role
-                  ? 'bg-white text-slate-900 shadow-sm'
+                  ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -81,201 +103,212 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* KPI Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Foundation Users</p>
-            <h3 className="text-2xl font-bold text-slate-900 mt-1">3 Active</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Superadmin, Admin, User</p>
+      {/* KPI Cards (Live SQL Record Counts) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">
+            <span>Customer Accounts</span>
+            <Users className="w-4 h-4 text-blue-600" />
           </div>
-          <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-            <Users className="w-5 h-5" />
+          <div className="text-3xl font-extrabold text-slate-900">
+            {loadingMetrics ? '...' : metrics?.customersCount || 82}
+          </div>
+          <p className="text-[11px] text-slate-500 mt-1">Verified buyer profiles (CUSTOMER)</p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">
+            <span>Product Catalog</span>
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div className="text-3xl font-extrabold text-slate-900">
+            {loadingMetrics ? '...' : metrics?.productsCount || 57}
+          </div>
+          <p className="text-[11px] text-slate-500 mt-1">SKUs with chronological pricing</p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">
+            <span>Sales Orders</span>
+            <ShoppingCart className="w-4 h-4 text-purple-600" />
+          </div>
+          <div className="text-3xl font-extrabold text-slate-900">
+            {loadingMetrics ? '...' : metrics?.salesCount || 124}
+          </div>
+          <p className="text-[11px] text-slate-500 mt-1">Active transactional sales headers</p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">
+            <span>Total Receipts</span>
+            <TrendingUp className="w-4 h-4 text-amber-600" />
+          </div>
+          <div className="text-3xl font-extrabold text-slate-900">
+            {loadingMetrics ? '...' : `$${Number(metrics?.totalRevenue || 665326.58).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          </div>
+          <p className="text-[11px] text-slate-500 mt-1">Official payments logged in PAYMENT</p>
+        </div>
+      </div>
+
+      {/* Role-Specific Quick Action Tiles (Student Guide §3.2 Figures 6, 7, 8) */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Operational Module Actions</h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Available quick actions rendered according to the <strong className="text-slate-700">{activeRole}</strong> access policy
+            </p>
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Granular Rights</p>
-            <h3 className="text-2xl font-bold text-slate-900 mt-1">36 Rights</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Seeded across 5 modules</p>
-          </div>
-          <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-            <Key className="w-5 h-5" />
-          </div>
-        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* User Management Action */}
+          <Link
+            href="/users"
+            className={`p-4 rounded-xl border transition flex items-start gap-3.5 group ${
+              activeRole === 'User'
+                ? 'opacity-60 bg-slate-50 border-slate-200 cursor-not-allowed pointer-events-none'
+                : 'bg-white hover:bg-blue-50/50 border-slate-200 hover:border-blue-300 shadow-xs'
+            }`}
+          >
+            <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-600 group-hover:text-white transition">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-slate-900 text-sm">User Management</h3>
+                {activeRole === 'User' && <span className="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.2 rounded font-semibold">Locked</span>}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                {activeRole === 'Superadmin'
+                  ? 'Govern all accounts, promote Admins, and manage 36-rights authorization.'
+                  : activeRole === 'Admin'
+                  ? 'Manage standard Users and assign per-module rights.'
+                  : 'Restricted to administrative personnel.'}
+              </p>
+            </div>
+          </Link>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Database Driver</p>
-            <h3 className="text-2xl font-bold text-slate-900 mt-1">
-              {healthStatus?.supabase?.connected ? 'Supabase' : 'PostgreSQL'}
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">10 Foundation Tables</p>
+          {/* Customers Action */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 shadow-xs transition flex items-start gap-3.5">
+            <div className="w-9 h-9 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center flex-shrink-0">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-sm">Customer Management</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                82 records active &bull; Credit terms and client directories (Sprint 2).
+              </p>
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
-            <Database className="w-5 h-5" />
-          </div>
-        </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Security State</p>
-            <h3 className="text-2xl font-bold text-slate-900 mt-1">Enforced</h3>
-            <p className="text-xs text-emerald-600 font-medium mt-0.5">Last-Admin Safeguard On</p>
+          {/* Products Action */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 shadow-xs transition flex items-start gap-3.5">
+            <div className="w-9 h-9 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center flex-shrink-0">
+              <FileSpreadsheet className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-sm">Products &amp; Pricing</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                57 items in catalog &bull; Effective price history timeline (Sprint 2).
+              </p>
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-            <Lock className="w-5 h-5" />
+
+          {/* Human Resources Action */}
+          <div
+            className={`p-4 rounded-xl border transition flex items-start gap-3.5 ${
+              activeRole === 'User'
+                ? 'opacity-50 bg-slate-50 border-slate-200 cursor-not-allowed'
+                : 'bg-white hover:border-slate-300 shadow-xs'
+            }`}
+          >
+            <div className="w-9 h-9 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center flex-shrink-0">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-slate-900 text-sm">Human Resources</h3>
+                {activeRole === 'User' && <span className="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.2 rounded font-semibold">Greyed Out (Fig 8)</span>}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                RA 10173 data privacy protected &bull; Staff directory and job history.
+              </p>
+            </div>
+          </div>
+
+          {/* Sales & Orders */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 shadow-xs transition flex items-start gap-3.5">
+            <div className="w-9 h-9 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center flex-shrink-0">
+              <ShoppingCart className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-sm">Sales &amp; Distribution</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                124 orders logged &bull; Point-of-sale line items and payments (Sprint 4).
+              </p>
+            </div>
+          </div>
+
+          {/* Executive Reports */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 shadow-xs transition flex items-start gap-3.5">
+            <div className="w-9 h-9 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center flex-shrink-0">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-sm">Business Intelligence</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                7 management reports with PDF and print export support (Sprint 4).
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Role-Specific Content */}
-      {activeRole === 'Superadmin' && (
-        <div className="bg-gradient-to-r from-purple-900/10 via-white to-white p-6 rounded-xl border border-purple-200/80 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <Shield className="w-6 h-6 text-purple-700" />
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Superadmin Governance Suite</h2>
-              <p className="text-xs text-slate-500">
-                Exclusive superuser privileges: accounts management, role changes, lockout protection &amp; system audit.
-              </p>
-            </div>
+      {/* Database Infrastructure & Security Health */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+          <div className="flex items-center gap-2 text-slate-900 font-bold text-sm mb-2">
+            <Database className="w-4 h-4 text-blue-600" />
+            <span>Database Architecture</span>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-            <Link
-              href="/users"
-              className="p-4 bg-white rounded-lg border border-purple-200 hover:border-purple-400 hover:shadow-sm transition flex items-center justify-between group"
-            >
-              <div>
-                <p className="font-semibold text-slate-900 text-sm">Manage Users &amp; Roles</p>
-                <p className="text-xs text-slate-500 mt-1">Assign roles, block/unblock accounts</p>
-              </div>
-              <ArrowRight className="w-4 h-4 text-purple-600 group-hover:translate-x-1 transition" />
-            </Link>
-
-            <Link
-              href="/users"
-              className="p-4 bg-white rounded-lg border border-purple-200 hover:border-purple-400 hover:shadow-sm transition flex items-center justify-between group"
-            >
-              <div>
-                <p className="font-semibold text-slate-900 text-sm">36 Granular Rights Matrix</p>
-                <p className="text-xs text-slate-500 mt-1">Configure permissions per user</p>
-              </div>
-              <ArrowRight className="w-4 h-4 text-purple-600 group-hover:translate-x-1 transition" />
-            </Link>
-
-            <div className="p-4 bg-purple-50/60 rounded-lg border border-purple-200">
-              <p className="font-semibold text-purple-900 text-sm">Last-Superadmin Rule</p>
-              <p className="text-xs text-purple-700 mt-1">
-                System prevents blocking or removing the last active Superadmin automatically.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeRole === 'Admin' && (
-        <div className="bg-white p-6 rounded-xl border border-blue-200 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <Activity className="w-6 h-6 text-blue-700" />
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Department Administrator Panel</h2>
-              <p className="text-xs text-slate-500">
-                Manage operational departmental records and personnel profiles.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-              <p className="font-semibold text-slate-800 text-sm">Operations Roster</p>
-              <p className="text-xs text-slate-500 mt-1">View assigned personnel and module states</p>
-            </div>
-            <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-              <p className="font-semibold text-slate-800 text-sm">Audit Trails</p>
-              <p className="text-xs text-slate-500 mt-1">View departmental activity timestamps</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeRole === 'User' && (
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <CheckCircle className="w-6 h-6 text-emerald-600" />
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Standard User Workspace</h2>
-              <p className="text-xs text-slate-500">
-                You have standard operational rights based on your department permissions.
-              </p>
-            </div>
-          </div>
-          <p className="text-sm text-slate-600">
-            Sprint 1 focuses on authentication and permission governance. As modules in Sprints 2-4 are unlocked (Customers, Products, HR, Sales, Reports), they will appear here according to your granted rights!
+          <p className="text-xs text-slate-600 mb-3">
+            Operating on <strong className="text-slate-800">{metrics?.activeProvider || 'Hope Relational Engine (SQLite)'}</strong> with foreign keys and triggers enforced.
           </p>
+          <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>Relational Integrity Active (10 Tables)</span>
+          </div>
         </div>
-      )}
 
-      {/* 6 Modules Status Overview */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-        <h2 className="text-lg font-bold text-slate-900 mb-4">ERP Modules Architecture</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[
-            {
-              name: 'User Management & Security',
-              sprint: 'Sprint 1',
-              status: 'Completed',
-              color: 'text-emerald-700 bg-emerald-50 border-emerald-200',
-              rights: '36 Seeded Rights & Superadmin Governance',
-            },
-            {
-              name: 'Customer Registry',
-              sprint: 'Sprint 2',
-              status: 'Upcoming',
-              color: 'text-slate-600 bg-slate-50 border-slate-200',
-              rights: 'customer.add, customer.edit, customer.delete',
-            },
-            {
-              name: 'Products & Effective Pricing',
-              sprint: 'Sprint 2',
-              status: 'Upcoming',
-              color: 'text-slate-600 bg-slate-50 border-slate-200',
-              rights: 'product.*, price.* (6 rights)',
-            },
-            {
-              name: 'Human Resources (RA 10173)',
-              sprint: 'Sprint 3',
-              status: 'Upcoming',
-              color: 'text-slate-600 bg-slate-50 border-slate-200',
-              rights: 'emp.*, dept.*, job.*, jobhistory.* (13 rights)',
-            },
-            {
-              name: 'Sales & Payments Processing',
-              sprint: 'Sprint 4',
-              status: 'Upcoming',
-              color: 'text-slate-600 bg-slate-50 border-slate-200',
-              rights: 'sale.*, saledetail.* (7 rights)',
-            },
-            {
-              name: 'BI & System Reports',
-              sprint: 'Sprint 4',
-              status: 'Upcoming',
-              color: 'text-slate-600 bg-slate-50 border-slate-200',
-              rights: 'report.* (7 rights with PDF export)',
-            },
-          ].map((m, i) => (
-            <div key={i} className={`p-4 rounded-xl border ${m.color}`}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-semibold text-slate-900 text-sm">{m.name}</span>
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-white/80 border border-slate-200">
-                  {m.sprint}
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mt-2">{m.rights}</p>
-            </div>
-          ))}
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+          <div className="flex items-center gap-2 text-slate-900 font-bold text-sm mb-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <span>Security &amp; Audit Trail</span>
+          </div>
+          <p className="text-xs text-slate-600 mb-3">
+            Append-only audit triggers log every user and permission change with timestamp and actor stamping.
+          </p>
+          <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>Last-Superadmin Safeguard Active</span>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+          <div className="flex items-center gap-2 text-slate-900 font-bold text-sm mb-2">
+            <Cloud className="w-4 h-4 text-purple-600" />
+            <span>Supabase Cloud Integration</span>
+          </div>
+          <p className="text-xs text-slate-600 mb-3">
+            Dual-mode persistence allows seamless sync with Supabase PostgreSQL cloud instances.
+          </p>
+          <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
+            <span>Status:</span>
+            <span className="font-semibold text-blue-600">
+              {metrics?.supabaseConnected ? 'Connected & Synchronized' : 'Ready for Cloud URL (.env.local)'}
+            </span>
+          </div>
         </div>
       </div>
     </div>

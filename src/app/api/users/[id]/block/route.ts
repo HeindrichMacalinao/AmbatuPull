@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAdminClient } from '@/lib/supabase/admin';
+import { toggleUserBlock } from '@/lib/erp-db';
 
 export async function POST(
   request: Request,
@@ -11,64 +11,20 @@ export async function POST(
     const { isBlocked } = await request.json();
 
     if (isNaN(userId)) {
-      return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid user ID parameter' }, { status: 400 });
     }
 
-    try {
-      const supabase = getAdminClient();
-      
-      // Fetch the target user
-      const { data: targetUser, error: fetchErr } = await supabase
-        .from('app_user')
-        .select('*')
-        .eq('userId', userId)
-        .single();
-
-      if (targetUser && !fetchErr) {
-        // Last-Superadmin Safeguard
-        if (targetUser.role === 'Superadmin' && isBlocked) {
-          const { count, error: countErr } = await supabase
-            .from('app_user')
-            .select('*', { count: 'exact', head: true })
-            .eq('role', 'Superadmin')
-            .eq('isBlocked', false)
-            .eq('status', 'Active');
-
-          if (!countErr && (count ?? 0) <= 1) {
-            return NextResponse.json(
-              { error: 'Cannot block the last active Superadmin. System governance requires at least one active Superadmin.' },
-              { status: 400 }
-            );
-          }
-        }
-
-        const { data: updated, error: updateErr } = await supabase
-          .from('app_user')
-          .update({
-            isBlocked: Boolean(isBlocked),
-            stamp: `STATUS_UPDATE_${Date.now()}`,
-          })
-          .eq('userId', userId)
-          .select()
-          .single();
-
-        if (updated && !updateErr) {
-          return NextResponse.json({
-            message: `User ${isBlocked ? 'blocked' : 'unblocked'} successfully`,
-            user: updated,
-          });
-        }
-      }
-    } catch {
-      // Offline fallback handling
-    }
+    const updatedUser = await toggleUserBlock(userId, Boolean(isBlocked), 'admin');
 
     return NextResponse.json({
-      message: `User status updated (Fallback)`,
-      userId,
-      isBlocked: Boolean(isBlocked),
+      message: `User ${isBlocked ? 'blocked' : 'unblocked'} successfully`,
+      user: updatedUser,
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Block operation failed' }, { status: 500 });
+    console.error('[API POST /api/users/:id/block] error:', err);
+    return NextResponse.json(
+      { error: err.message || 'Block/Unblock operation failed' },
+      { status: err.status || 500 }
+    );
   }
 }

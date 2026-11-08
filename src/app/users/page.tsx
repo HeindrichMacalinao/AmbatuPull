@@ -116,6 +116,25 @@ export default function UsersPage() {
     }
   };
 
+  // Shortcuts: All and None (Student Guide §3.8)
+  const selectAllRights = () => {
+    setUserRights(allRights.map((r) => r.rightCode));
+  };
+
+  const clearAllRights = () => {
+    setUserRights([]);
+  };
+
+  const selectModuleRights = (moduleKey: string) => {
+    const moduleCodes = (groupedRights[moduleKey] || []).map((r) => r.rightCode);
+    setUserRights(Array.from(new Set([...userRights, ...moduleCodes])));
+  };
+
+  const clearModuleRights = (moduleKey: string) => {
+    const moduleCodes = new Set((groupedRights[moduleKey] || []).map((r) => r.rightCode));
+    setUserRights(userRights.filter((c) => !moduleCodes.has(c)));
+  };
+
   // Save Rights
   const handleSaveRights = async () => {
     if (!selectedUser) return;
@@ -472,26 +491,61 @@ export default function UsersPage() {
               <div>
                 <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                   <Key className="w-5 h-5 text-blue-600" />
-                  Configure Granular Permissions
+                  Configure Granular Permissions (36 Rights)
                 </h2>
                 <p className="text-xs text-slate-500">
                   Editing rights for {selectedUser.firstName} {selectedUser.lastName} ({selectedUser.role})
                 </p>
               </div>
-              <button onClick={() => setShowRightsModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={selectAllRights}
+                  className="px-2.5 py-1 text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-md border border-blue-200 transition"
+                >
+                  All (Grant All 36)
+                </button>
+                <button
+                  type="button"
+                  onClick={clearAllRights}
+                  className="px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-md transition"
+                >
+                  None (Revoke All)
+                </button>
+                <button onClick={() => setShowRightsModal(false)} className="text-slate-400 hover:text-slate-600 ml-2">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto py-4 space-y-6">
               {Object.keys(groupedRights).map((moduleKey) => (
                 <div key={moduleKey} className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-3 flex items-center justify-between">
-                    <span>Module: {moduleKey.replace('_', ' ').toUpperCase()}</span>
-                    <span className="text-[11px] text-slate-500 font-normal">
-                      {groupedRights[moduleKey].filter((r) => userRights.includes(r.rightCode)).length} / {groupedRights[moduleKey].length} granted
-                    </span>
-                  </h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                      Module: {moduleKey.replace('_', ' ').toUpperCase()} ({groupedRights[moduleKey].length} Rights)
+                    </h3>
+                    <div className="flex items-center gap-2 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => selectModuleRights(moduleKey)}
+                        className="text-[11px] text-blue-600 hover:underline font-medium"
+                      >
+                        All
+                      </button>
+                      <span className="text-slate-300">&bull;</span>
+                      <button
+                        type="button"
+                        onClick={() => clearModuleRights(moduleKey)}
+                        className="text-[11px] text-slate-500 hover:underline"
+                      >
+                        None
+                      </button>
+                      <span className="text-[11px] text-slate-500 ml-1 font-mono">
+                        ({groupedRights[moduleKey].filter((r) => userRights.includes(r.rightCode)).length} / {groupedRights[moduleKey].length})
+                      </span>
+                    </div>
+                  </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {groupedRights[moduleKey].map((r) => {
