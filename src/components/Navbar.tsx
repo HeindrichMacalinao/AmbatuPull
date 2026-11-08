@@ -98,30 +98,36 @@ export default function Navbar() {
 
         {/* Primary Navigation */}
         <nav className="flex items-center gap-1 sm:gap-2 text-sm font-medium">
-          <Link
-            href="/dashboard"
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
-              isActive('/dashboard')
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            <LayoutDashboard className="w-4 h-4" />
-            <span>Dashboard</span>
-          </Link>
+          {currentUser && (
+            <>
+              <Link
+                href="/dashboard"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
+                  isActive('/dashboard')
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                <span>Dashboard</span>
+              </Link>
 
-          {/* User Management tab visible to all, but displays admin/superadmin features */}
-          <Link
-            href="/users"
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
-              isActive('/users')
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>User Management</span>
-          </Link>
+              {/* User Management tab visible to admin/superadmin */}
+              {(currentUser.role === 'Admin' || currentUser.role === 'Superadmin') && (
+                <Link
+                  href="/users"
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
+                    isActive('/users')
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+                  <span>User Management</span>
+                </Link>
+              )}
+            </>
+          )}
 
           {/* Auth State: Logged In vs Logged Out */}
           {currentUser ? (

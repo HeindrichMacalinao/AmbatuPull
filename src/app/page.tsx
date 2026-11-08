@@ -49,12 +49,6 @@ export default function HomePage() {
           >
             <span>Create User Account</span>
           </Link>
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-slate-900 text-slate-100 font-semibold hover:bg-slate-800 transition text-sm shadow-xs"
-          >
-            <span>Preview Dashboard</span>
-          </Link>
         </div>
       </div>
 
