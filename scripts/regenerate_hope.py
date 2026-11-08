@@ -28,7 +28,15 @@ def rebuild(target: Path, source_model: Path | None) -> None:
     # Regeneration is destructive. Refuse to erase a previously initialized
     # user's accounts/grants/tokens; users must archive the DB deliberately.
     if target.exists():
-        with sqlite3.connect(f'file:{target.resolve().as_posix()}?mode=ro', uri=True) as previous:
+        # Use explicit try/finally so the connection is closed before any
+        # RuntimeError propagates. On Windows, sqlite3's context manager
+        # only commits/rolls back on __exit__ - it does NOT close the
+        # connection - so the file handle stays open until GC runs, causing
+        # a PermissionError when TemporaryDirectory tries to rmtree the
+        # directory while the handle is still live (Windows: unable to open
+        # database file / file in use).
+        previous = sqlite3.connect(f'file:{target.resolve().as_posix()}?mode=ro', uri=True)
+        try:
             existing_tables = {row[0] for row in previous.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'")}
             for sensitive_table in ('app_user', 'user_permission', 'password_reset_token', 'audit_log'):
@@ -38,6 +46,8 @@ def rebuild(target: Path, source_model: Path | None) -> None:
                         f'Refusing to overwrite {target.name}: {sensitive_table} has user data. '
                         'Regenerate only disposable artifacts; back up and remove files deliberately.'
                     )
+        finally:
+            previous.close()
     target.parent.mkdir(parents=True, exist_ok=True)
     fd, tmpname = tempfile.mkstemp(prefix=f'.{target.stem}-', suffix='.db', dir=target.parent)
     os.close(fd)
