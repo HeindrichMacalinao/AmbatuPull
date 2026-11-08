@@ -1,6 +1,6 @@
 'use strict';
 
-const { createApp } = require('./app');
+const { createApp } = require('./expressApp');
 const { loadEnv } = require('./config/env');
 const { createPool } = require('./db/pool');
 

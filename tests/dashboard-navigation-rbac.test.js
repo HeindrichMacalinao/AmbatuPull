@@ -10,7 +10,7 @@ const {
   requireRight,
   authenticate,
 } = require('../src/middleware/authMiddleware');
-const { createApp } = require('../src/app');
+const { createApp } = require('../src/expressApp');
 
 let mockQueries = [];
 let queryHandler = null;

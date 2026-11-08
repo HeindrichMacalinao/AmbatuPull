@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-primary: #1e3a8a;
+  --brand-action: #2563eb;
+  --nav-header: #0f172a;
+  --nav-sidebar: #1e293b;
+  --surface: #ffffff;
+  --canvas: #f8fafc;
+  --text-primary: #0f172a;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+}
+
+body {
+  background-color: var(--canvas);
+  color: var(--text-primary);
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
