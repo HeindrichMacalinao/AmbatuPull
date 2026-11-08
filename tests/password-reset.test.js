@@ -10,7 +10,7 @@ const {
   requestPasswordReset,
   resetPassword,
 } = require('../src/services/authService');
-const { createApp } = require('../src/app');
+const { createApp } = require('../src/expressApp');
 
 // Mock pool infrastructure for testing service logic in isolation
 let mockQueries = [];
