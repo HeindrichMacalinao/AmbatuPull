@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { test, beforeEach, afterEach } = require('node:test');
 const poolModule = require('../src/db/pool');
 const userService = require('../src/services/userService');
-const { createApp } = require('../src/app');
+const { createApp } = require('../src/expressApp');
 
 let mockQueries = [];
 let queryHandler = null;

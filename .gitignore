@@ -104,6 +104,8 @@ Cargo.lock
 *.db
 !HOPE_Model1.db
 !HopeERP.db
+*.db-shm
+*.db-wal
 *.pid
 
 # Archives and OS-generated metadata
