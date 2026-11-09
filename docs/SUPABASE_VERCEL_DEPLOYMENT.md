@@ -101,6 +101,12 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
    - `SUPABASE_SERVICE_ROLE_KEY` = `your-supabase-service-role-key`
 6. Click **Deploy**. Vercel will automatically build and assign a production URL (e.g. `https://ambatupull-erp.vercel.app`).
 
+For password-reset email delivery, also configure the SMTP environment variables
+`SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, and
+`SMTP_FROM` in Vercel. Production requests fail explicitly if SMTP delivery is
+not configured; reset responses remain generic so they do not disclose whether an
+email address has an account.
+
 ### Option B: Via Vercel CLI
 ```bash
 npm i -g vercel

@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { DatabaseSync } from 'node:sqlite';
 import { getAdminClient } from '@/lib/supabase/admin';
+import { sendPasswordResetEmail } from '@/lib/email';
 import type { AppUser, RoleName } from '@/types/erp';
 
 // ------------------------------------------------------------------------------
@@ -852,7 +853,6 @@ export async function requestPasswordReset(email: string): Promise<string | null
         expiresAt,
         isUsed: false,
       });
-      return rawToken;
     } catch (e) {
       console.warn('[erp-db] Supabase password reset notice:', e);
     }
@@ -866,6 +866,18 @@ export async function requestPasswordReset(email: string): Promise<string | null
       VALUES (?, ?, ?, 0)
     `).run(user.userId, tokenHash, expiresAt);
   } catch {}
+
+  const baseUrl = (
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    'http://localhost:3000'
+  ).replace(/\/$/, '');
+  await sendPasswordResetEmail({
+    recipient: user.email,
+    recipientName: `${user.firstName} ${user.lastName}`.trim(),
+    resetLink: `${baseUrl}/reset-password?token=${rawToken}`,
+    expiresInMinutes: 60,
+  });
 
   return rawToken;
 }

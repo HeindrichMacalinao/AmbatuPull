@@ -22,7 +22,14 @@ npm install
 cp .env.example .env.local
 ```
 
-### 3. Run Development Server
+The required cloud variables are `NEXT_PUBLIC_SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `DATABASE_URL`.
+Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, and `SMTP_FROM`
+to send password-reset links by email. Never commit `.env.local` or production
+credentials. When SMTP is intentionally omitted in development, the reset link
+is logged locally instead.
+
+### 3. Start the development server
 ```bash
 npm run dev
 ```

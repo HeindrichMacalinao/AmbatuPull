@@ -11,9 +11,8 @@ export async function POST(request: Request) {
 
     const token = await requestPasswordReset(email);
 
-    // In production, this token is sent via email link.
-    // For development, we return a generic success message to prevent user enumeration,
-    // plus provide the token in dev mode for testing.
+    // Keep the response generic to prevent account enumeration. The token is only
+    // returned in development so local tests can complete the flow without SMTP.
     return NextResponse.json({
       message: 'If the provided email is registered, a password recovery link has been generated.',
       debugToken: process.env.NODE_ENV !== 'production' ? token : undefined,
