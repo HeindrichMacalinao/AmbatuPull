@@ -162,7 +162,8 @@ export async function ensureDbInitialized(): Promise<void> {
         isBlocked BOOLEAN NOT NULL DEFAULT 0,
         empNo VARCHAR(10),
         status VARCHAR(8) NOT NULL DEFAULT 'Active',
-        stamp VARCHAR(80) NOT NULL DEFAULT 'SYSTEM_INIT'
+        stamp VARCHAR(80) NOT NULL DEFAULT 'SYSTEM_INIT',
+        createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
       CREATE TABLE IF NOT EXISTS password_reset_token (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -183,6 +184,11 @@ export async function ensureDbInitialized(): Promise<void> {
         PRIMARY KEY (userId, rightCode)
       );
     `);
+
+    const userColumns = db.prepare('PRAGMA table_info(app_user)').all() as { name: string }[];
+    if (!userColumns.some((column) => column.name === 'createdAt')) {
+      db.exec('ALTER TABLE app_user ADD COLUMN createdAt TIMESTAMP');
+    }
 
     // Check if app_user has any users
     const userCountRow = db.prepare('SELECT COUNT(*) as count FROM app_user').get() as { count?: number };
@@ -263,6 +269,7 @@ export async function getUserByEmail(email: string): Promise<UserRecord | null> 
           empNo: data.empNo || undefined,
           status: data.status,
           stamp: data.stamp,
+          createdAt: data.createdAt || undefined,
           passwordHash: data.passwordHash,
         };
       }
@@ -287,6 +294,7 @@ export async function getUserByEmail(email: string): Promise<UserRecord | null> 
       empNo: row.empNo || undefined,
       status: row.status,
       stamp: row.stamp,
+      createdAt: row.createdAt || undefined,
       passwordHash: row.passwordHash,
     };
   } catch (err) {
@@ -303,7 +311,7 @@ export async function getUserById(userId: number): Promise<AppUser | null> {
       const supabase = getAdminClient();
       const { data, error } = await supabase
         .from('app_user')
-        .select('userId, firstName, lastName, email, role, isBlocked, empNo, status, stamp')
+        .select('userId, firstName, lastName, email, role, isBlocked, empNo, status, stamp, createdAt')
         .eq('userId', userId)
         .maybeSingle();
 
@@ -318,6 +326,7 @@ export async function getUserById(userId: number): Promise<AppUser | null> {
           empNo: data.empNo || undefined,
           status: data.status,
           stamp: data.stamp,
+          createdAt: data.createdAt || undefined,
         };
       }
     } catch {}
@@ -325,7 +334,7 @@ export async function getUserById(userId: number): Promise<AppUser | null> {
 
   try {
     const db = getSqliteDb();
-    const row = db.prepare('SELECT userId, firstName, lastName, email, role, isBlocked, empNo, status, stamp FROM app_user WHERE userId = ?').get(userId) as any;
+    const row = db.prepare('SELECT userId, firstName, lastName, email, role, isBlocked, empNo, status, stamp, createdAt FROM app_user WHERE userId = ?').get(userId) as any;
     if (!row) return null;
 
     return {
@@ -338,6 +347,7 @@ export async function getUserById(userId: number): Promise<AppUser | null> {
       empNo: row.empNo || undefined,
       status: row.status,
       stamp: row.stamp,
+      createdAt: row.createdAt || undefined,
     };
   } catch (err) {
     console.warn('[erp-db] SQLite getUserById fallback:', err);
@@ -354,7 +364,7 @@ export async function getUsers(filter?: { search?: string; role?: string }): Pro
   if (isSupabaseConfigured()) {
     try {
       const supabase = getAdminClient();
-      let query = supabase.from('app_user').select('userId, firstName, lastName, email, role, isBlocked, empNo, status, stamp').neq('status', 'Inactive');
+      let query = supabase.from('app_user').select('userId, firstName, lastName, email, role, isBlocked, empNo, status, stamp, createdAt').neq('status', 'Inactive');
       if (role && role !== 'all') {
         query = query.eq('role', role);
       }
@@ -370,6 +380,7 @@ export async function getUsers(filter?: { search?: string; role?: string }): Pro
           empNo: d.empNo || undefined,
           status: d.status,
           stamp: d.stamp,
+          createdAt: d.createdAt || undefined,
         }));
         if (search) {
           list = list.filter(u => u.firstName.toLowerCase().includes(search) || u.lastName.toLowerCase().includes(search) || u.email.toLowerCase().includes(search));
@@ -382,7 +393,7 @@ export async function getUsers(filter?: { search?: string; role?: string }): Pro
   // 2. Query SQLite
   try {
     const db = getSqliteDb();
-    let sql = "SELECT userId, firstName, lastName, email, role, isBlocked, empNo, status, stamp FROM app_user WHERE status = 'Active'";
+    let sql = "SELECT userId, firstName, lastName, email, role, isBlocked, empNo, status, stamp, createdAt FROM app_user WHERE status = 'Active'";
     const params: any[] = [];
 
     if (role && role !== 'all') {
@@ -402,6 +413,7 @@ export async function getUsers(filter?: { search?: string; role?: string }): Pro
       empNo: r.empNo || undefined,
       status: r.status,
       stamp: r.stamp,
+      createdAt: r.createdAt || undefined,
     }));
 
     if (search) {
@@ -443,6 +455,7 @@ export async function createUser(payload: {
 
   const saltRounds = 10;
   const passwordHash = await bcrypt.hash(password, saltRounds);
+  const createdAt = new Date().toISOString();
 
   // 1. Supabase Primary Mode
   if (isSupabaseConfigured()) {
@@ -459,8 +472,9 @@ export async function createUser(payload: {
         empNo,
         status: 'Active',
         stamp: `CREATED ${actor}`,
+        createdAt,
       })
-      .select('userId, firstName, lastName, email, role, isBlocked, empNo, status, stamp')
+      .select('userId, firstName, lastName, email, role, isBlocked, empNo, status, stamp, createdAt')
       .single();
 
     if (error) {
@@ -483,6 +497,7 @@ export async function createUser(payload: {
       empNo: data.empNo || undefined,
       status: data.status,
       stamp: data.stamp,
+      createdAt: data.createdAt || createdAt,
     };
 
     // Mirror to local SQLite if writable, but NEVER fail the operation if SQLite errors
@@ -490,8 +505,8 @@ export async function createUser(payload: {
       const db = getSqliteDb();
       setAuditActor(actor);
       (db.prepare(`
-        INSERT OR REPLACE INTO app_user (userId, firstName, lastName, email, passwordHash, role, isBlocked, empNo, status, stamp)
-        VALUES (?, ?, ?, ?, ?, ?, 0, ?, 'Active', ?)
+        INSERT OR REPLACE INTO app_user (userId, firstName, lastName, email, passwordHash, role, isBlocked, empNo, status, stamp, createdAt)
+        VALUES (?, ?, ?, ?, ?, ?, 0, ?, 'Active', ?, ?)
       `) as any).run(
         createdUser.userId,
         createdUser.firstName,
@@ -500,7 +515,8 @@ export async function createUser(payload: {
         passwordHash,
         createdUser.role,
         empNo || null,
-        createdUser.stamp
+        createdUser.stamp,
+        createdUser.createdAt
       );
     } catch {}
 
@@ -512,10 +528,10 @@ export async function createUser(payload: {
   setAuditActor(actor);
 
   const stmt = db.prepare(`
-    INSERT INTO app_user (firstName, lastName, email, passwordHash, role, isBlocked, empNo, status, stamp)
-    VALUES (?, ?, ?, ?, ?, 0, ?, 'Active', ?)
+    INSERT INTO app_user (firstName, lastName, email, passwordHash, role, isBlocked, empNo, status, stamp, createdAt)
+    VALUES (?, ?, ?, ?, ?, 0, ?, 'Active', ?, ?)
   `);
-  const info = stmt.run(firstName.trim(), lastName.trim(), cleanEmail, passwordHash, role, empNo, `CREATED ${actor}`);
+  const info = stmt.run(firstName.trim(), lastName.trim(), cleanEmail, passwordHash, role, empNo, `CREATED ${actor}`, createdAt);
   const newUserId = Number(info.lastInsertRowid);
 
   return {
@@ -528,6 +544,7 @@ export async function createUser(payload: {
     empNo: empNo || undefined,
     status: 'Active',
     stamp: `CREATED ${actor}`,
+    createdAt,
   };
 }
 
@@ -934,4 +951,76 @@ export async function completePasswordReset(token: string, newPassword: string):
   db.prepare('UPDATE password_reset_token SET isUsed = 1, usedAt = CURRENT_TIMESTAMP WHERE id = ?').run(tokenRow.id);
 
   return true;
+}
+
+export interface CustomerRecord {
+  custNo: string;
+  custName: string;
+  address?: string | null;
+  payTerms?: string | null;
+  status?: string;
+  stamp?: string;
+}
+
+export async function getCustomers({
+  search,
+  status,
+  role = 'User',
+}: {
+  search?: string;
+  status?: string;
+  role?: string;
+} = {}): Promise<CustomerRecord[]> {
+  const isUser = role === 'User';
+  const db = getSqliteDb();
+
+  let query = 'SELECT custNo, custName, address, payTerms, status, stamp FROM CUSTOMER';
+  const conditions: string[] = [];
+  const params: any[] = [];
+
+  if (isUser) {
+    conditions.push("status = 'Active'");
+  } else {
+    const s = String(status || '').trim().toLowerCase();
+    if (s === 'inactive') {
+      conditions.push("status = 'Inactive'");
+    } else if (s === 'all') {
+      // all
+    } else {
+      conditions.push("status = 'Active'");
+    }
+  }
+
+  if (search && search.trim()) {
+    conditions.push('(LOWER(custNo) LIKE ? OR LOWER(custName) LIKE ? OR LOWER(address) LIKE ?)');
+    const term = `%${search.trim().toLowerCase()}%`;
+    params.push(term, term, term);
+  }
+
+  if (conditions.length > 0) {
+    query += ' WHERE ' + conditions.join(' AND ');
+  }
+
+  query += ' ORDER BY custNo ASC';
+
+  const rows = db.prepare(query).all(...params) as any[];
+
+  return rows.map((r) => {
+    if (isUser) {
+      return {
+        custNo: r.custNo,
+        custName: r.custName,
+        address: r.address,
+        payTerms: r.payTerms,
+      };
+    }
+    return {
+      custNo: r.custNo,
+      custName: r.custName,
+      address: r.address,
+      payTerms: r.payTerms,
+      status: r.status,
+      stamp: r.stamp,
+    };
+  });
 }

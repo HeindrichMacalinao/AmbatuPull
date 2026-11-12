@@ -1,0 +1,5 @@
+ALTER TABLE public."app_user"
+    ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMPTZ;
+
+ALTER TABLE public."app_user"
+    ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;

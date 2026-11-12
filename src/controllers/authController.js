@@ -52,7 +52,7 @@ async function registerUser(req, res) {
     const result = await pool.query(
       `INSERT INTO app_user (firstName, lastName, email, passwordHash, role, isBlocked, status, stamp)
        VALUES ($1, $2, $3, $4, 'User', 0, 'Active', $5)
-       RETURNING userId, firstName, lastName, email, role, isBlocked, status, stamp`,
+       RETURNING userId, firstName, lastName, email, role, isBlocked, status, stamp, createdAt`,
       [
         firstName.trim(),
         lastName.trim(),

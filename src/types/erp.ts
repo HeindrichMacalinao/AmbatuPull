@@ -10,7 +10,7 @@ export interface AppUser {
   empNo?: string | null;
   status: 'Active' | 'Inactive';
   stamp?: string;
-  createdAt?: string;
+  createdAt?: string | null;
 }
 
 export interface UserPermission {

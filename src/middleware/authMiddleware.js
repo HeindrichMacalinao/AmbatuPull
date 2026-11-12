@@ -169,9 +169,57 @@ function requireRight(rightCode) {
   };
 }
 
+/**
+ * Customer Module Access Middleware (§4.2 & S2-DEV-01).
+ * Superadmin and Admin have access.
+ * Standard User must have at least one active Customer right (e.g. customer.add, customer.edit, customer.delete, customer.view).
+ */
+async function requireCustomerAccess(req, res, next) {
+  if (!req.user || !req.user.role) {
+    return res.status(401).json({ error: 'Unauthorized: authentication required' });
+  }
+
+  if (req.user.role === 'Superadmin' || req.user.role === 'Admin') {
+    return next();
+  }
+
+  if (req.user.rights && Array.isArray(req.user.rights)) {
+    const hasRight = req.user.rights.some(
+      (r) => typeof r === 'string' && (r.startsWith('customer.') || r === 'customer')
+    );
+    if (hasRight) {
+      return next();
+    }
+  }
+
+  try {
+    const pool = dbPool.getPool();
+    const userId = req.user.userId ?? req.user.userid;
+    const { rows } = await pool.query(
+      `SELECT 1 FROM user_permission
+       WHERE userId = $1
+         AND status = 'Active'
+         AND (rightCode LIKE 'customer.%' OR rightCode = 'customer')
+       LIMIT 1`,
+      [userId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(403).json({
+        error: 'Forbidden: customer module access required',
+      });
+    }
+
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   authenticate,
   requireAdminOrSuperadmin,
   requireRole,
   requireRight,
+  requireCustomerAccess,
 };
