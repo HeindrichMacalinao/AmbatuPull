@@ -49,7 +49,7 @@ async function listUsers({ requester }) {
 
   const pool = dbPool.getPool();
   let query = `
-    SELECT userId, firstName, lastName, email, role, isBlocked, empNo, status, stamp
+    SELECT userId, firstName, lastName, email, role, isBlocked, empNo, status, stamp, createdAt
     FROM app_user
   `;
   const params = [];
@@ -83,6 +83,7 @@ async function listUsers({ requester }) {
       isBlocked,
       empNo: u.empNo ?? u.empno,
       stamp: u.stamp,
+      createdAt: u.createdAt ?? u.createdat,
       canManage,
     };
   });
@@ -216,7 +217,7 @@ async function createUser({ data, requester }) {
   const result = await pool.query(
     `INSERT INTO app_user (firstName, lastName, email, passwordHash, role, isBlocked, empNo, status, stamp)
      VALUES ($1, $2, $3, $4, $5, 0, $6, 'Active', $7)
-     RETURNING userId, firstName, lastName, email, role, isBlocked, empNo, status, stamp`,
+     RETURNING userId, firstName, lastName, email, role, isBlocked, empNo, status, stamp, createdAt`,
     [
       firstName.trim(),
       lastName.trim(),
@@ -243,6 +244,7 @@ async function createUser({ data, requester }) {
       isBlocked: false,
       empNo: u.empNo ?? u.empno,
       stamp: u.stamp,
+      createdAt: u.createdAt ?? u.createdat,
     };
   }
 
@@ -256,6 +258,7 @@ async function createUser({ data, requester }) {
     isBlocked: false,
     empNo: newUser.empNo ?? newUser.empno,
     stamp: newUser.stamp,
+    createdAt: newUser.createdAt ?? newUser.createdat,
   };
 }
 

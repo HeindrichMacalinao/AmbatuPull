@@ -18,6 +18,12 @@ import {
 } from 'lucide-react';
 import type { AppUser, RoleName } from '@/types/erp';
 
+function formatRegistrationTime(createdAt?: string | null) {
+  if (!createdAt) return 'Unavailable';
+  const date = new Date(createdAt);
+  return Number.isNaN(date.getTime()) ? 'Unavailable' : date.toLocaleString();
+}
+
 export default function UsersPage() {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -282,19 +288,20 @@ export default function UsersPage() {
                 <th className="py-3 px-4">Role</th>
                 <th className="py-3 px-4">Employee ID</th>
                 <th className="py-3 px-4">Account Status</th>
+                <th className="py-3 px-4">Registered</th>
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-slate-400">
+                  <td colSpan={6} className="py-8 text-center text-slate-400">
                     Loading users...
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-slate-400">
+                  <td colSpan={6} className="py-8 text-center text-slate-400">
                     No users found matching your search.
                   </td>
                 </tr>
@@ -339,6 +346,10 @@ export default function UsersPage() {
                           Active
                         </span>
                       )}
+                    </td>
+
+                    <td className="py-3.5 px-4 whitespace-nowrap text-xs">
+                      {formatRegistrationTime(u.createdAt)}
                     </td>
 
                     <td className="py-3.5 px-4 text-right space-x-2">
