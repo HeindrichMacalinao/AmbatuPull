@@ -935,3 +935,75 @@ export async function completePasswordReset(token: string, newPassword: string):
 
   return true;
 }
+
+export interface CustomerRecord {
+  custNo: string;
+  custName: string;
+  address?: string | null;
+  payTerms?: string | null;
+  status?: string;
+  stamp?: string;
+}
+
+export async function getCustomers({
+  search,
+  status,
+  role = 'User',
+}: {
+  search?: string;
+  status?: string;
+  role?: string;
+} = {}): Promise<CustomerRecord[]> {
+  const isUser = role === 'User';
+  const db = getSqliteDb();
+
+  let query = 'SELECT custNo, custName, address, payTerms, status, stamp FROM CUSTOMER';
+  const conditions: string[] = [];
+  const params: any[] = [];
+
+  if (isUser) {
+    conditions.push("status = 'Active'");
+  } else {
+    const s = String(status || '').trim().toLowerCase();
+    if (s === 'inactive') {
+      conditions.push("status = 'Inactive'");
+    } else if (s === 'all') {
+      // all
+    } else {
+      conditions.push("status = 'Active'");
+    }
+  }
+
+  if (search && search.trim()) {
+    conditions.push('(LOWER(custNo) LIKE ? OR LOWER(custName) LIKE ? OR LOWER(address) LIKE ?)');
+    const term = `%${search.trim().toLowerCase()}%`;
+    params.push(term, term, term);
+  }
+
+  if (conditions.length > 0) {
+    query += ' WHERE ' + conditions.join(' AND ');
+  }
+
+  query += ' ORDER BY custNo ASC';
+
+  const rows = db.prepare(query).all(...params) as any[];
+
+  return rows.map((r) => {
+    if (isUser) {
+      return {
+        custNo: r.custNo,
+        custName: r.custName,
+        address: r.address,
+        payTerms: r.payTerms,
+      };
+    }
+    return {
+      custNo: r.custNo,
+      custName: r.custName,
+      address: r.address,
+      payTerms: r.payTerms,
+      status: r.status,
+      stamp: r.stamp,
+    };
+  });
+}
