@@ -844,28 +844,35 @@ export async function requestPasswordReset(email: string): Promise<string | null
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
   if (isSupabaseConfigured()) {
+    const supabase = getAdminClient();
+    const invalidation = await supabase
+      .from('password_reset_token')
+      .update({ isUsed: true })
+      .eq('userId', user.userId);
+    if (invalidation.error) throw invalidation.error;
+
+    const insertion = await supabase.from('password_reset_token').insert({
+      userId: user.userId,
+      tokenHash,
+      expiresAt,
+      isUsed: false,
+    });
+    if (insertion.error) throw insertion.error;
+  } else {
+    const db = getSqliteDb();
+    db.exec('BEGIN IMMEDIATE');
     try {
-      const supabase = getAdminClient();
-      await supabase.from('password_reset_token').update({ isUsed: true }).eq('userId', user.userId);
-      await supabase.from('password_reset_token').insert({
-        userId: user.userId,
-        tokenHash,
-        expiresAt,
-        isUsed: false,
-      });
-    } catch (e) {
-      console.warn('[erp-db] Supabase password reset notice:', e);
+      db.prepare('UPDATE password_reset_token SET isUsed = 1 WHERE userId = ?').run(user.userId);
+      db.prepare(`
+        INSERT INTO password_reset_token (userId, tokenHash, expiresAt, isUsed)
+        VALUES (?, ?, ?, 0)
+      `).run(user.userId, tokenHash, expiresAt);
+      db.exec('COMMIT');
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
     }
   }
-
-  try {
-    const db = getSqliteDb();
-    db.prepare('UPDATE password_reset_token SET isUsed = 1 WHERE userId = ?').run(user.userId);
-    db.prepare(`
-      INSERT INTO password_reset_token (userId, tokenHash, expiresAt, isUsed)
-      VALUES (?, ?, ?, 0)
-    `).run(user.userId, tokenHash, expiresAt);
-  } catch {}
 
   const baseUrl = (
     process.env.NEXT_PUBLIC_APP_URL ||
@@ -889,7 +896,7 @@ export async function completePasswordReset(token: string, newPassword: string):
 
   if (isSupabaseConfigured()) {
     const supabase = getAdminClient();
-    const { data: tokenRow } = await supabase
+    const { data: tokenRow, error: tokenError } = await supabase
       .from('password_reset_token')
       .select('*')
       .eq('tokenHash', tokenHash)
@@ -897,21 +904,24 @@ export async function completePasswordReset(token: string, newPassword: string):
       .gt('expiresAt', new Date().toISOString())
       .maybeSingle();
 
+    if (tokenError) throw tokenError;
     if (!tokenRow) {
       const err = new Error('Invalid, expired, or already used password reset token');
       (err as any).status = 400;
       throw err;
     }
 
-    await supabase.from('app_user').update({ passwordHash: newHash }).eq('userId', tokenRow.userId);
-    await supabase.from('password_reset_token').update({ isUsed: true, usedAt: new Date().toISOString() }).eq('id', tokenRow.id);
+    const userUpdate = await supabase
+      .from('app_user')
+      .update({ passwordHash: newHash })
+      .eq('userId', tokenRow.userId);
+    if (userUpdate.error) throw userUpdate.error;
 
-    try {
-      const db = getSqliteDb();
-      setAuditActor('self');
-      db.prepare('UPDATE app_user SET passwordHash = ? WHERE userId = ?').run(newHash, tokenRow.userId);
-      db.prepare('UPDATE password_reset_token SET isUsed = 1, usedAt = CURRENT_TIMESTAMP WHERE id = ?').run(tokenRow.id);
-    } catch {}
+    const tokenUpdate = await supabase
+      .from('password_reset_token')
+      .update({ isUsed: true, usedAt: new Date().toISOString() })
+      .eq('id', tokenRow.id);
+    if (tokenUpdate.error) throw tokenUpdate.error;
 
     return true;
   }
@@ -930,8 +940,34 @@ export async function completePasswordReset(token: string, newPassword: string):
     throw err;
   }
 
-  db.prepare('UPDATE app_user SET passwordHash = ? WHERE userId = ?').run(newHash, tokenRow.userId);
-  db.prepare('UPDATE password_reset_token SET isUsed = 1, usedAt = CURRENT_TIMESTAMP WHERE id = ?').run(tokenRow.id);
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const userUpdate = db
+      .prepare(`
+        UPDATE app_user
+        SET passwordHash = ?
+        WHERE userId = ? AND status = 'Active' AND isBlocked = 0
+      `)
+      .run(newHash, tokenRow.userId);
+    if (Number(userUpdate.changes) !== 1) {
+      throw new Error('Unable to reset password for an inactive or blocked account');
+    }
+
+    const tokenUpdate = db
+      .prepare(`
+        UPDATE password_reset_token
+        SET isUsed = 1, usedAt = CURRENT_TIMESTAMP
+        WHERE id = ? AND isUsed = 0
+      `)
+      .run(tokenRow.id);
+    if (Number(tokenUpdate.changes) !== 1) {
+      throw new Error('Invalid, expired, or already used password reset token');
+    }
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
 
   return true;
 }
