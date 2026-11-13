@@ -15,6 +15,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Filter,
+  RefreshCw,
+  Database,
 } from 'lucide-react';
 import type { AppUser, RoleName } from '@/types/erp';
 
@@ -27,6 +29,7 @@ function formatRegistrationTime(createdAt?: string | null) {
 export default function UsersPage() {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [provider, setProvider] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [notification, setNotification] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
@@ -54,11 +57,21 @@ export default function UsersPage() {
       const q = new URLSearchParams();
       if (search) q.append('search', search);
       if (roleFilter !== 'all') q.append('role', roleFilter);
+      q.append('_t', Date.now().toString());
 
-      const res = await fetch(`/api/users?${q.toString()}`);
+      const res = await fetch(`/api/users?${q.toString()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+        },
+      });
       const data = await res.json();
       if (data.users) {
         setUsers(data.users);
+      }
+      if (data.provider) {
+        setProvider(data.provider);
       }
     } catch {
       setNotification({ type: 'error', message: 'Failed to load users' });
@@ -220,13 +233,43 @@ export default function UsersPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm transition shadow-sm"
-        >
-          <UserPlus className="w-4 h-4" />
-          Add User
-        </button>
+        <div className="flex items-center gap-2.5">
+          {provider && (
+            <span
+              className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${
+                provider === 'supabase'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-amber-50 text-amber-700 border-amber-200'
+              }`}
+              title={
+                provider === 'supabase'
+                  ? 'Live connected to Supabase Cloud PostgreSQL'
+                  : 'Running on local SQLite. Configure Supabase keys in Vercel to sync across all lambdas.'
+              }
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span>{provider === 'supabase' ? 'Supabase Live' : 'SQLite Local'}</span>
+            </span>
+          )}
+
+          <button
+            onClick={fetchUsers}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-lg text-sm border border-slate-300 transition shadow-sm disabled:opacity-50"
+            title="Refresh user list from database"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm transition shadow-sm"
+          >
+            <UserPlus className="w-4 h-4" />
+            Add User
+          </button>
+        </div>
       </div>
 
       {/* Notification Toast */}

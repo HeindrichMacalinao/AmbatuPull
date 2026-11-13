@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getUsers, createUser } from '@/lib/erp-db';
+import { getUsers, createUser, isSupabaseConfigured } from '@/lib/erp-db';
 import type { RoleName } from '@/types/erp';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(request: Request) {
   try {
@@ -9,7 +12,16 @@ export async function GET(request: Request) {
     const role = searchParams.get('role') || undefined;
 
     const users = await getUsers({ search, role });
-    return NextResponse.json({ users });
+    const response = NextResponse.json({
+      users,
+      provider: isSupabaseConfigured() ? 'supabase' : 'sqlite',
+    });
+
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+
+    return response;
   } catch (err: any) {
     console.error('[API GET /api/users] error:', err);
     return NextResponse.json(
