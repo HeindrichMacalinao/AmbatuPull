@@ -42,16 +42,85 @@ export interface SendEmailResult {
 export async function sendEmail(options: SendEmailOptions): Promise<SendEmailResult> {
   const { to, subject, html, text } = options;
 
-  // 1. Try Resend if RESEND_API_KEY is configured
   const rawKey = process.env.RESEND_API_KEY;
   const resendApiKey = rawKey ? rawKey.trim().replace(/^["']|["']$/g, '') : '';
 
-  if (resendApiKey) {
-    // Sanitize from address for Resend
-    let fromAddress = (process.env.EMAIL_FROM || '').trim().replace(/^["']|["']$/g, '');
+  const smtpUser = process.env.SMTP_USER?.trim().replace(/^["']|["']$/g, '');
+  const rawSmtpPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD;
+  const smtpPass = rawSmtpPass ? rawSmtpPass.trim().replace(/^["']|["']$/g, '') : '';
+  const smtpHost =
+    process.env.SMTP_HOST?.trim().replace(/^["']|["']$/g, '') ||
+    (smtpUser?.toLowerCase().endsWith('@gmail.com') ? 'smtp.gmail.com' : undefined);
+  const smtpPort = Number(process.env.SMTP_PORT) || (smtpHost === 'smtp.gmail.com' ? 465 : 587);
 
-    // Common configuration mistake: using a personal gmail address in EMAIL_FROM without domain verification in Resend.
-    // If fromAddress contains @gmail.com, @yahoo.com, @outlook.com or does not contain @, fallback to onboarding@resend.dev
+  const hasSmtpConfig = Boolean(smtpUser && smtpPass);
+  const providerPreference = (process.env.EMAIL_PROVIDER || '').trim().toLowerCase();
+
+  // Helper: Try SMTP delivery (supports Gmail SMTP, custom SMTP, etc.)
+  const trySmtp = async (): Promise<SendEmailResult> => {
+    if (!hasSmtpConfig) {
+      return {
+        sent: false,
+        provider: 'smtp',
+        error: 'SMTP credentials (SMTP_USER / SMTP_PASS) not configured in environment variables.',
+      };
+    }
+
+    try {
+      const isGmail = smtpHost === 'smtp.gmail.com' || smtpUser?.toLowerCase().endsWith('@gmail.com');
+      const transporter = isGmail
+        ? nodemailer.createTransport({
+            service: 'gmail',
+            auth: { user: smtpUser, pass: smtpPass },
+          })
+        : nodemailer.createTransport({
+            host: smtpHost,
+            port: smtpPort,
+            secure: process.env.SMTP_SECURE === 'true' || smtpPort === 465,
+            auth: { user: smtpUser, pass: smtpPass },
+            tls: {
+              rejectUnauthorized: process.env.NODE_ENV === 'production',
+            },
+          });
+
+      const fromHeader =
+        process.env.SMTP_FROM || (smtpUser ? `Hope ERP <${smtpUser}>` : process.env.EMAIL_FROM || 'Hope ERP');
+
+      const info = await transporter.sendMail({
+        from: fromHeader,
+        to,
+        subject,
+        html,
+        text: text || html.replace(/<[^>]*>/g, ' '),
+      });
+
+      console.log(`[email:smtp] Successfully sent email to ${to} (id: ${info.messageId})`);
+      return {
+        sent: true,
+        provider: 'smtp',
+        messageId: info.messageId,
+      };
+    } catch (err: any) {
+      console.error('[email:smtp] Failed to send via SMTP:', err);
+      return {
+        sent: false,
+        provider: 'smtp',
+        error: err.message || 'Failed to send via SMTP transporter',
+      };
+    }
+  };
+
+  // Helper: Try Resend API delivery
+  const tryResend = async (): Promise<SendEmailResult> => {
+    if (!resendApiKey) {
+      return {
+        sent: false,
+        provider: 'resend',
+        error: 'RESEND_API_KEY not configured in environment variables.',
+      };
+    }
+
+    let fromAddress = (process.env.EMAIL_FROM || '').trim().replace(/^["']|["']$/g, '');
     if (
       !fromAddress ||
       fromAddress.includes('@gmail.com') ||
@@ -81,8 +150,13 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
 
       const resData = await response.json();
       if (!response.ok) {
-        const errorMsg =
+        let errorMsg =
           resData.message || resData.error?.message || (typeof resData === 'string' ? resData : JSON.stringify(resData));
+
+        if (typeof errorMsg === 'string' && errorMsg.includes('can only send testing emails to your own email address')) {
+          errorMsg = `${errorMsg} (Tip: Configure Gmail SMTP via SMTP_USER & SMTP_PASS in Vercel to send to any email address).`;
+        }
+
         console.error('[email:resend] API error response:', resData);
         return {
           sent: false,
@@ -105,61 +179,56 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
         error: err.message || 'Failed to connect to Resend API',
       };
     }
+  };
+
+  // 1. If SMTP is explicitly preferred, or SMTP is configured and user wants universal delivery:
+  // (Gmail SMTP can send to ANY recipient in the world without domain restrictions)
+  if (providerPreference === 'smtp' || (hasSmtpConfig && providerPreference !== 'resend')) {
+    const smtpRes = await trySmtp();
+    if (smtpRes.sent) return smtpRes;
+
+    // If SMTP fails, try Resend as fallback if available
+    if (resendApiKey) {
+      console.warn('[email] SMTP delivery failed, attempting Resend fallback...');
+      const resendRes = await tryResend();
+      if (resendRes.sent) return resendRes;
+    }
+    return smtpRes;
   }
 
-  // 2. Try SMTP if SMTP_HOST is configured
-  const smtpHost = process.env.SMTP_HOST?.trim();
-  const smtpUser = process.env.SMTP_USER?.trim();
-  const smtpPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD;
-  const smtpPort = Number(process.env.SMTP_PORT) || 587;
-  const fromAddress = process.env.SMTP_FROM || process.env.EMAIL_FROM || 'Hope ERP <onboarding@resend.dev>';
+  // 2. Otherwise try Resend if configured
+  if (resendApiKey) {
+    const resendRes = await tryResend();
+    if (resendRes.sent) return resendRes;
 
-  if (smtpHost && (smtpUser || smtpPass || process.env.SMTP_FROM)) {
-    try {
-      const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: process.env.SMTP_SECURE === 'true' || smtpPort === 465,
-        auth: smtpUser && smtpPass ? { user: smtpUser, pass: smtpPass } : undefined,
-        tls: {
-          rejectUnauthorized: process.env.NODE_ENV === 'production',
-        },
-      });
-
-      const info = await transporter.sendMail({
-        from: fromAddress,
-        to,
-        subject,
-        html,
-        text: text || html.replace(/<[^>]*>/g, ' '),
-      });
-
-      console.log(`[email:smtp] Successfully sent email to ${to} (id: ${info.messageId})`);
-      return {
-        sent: true,
-        provider: 'smtp',
-        messageId: info.messageId,
-      };
-    } catch (err: any) {
-      console.error('[email:smtp] Failed to send via SMTP:', err);
+    // If Resend failed (e.g. sandbox restriction 403 on arbitrary recipient), fall back to SMTP!
+    if (hasSmtpConfig) {
+      console.warn(`[email] Resend rejected (${resendRes.error}), attempting fallback to SMTP...`);
+      const smtpRes = await trySmtp();
+      if (smtpRes.sent) return smtpRes;
       return {
         sent: false,
         provider: 'smtp',
-        error: err.message || 'Failed to send via SMTP transporter',
+        error: `Resend: ${resendRes.error} | SMTP: ${smtpRes.error}`,
       };
     }
+
+    return resendRes;
   }
 
-  // 3. Fallback: No email provider configured
-  console.warn(
-    `[email:none] Email NOT sent to ${to}. Subject: "${subject}". Reason: No email service credentials configured. ` +
-    `Add RESEND_API_KEY or SMTP_HOST/SMTP_USER/SMTP_PASS in Vercel environment variables.`
-  );
+  // 3. Try SMTP if configured without Resend
+  if (hasSmtpConfig) {
+    return await trySmtp();
+  }
 
+  // 4. No provider configured
+  console.warn(
+    `[email:none] Email NOT sent to ${to}. Subject: "${subject}". Reason: No email service credentials configured.`
+  );
   return {
     sent: false,
     provider: 'none',
-    error: 'Email service credentials not configured. Set RESEND_API_KEY or SMTP_* in environment variables.',
+    error: 'No active email provider. Please configure Gmail SMTP or RESEND_API_KEY in Vercel.',
   };
 }
 
