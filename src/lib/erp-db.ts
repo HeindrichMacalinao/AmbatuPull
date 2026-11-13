@@ -364,13 +364,41 @@ export async function getUsers(filter?: { search?: string; role?: string }): Pro
   if (isSupabaseConfigured()) {
     try {
       const supabase = getAdminClient();
-      let query = supabase.from('app_user').select('userId, firstName, lastName, email, role, isBlocked, empNo, status, stamp, createdAt').neq('status', 'Inactive');
+      let query = supabase
+        .from('app_user')
+        .select('userId, firstName, lastName, email, role, isBlocked, empNo, status, stamp, createdAt')
+        .neq('status', 'Inactive')
+        .order('userId', { ascending: false });
+
       if (role && role !== 'all') {
         query = query.eq('role', role);
       }
-      const { data, error } = await query;
-      if (data && !error && data.length > 0) {
-        let list: AppUser[] = data.map((d: any) => ({
+
+      const queryResult = await query;
+      let rawUsers: any[] | null = queryResult.data;
+      let queryError = queryResult.error;
+
+      // Schema compatibility: If createdAt column doesn't exist in Supabase, retry without createdAt
+      if (queryError && (queryError.code === 'PGRST204' || queryError.message?.includes('createdAt'))) {
+        let fallbackQuery = supabase
+          .from('app_user')
+          .select('userId, firstName, lastName, email, role, isBlocked, empNo, status, stamp')
+          .neq('status', 'Inactive')
+          .order('userId', { ascending: false });
+
+        if (role && role !== 'all') {
+          fallbackQuery = fallbackQuery.eq('role', role);
+        }
+
+        const fallbackRes = await fallbackQuery;
+        rawUsers = fallbackRes.data;
+        queryError = fallbackRes.error;
+      }
+
+      if (queryError) {
+        console.warn('[erp-db] Supabase getUsers query notice:', queryError);
+      } else if (rawUsers) {
+        let list: AppUser[] = rawUsers.map((d: any) => ({
           userId: Number(d.userId),
           firstName: d.firstName,
           lastName: d.lastName,
@@ -383,11 +411,18 @@ export async function getUsers(filter?: { search?: string; role?: string }): Pro
           createdAt: d.createdAt || undefined,
         }));
         if (search) {
-          list = list.filter(u => u.firstName.toLowerCase().includes(search) || u.lastName.toLowerCase().includes(search) || u.email.toLowerCase().includes(search));
+          list = list.filter(
+            (u) =>
+              u.firstName.toLowerCase().includes(search) ||
+              u.lastName.toLowerCase().includes(search) ||
+              u.email.toLowerCase().includes(search)
+          );
         }
         return list;
       }
-    } catch {}
+    } catch (err) {
+      console.warn('[erp-db] Supabase getUsers error:', err);
+    }
   }
 
   // 2. Query SQLite
@@ -400,7 +435,7 @@ export async function getUsers(filter?: { search?: string; role?: string }): Pro
       sql += ' AND role = ?';
       params.push(role);
     }
-    sql += ' ORDER BY userId ASC';
+    sql += ' ORDER BY userId DESC';
 
     const rows = db.prepare(sql).all(...params) as any[];
     let list: AppUser[] = rows.map((r) => ({
@@ -417,7 +452,12 @@ export async function getUsers(filter?: { search?: string; role?: string }): Pro
     }));
 
     if (search) {
-      list = list.filter(u => u.firstName.toLowerCase().includes(search) || u.lastName.toLowerCase().includes(search) || u.email.toLowerCase().includes(search));
+      list = list.filter(
+        (u) =>
+          u.firstName.toLowerCase().includes(search) ||
+          u.lastName.toLowerCase().includes(search) ||
+          u.email.toLowerCase().includes(search)
+      );
     }
 
     return list;
@@ -460,7 +500,7 @@ export async function createUser(payload: {
   // 1. Supabase Primary Mode
   if (isSupabaseConfigured()) {
     const supabase = getAdminClient();
-    const { data, error } = await supabase
+    const initialRes = await supabase
       .from('app_user')
       .insert({
         firstName: firstName.trim(),
@@ -477,27 +517,57 @@ export async function createUser(payload: {
       .select('userId, firstName, lastName, email, role, isBlocked, empNo, status, stamp, createdAt')
       .single();
 
-    if (error) {
-      if (error.code === '23505' || error.message?.includes('duplicate key') || error.message?.includes('already exists')) {
+    let record: any = initialRes.data;
+    let insertError = initialRes.error;
+
+    // Fallback: if Supabase doesn't have the createdAt column, retry without createdAt
+    if (insertError && (insertError.code === 'PGRST204' || insertError.message?.includes('createdAt'))) {
+      console.warn('[erp-db] Retrying Supabase user insert without createdAt column...');
+      const fallbackInsert = await supabase
+        .from('app_user')
+        .insert({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: cleanEmail,
+          passwordHash,
+          role,
+          isBlocked: false,
+          empNo,
+          status: 'Active',
+          stamp: `CREATED ${actor}`,
+        })
+        .select('userId, firstName, lastName, email, role, isBlocked, empNo, status, stamp')
+        .single();
+
+      record = fallbackInsert.data;
+      insertError = fallbackInsert.error;
+    }
+
+    if (insertError || !record) {
+      if (
+        insertError?.code === '23505' ||
+        insertError?.message?.includes('duplicate key') ||
+        insertError?.message?.includes('already exists')
+      ) {
         const err = new Error('Email already registered');
         (err as any).status = 409;
         throw err;
       }
-      console.error('[erp-db] Supabase user creation error:', error);
-      throw new Error(error.message || 'Failed to create user in Supabase');
+      console.error('[erp-db] Supabase user creation error:', insertError);
+      throw new Error(insertError?.message || 'Failed to create user in Supabase');
     }
 
     const createdUser: AppUser = {
-      userId: Number(data.userId),
-      firstName: data.firstName,
-      lastName: data.lastName,
-      email: data.email,
-      role: data.role as RoleName,
-      isBlocked: Boolean(data.isBlocked),
-      empNo: data.empNo || undefined,
-      status: data.status,
-      stamp: data.stamp,
-      createdAt: data.createdAt || createdAt,
+      userId: Number(record.userId),
+      firstName: record.firstName,
+      lastName: record.lastName,
+      email: record.email,
+      role: record.role as RoleName,
+      isBlocked: Boolean(record.isBlocked),
+      empNo: record.empNo || undefined,
+      status: record.status,
+      stamp: record.stamp,
+      createdAt: record.createdAt || createdAt,
     };
 
     // Mirror to local SQLite if writable, but NEVER fail the operation if SQLite errors
