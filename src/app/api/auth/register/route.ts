@@ -27,9 +27,9 @@ export async function POST(request: Request) {
     // STEP 1: SEND OTP (Verification Code Request)
     // =========================================================================
     if (action === 'send-otp') {
-      if (!firstName || !lastName || !cleanEmail || !password || !confirmPassword) {
+      if (!cleanEmail || !password) {
         return NextResponse.json(
-          { error: 'All fields are required (First Name, Last Name, Corporate Email, Password, Confirm Password)' },
+          { error: 'Email and password are required' },
           { status: 400 }
         );
       }
@@ -42,7 +42,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Password must be at least 8 characters long' }, { status: 400 });
       }
 
-      if (password !== confirmPassword) {
+      const effectiveConfirm = confirmPassword || password;
+      if (password !== effectiveConfirm) {
         return NextResponse.json({ error: 'Password and Confirm Password do not match' }, { status: 400 });
       }
 
@@ -55,18 +56,21 @@ export async function POST(request: Request) {
         );
       }
 
+      const effectiveFirst = (firstName || 'User').trim();
+      const effectiveLast = (lastName || 'Account').trim();
+
       // Generate 6-digit OTP and signed token
       const otpCode = generateNumericOtp(6);
       const token = createSignedOtpToken({
         email: cleanEmail,
         otp: otpCode,
         purpose: 'register',
-        data: { firstName: firstName.trim(), lastName: lastName.trim() },
+        data: { firstName: effectiveFirst, lastName: effectiveLast },
         ttlMinutes: 15,
       });
 
       // Dispatch live email to user
-      const sendResult = await sendRegistrationOtpEmail(cleanEmail, otpCode, firstName.trim());
+      const sendResult = await sendRegistrationOtpEmail(cleanEmail, otpCode, effectiveFirst);
 
       return NextResponse.json({
         otpSent: true,
@@ -77,8 +81,6 @@ export async function POST(request: Request) {
         email: cleanEmail,
         emailSent: sendResult.sent,
         provider: sendResult.provider,
-        // If email could not be sent (e.g. SMTP/Resend credentials not yet added in Vercel),
-        // or during development/testing, expose devOtp so evaluation is never blocked!
         devOtp: !sendResult.sent || process.env.NODE_ENV !== 'production' ? otpCode : undefined,
       });
     }
@@ -99,7 +101,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: verification.error || 'Invalid verification code' }, { status: 400 });
       }
 
-      // Determine user names (from request body or signed token data)
       const finalFirstName = (firstName || verification.data?.firstName || 'User').trim();
       const finalLastName = (lastName || verification.data?.lastName || 'Account').trim();
 
@@ -107,7 +108,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Password is required to finalize account' }, { status: 400 });
       }
 
-      // Check again for duplicate email
       const existingUser = await getUserByEmail(cleanEmail);
       if (existingUser) {
         return NextResponse.json(
@@ -116,7 +116,6 @@ export async function POST(request: Request) {
         );
       }
 
-      // Create user with default 'User' role
       const newUser = await createUser({
         firstName: finalFirstName,
         lastName: finalLastName,
@@ -130,6 +129,7 @@ export async function POST(request: Request) {
         {
           message: 'Registration successful! Your corporate account has been verified and created.',
           user: newUser,
+          ...newUser,
         },
         { status: 201 }
       );
@@ -140,7 +140,7 @@ export async function POST(request: Request) {
     // =========================================================================
     if (!cleanEmail || !password) {
       return NextResponse.json(
-        { error: 'All fields are required (First Name, Last Name, Email, Password, Confirm Password)' },
+        { error: 'Email and password are required' },
         { status: 400 }
       );
     }
@@ -153,7 +153,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Password must be at least 8 characters long' }, { status: 400 });
     }
 
-    if (confirmPassword && password !== confirmPassword) {
+    const effectiveConfirm = confirmPassword || password;
+    if (password !== effectiveConfirm) {
       return NextResponse.json({ error: 'Password and Confirm Password do not match' }, { status: 400 });
     }
 
@@ -170,11 +171,12 @@ export async function POST(request: Request) {
       {
         message: 'Registration successful! You may now sign in with your credentials.',
         user: newUser,
+        ...newUser,
       },
       { status: 201 }
     );
   } catch (err: any) {
-    if (err.status === 409 || err.message?.includes('already registered')) {
+    if (err.status === 409 || err.code === '23505' || err.message?.includes('already registered')) {
       return NextResponse.json(
         { error: 'An account with this email address is already registered.' },
         { status: 409 }
@@ -182,8 +184,8 @@ export async function POST(request: Request) {
     }
     console.error('[API /api/auth/register] error:', err);
     return NextResponse.json(
-      { error: err.message || 'Internal server error occurred during registration' },
-      { status: err.status || 500 }
+      { error: err.message || 'Registration failed due to a server error. Please try again later.' },
+      { status: err.status && err.status < 500 ? err.status : 500 }
     );
   }
 }

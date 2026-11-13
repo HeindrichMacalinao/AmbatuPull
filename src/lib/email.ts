@@ -2,6 +2,22 @@
 
 import nodemailer from 'nodemailer';
 
+export class EmailConfigError extends Error {
+  readonly isConfigError = true;
+  constructor(message: string) {
+    super(message);
+    this.name = 'EmailConfigError';
+  }
+}
+
+export class EmailDeliveryError extends Error {
+  readonly isDeliveryError = true;
+  constructor(message: string, public readonly cause?: unknown, public readonly rawToken?: string) {
+    super(message);
+    this.name = 'EmailDeliveryError';
+  }
+}
+
 export interface SendEmailOptions {
   to: string;
   subject: string;
@@ -20,7 +36,7 @@ export interface SendEmailResult {
  * Universal email dispatcher for Hope, Inc. ERP.
  * Supports:
  * 1. Resend API (via RESEND_API_KEY)
- * 2. SMTP (via SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM)
+ * 2. SMTP (via SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS / SMTP_PASSWORD, SMTP_FROM)
  * 3. Graceful fallback logging when credentials are not yet configured in Vercel.
  */
 export async function sendEmail(options: SendEmailOptions): Promise<SendEmailResult> {
@@ -72,19 +88,19 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
     }
   }
 
-  // 2. Try SMTP if SMTP_HOST and SMTP_USER are configured
-  const smtpHost = process.env.SMTP_HOST;
-  const smtpUser = process.env.SMTP_USER;
+  // 2. Try SMTP if SMTP_HOST is configured
+  const smtpHost = process.env.SMTP_HOST?.trim();
+  const smtpUser = process.env.SMTP_USER?.trim();
   const smtpPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD;
   const smtpPort = Number(process.env.SMTP_PORT) || 587;
 
-  if (smtpHost && (smtpUser || smtpPass)) {
+  if (smtpHost && (smtpUser || smtpPass || process.env.SMTP_FROM)) {
     try {
       const transporter = nodemailer.createTransport({
         host: smtpHost,
         port: smtpPort,
-        secure: smtpPort === 465, // true for 465, false for 587 or other ports
-        auth: smtpUser ? { user: smtpUser, pass: smtpPass } : undefined,
+        secure: process.env.SMTP_SECURE === 'true' || smtpPort === 465,
+        auth: smtpUser && smtpPass ? { user: smtpUser, pass: smtpPass } : undefined,
         tls: {
           rejectUnauthorized: process.env.NODE_ENV === 'production',
         },
@@ -257,4 +273,28 @@ export async function sendPasswordResetOtpEmail(
   `;
 
   return sendEmail({ to: email, subject, html });
+}
+
+/**
+ * Backward-compatible helper for sendPasswordResetEmail.
+ */
+export async function sendPasswordResetEmail(options: {
+  recipient: string;
+  recipientName?: string;
+  resetLink: string;
+  expiresInMinutes?: number;
+}): Promise<boolean> {
+  const result = await sendEmail({
+    to: options.recipient,
+    subject: 'Reset your Hope, Inc. ERP password',
+    html: `
+      <p>Hello ${options.recipientName || ''},</p>
+      <p>We received a request to reset your Hope, Inc. ERP password.</p>
+      <p><a href="${options.resetLink}">Choose a new password</a></p>
+      <p>This link expires in ${options.expiresInMinutes || 15} minutes and can only be used once.</p>
+      <p>If you did not request this change, you can ignore this email.</p>
+    `,
+    text: `We received a request to reset your Hope, Inc. ERP password. Use this link: ${options.resetLink}`,
+  });
+  return result.sent;
 }

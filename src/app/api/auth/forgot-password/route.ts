@@ -3,7 +3,7 @@
 import { NextResponse } from 'next/server';
 import { requestPasswordReset, getUserByEmail } from '@/lib/erp-db';
 import { generateNumericOtp, createSignedOtpToken } from '@/lib/otp';
-import { sendPasswordResetOtpEmail } from '@/lib/email';
+import { sendPasswordResetOtpEmail, EmailConfigError, EmailDeliveryError, SendEmailResult } from '@/lib/email';
 
 export async function POST(request: Request) {
   try {
@@ -46,7 +46,16 @@ export async function POST(request: Request) {
     const resetLink = `${appUrl.replace(/\/$/, '')}/reset-password?email=${encodeURIComponent(cleanEmail)}&token=${otpCode}`;
 
     // 5. Send live email
-    const sendResult = await sendPasswordResetOtpEmail(cleanEmail, otpCode, resetLink);
+    let sendResult: SendEmailResult = { sent: false, provider: 'none', error: undefined };
+    try {
+      sendResult = await sendPasswordResetOtpEmail(cleanEmail, otpCode, resetLink);
+    } catch (err: any) {
+      if (err instanceof EmailConfigError || err?.isConfigError) {
+        console.error('[API /api/auth/forgot-password] Email configuration error:', err);
+      } else if (err instanceof EmailDeliveryError || err?.isDeliveryError) {
+        console.error('[API /api/auth/forgot-password] Email delivery failure:', err);
+      }
+    }
 
     return NextResponse.json({
       message: 'If the provided email is registered, a password recovery code has been sent to your inbox.',

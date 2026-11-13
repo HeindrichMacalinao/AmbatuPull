@@ -43,7 +43,7 @@
 3. Choose your region (e.g., `Singapore` or closest to your users).
 
 ### Step 2: Apply Migrations & Seed Data
-In your Supabase project dashboard, navigate to the **SQL Editor** tab (left sidebar) and run the three migration files located in `supabase/migrations/` in order:
+In your Supabase project dashboard, navigate to the **SQL Editor** tab (left sidebar) and run the migration files located in `supabase/migrations/` in order:
 
 1. **`supabase/migrations/20261108_001_core_erp_schema.sql`**
    - Creates the 10 foundational ERP tables (`CUSTOMER`, `PRODUCT`, `PRICEHIST`, `DEPARTMENT`, `JOB`, `EMPLOYEE`, `JOBHISTORY`, `SALES`, `SALESDETAIL`, `PAYMENT`).
@@ -51,6 +51,8 @@ In your Supabase project dashboard, navigate to the **SQL Editor** tab (left sid
    - Creates `role`, `module`, `rights`, `app_user`, `user_permission`, `audit_log`, and indexes.
 3. **`supabase/migrations/20261108_003_seed_data.sql`**
    - Seeds the 5 core modules, 36 granular rights, initial Superadmin/Admin/User roles, and demo accounts.
+4. **`supabase/migrations/20261113_004_app_user_created_at.sql`**
+   - Adds `createdAt` column to `app_user` with `NOT NULL DEFAULT CURRENT_TIMESTAMP` and notifies PostgREST to reload schema (`NOTIFY pgrst, 'reload schema';`).
 
 ### Step 3: Copy API Credentials
 Go to **Project Settings** -> **API** and copy:
@@ -86,20 +88,40 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## 4. Deploying to Vercel
 
 ### Option A: Via GitHub Integration (Recommended)
-1. Commit and push the branch `mentor_feedback_refactor`:
-   ```bash
-   git add .
-   git commit -m "feat: migrate tech stack to Next.js, Supabase, and Vercel"
-   git push origin mentor_feedback_refactor
-   ```
+1. Commit and push the branch to your GitHub repository (`AmbatuPull`).
 2. Go to [vercel.com](https://vercel.com) and click **Add New...** -> **Project**.
 3. Import your GitHub repository (`AmbatuPull`).
-4. Select `mentor_feedback_refactor` as the branch (or merge into `main` after review).
-5. In the **Environment Variables** section, add:
-   - `NEXT_PUBLIC_SUPABASE_URL` = `your-supabase-url`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `your-supabase-anon-key`
-   - `SUPABASE_SERVICE_ROLE_KEY` = `your-supabase-service-role-key`
-6. Click **Deploy**. Vercel will automatically build and assign a production URL (e.g. `https://ambatupull-erp.vercel.app`).
+4. In the **Environment Variables** section, add the required variables:
+
+#### Required Production Environment Variables
+| Variable | Value / Description | Example |
+| :--- | :--- | :--- |
+| `NEXT_PUBLIC_APP_URL` | Deployed domain (NOT `localhost`) | `https://ambatupull-erp.vercel.app` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase Project URL | `https://your-project.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Anon Public Key | `eyJhbGciOi...` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Service Role Secret Key | `eyJhbGciOi...` |
+| `SMTP_HOST` | Outgoing SMTP mail server | `smtp.gmail.com` |
+| `SMTP_PORT` | SMTP port | `587` |
+| `SMTP_SECURE` | TLS security flag (`false` for 587 STARTTLS, `true` for 465) | `false` |
+| `SMTP_USER` | SMTP username / email | `your-email@gmail.com` |
+| `SMTP_PASSWORD` | SMTP password / App Password | `abcd efgh ijkl mnop` |
+| `SMTP_FROM` | Sender display header | `"Hope, Inc. ERP" <your-email@gmail.com>` |
+
+#### Working Example: Gmail SMTP with Google App Password
+1. In your Google Account: Navigate to **Security** -> **2-Step Verification** -> **App passwords**.
+2. Create an App password (name it e.g. "Hope ERP Vercel"). Copy the generated 16-character code (e.g. `abcd efgh ijkl mnop`).
+3. Set the following environment variables in Vercel:
+   - `SMTP_HOST`: `smtp.gmail.com`
+   - `SMTP_PORT`: `587`
+   - `SMTP_SECURE`: `false`
+   - `SMTP_USER`: `your-account@gmail.com`
+   - `SMTP_PASSWORD`: `abcdefghijklmnop` (your 16-character App Password, without spaces)
+   - `SMTP_FROM`: `"Hope, Inc. ERP" <your-account@gmail.com>`
+   - `NEXT_PUBLIC_APP_URL`: `https://your-deployment-name.vercel.app` (your actual Vercel domain, without trailing slash)
+
+> **Important**: Vercel loads environment variables at build/startup time. Whenever you add or update environment variables in the Vercel Dashboard (Settings -> Environment Variables), **you must trigger a manual redeploy** (Deployments -> click "..." on latest deployment -> Redeploy) or push a new commit for the changes to take effect.
+
+5. Click **Deploy**. Vercel will automatically build and assign a production URL (e.g. `https://ambatupull-erp.vercel.app`).
 
 ### Option B: Via Vercel CLI
 ```bash
