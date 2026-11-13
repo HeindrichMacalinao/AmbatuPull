@@ -1,5 +1,21 @@
 import nodemailer from 'nodemailer';
 
+export class EmailConfigError extends Error {
+  readonly isConfigError = true;
+  constructor(message: string) {
+    super(message);
+    this.name = 'EmailConfigError';
+  }
+}
+
+export class EmailDeliveryError extends Error {
+  readonly isDeliveryError = true;
+  constructor(message: string, public readonly cause?: unknown) {
+    super(message);
+    this.name = 'EmailDeliveryError';
+  }
+}
+
 type PasswordResetEmail = {
   recipient: string;
   recipientName?: string;
@@ -22,14 +38,14 @@ function getEmailConfig() {
 
   if (!host || !from) {
     if (isProduction() || hasAnySmtpSetting) {
-      throw new Error('SMTP_HOST and SMTP_FROM must be configured for email delivery');
+      throw new EmailConfigError('SMTP_HOST and SMTP_FROM must be configured for email delivery');
     }
     return null;
   }
 
   const port = Number(process.env.SMTP_PORT || 587);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error('SMTP_PORT must be an integer between 1 and 65535');
+    throw new EmailConfigError('SMTP_PORT must be an integer between 1 and 65535');
   }
 
   const user = process.env.SMTP_USER?.trim();
@@ -79,27 +95,30 @@ export async function sendPasswordResetEmail({
   });
   const greeting = recipientName ? `Hello ${escapeHtml(recipientName)},` : 'Hello,';
 
-  await transporter.sendMail({
-    from: config.from,
-    to: recipient,
-    subject: 'Reset your Hope, Inc. ERP password',
-    text: [
-      recipientName ? `Hello ${recipientName},` : 'Hello,',
-      '',
-      'We received a request to reset your Hope, Inc. ERP password.',
-      `Use this link to choose a new password: ${resetLink}`,
-      `This link expires in ${expiresInMinutes} minutes and can only be used once.`,
-      '',
-      'If you did not request this change, you can ignore this email.',
-    ].join('\n'),
-    html: `
-      <p>${greeting}</p>
-      <p>We received a request to reset your Hope, Inc. ERP password.</p>
-      <p><a href="${escapeHtml(resetLink)}">Choose a new password</a></p>
-      <p>This link expires in ${expiresInMinutes} minutes and can only be used once.</p>
-      <p>If you did not request this change, you can ignore this email.</p>
-    `,
-  });
-
-  return true;
+  try {
+    await transporter.sendMail({
+      from: config.from,
+      to: recipient,
+      subject: 'Reset your Hope, Inc. ERP password',
+      text: [
+        recipientName ? `Hello ${recipientName},` : 'Hello,',
+        '',
+        'We received a request to reset your Hope, Inc. ERP password.',
+        `Use this link to choose a new password: ${resetLink}`,
+        `This link expires in ${expiresInMinutes} minutes and can only be used once.`,
+        '',
+        'If you did not request this change, you can ignore this email.',
+      ].join('\n'),
+      html: `
+        <p>${greeting}</p>
+        <p>We received a request to reset your Hope, Inc. ERP password.</p>
+        <p><a href="${escapeHtml(resetLink)}">Choose a new password</a></p>
+        <p>This link expires in ${expiresInMinutes} minutes and can only be used once.</p>
+        <p>If you did not request this change, you can ignore this email.</p>
+      `,
+    });
+    return true;
+  } catch (err: any) {
+    throw new EmailDeliveryError(err?.message || 'Failed to send password reset email', err);
+  }
 }

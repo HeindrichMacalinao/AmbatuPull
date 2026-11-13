@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { DatabaseSync } from 'node:sqlite';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { sendPasswordResetEmail } from '@/lib/email';
+import { sendPasswordResetEmail, EmailDeliveryError } from '@/lib/email';
 import type { AppUser, RoleName } from '@/types/erp';
 
 // ------------------------------------------------------------------------------
@@ -861,40 +861,70 @@ export async function requestPasswordReset(email: string): Promise<string | null
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
   if (isSupabaseConfigured()) {
-    try {
-      const supabase = getAdminClient();
-      await supabase.from('password_reset_token').update({ isUsed: true }).eq('userId', user.userId);
-      await supabase.from('password_reset_token').insert({
+    const supabase = getAdminClient();
+    const { error: updateError } = await supabase
+      .from('password_reset_token')
+      .update({ isUsed: true })
+      .eq('userId', user.userId);
+    if (updateError) {
+      console.warn('[erp-db] Supabase invalidate prior tokens error:', updateError);
+    }
+
+    const { error: insertError } = await supabase
+      .from('password_reset_token')
+      .insert({
         userId: user.userId,
         tokenHash,
         expiresAt,
         isUsed: false,
       });
-    } catch (e) {
-      console.warn('[erp-db] Supabase password reset notice:', e);
+
+    if (insertError) {
+      console.error('[erp-db] Supabase password reset token insert failed:', insertError);
+      throw new Error(`Failed to save password reset token: ${insertError.message}`);
+    }
+
+    try {
+      const db = getSqliteDb();
+      db.prepare('UPDATE password_reset_token SET isUsed = 1 WHERE userId = ?').run(user.userId);
+      db.prepare(`
+        INSERT INTO password_reset_token (userId, tokenHash, expiresAt, isUsed)
+        VALUES (?, ?, ?, 0)
+      `).run(user.userId, tokenHash, expiresAt);
+    } catch {}
+  } else {
+    try {
+      const db = getSqliteDb();
+      db.prepare('UPDATE password_reset_token SET isUsed = 1 WHERE userId = ?').run(user.userId);
+      db.prepare(`
+        INSERT INTO password_reset_token (userId, tokenHash, expiresAt, isUsed)
+        VALUES (?, ?, ?, 0)
+      `).run(user.userId, tokenHash, expiresAt);
+    } catch (sqliteErr: any) {
+      console.error('[erp-db] SQLite password reset token insert failed:', sqliteErr);
+      throw new Error('Failed to save password reset token in local database');
     }
   }
-
-  try {
-    const db = getSqliteDb();
-    db.prepare('UPDATE password_reset_token SET isUsed = 1 WHERE userId = ?').run(user.userId);
-    db.prepare(`
-      INSERT INTO password_reset_token (userId, tokenHash, expiresAt, isUsed)
-      VALUES (?, ?, ?, 0)
-    `).run(user.userId, tokenHash, expiresAt);
-  } catch {}
 
   const baseUrl = (
     process.env.NEXT_PUBLIC_APP_URL ||
     process.env.APP_URL ||
     'http://localhost:3000'
   ).replace(/\/$/, '');
-  await sendPasswordResetEmail({
-    recipient: user.email,
-    recipientName: `${user.firstName} ${user.lastName}`.trim(),
-    resetLink: `${baseUrl}/reset-password?token=${rawToken}`,
-    expiresInMinutes: 60,
-  });
+
+  try {
+    await sendPasswordResetEmail({
+      recipient: user.email,
+      recipientName: `${user.firstName} ${user.lastName}`.trim(),
+      resetLink: `${baseUrl}/reset-password?token=${rawToken}`,
+      expiresInMinutes: 60,
+    });
+  } catch (emailErr: any) {
+    if (emailErr instanceof EmailDeliveryError || emailErr?.isDeliveryError) {
+      (emailErr as any).rawToken = rawToken;
+    }
+    throw emailErr;
+  }
 
   return rawToken;
 }
@@ -906,7 +936,7 @@ export async function completePasswordReset(token: string, newPassword: string):
 
   if (isSupabaseConfigured()) {
     const supabase = getAdminClient();
-    const { data: tokenRow } = await supabase
+    const { data: tokenRow, error: tokenError } = await supabase
       .from('password_reset_token')
       .select('*')
       .eq('tokenHash', tokenHash)
@@ -914,14 +944,28 @@ export async function completePasswordReset(token: string, newPassword: string):
       .gt('expiresAt', new Date().toISOString())
       .maybeSingle();
 
-    if (!tokenRow) {
+    if (tokenError || !tokenRow) {
       const err = new Error('Invalid, expired, or already used password reset token');
       (err as any).status = 400;
       throw err;
     }
 
-    await supabase.from('app_user').update({ passwordHash: newHash }).eq('userId', tokenRow.userId);
-    await supabase.from('password_reset_token').update({ isUsed: true, usedAt: new Date().toISOString() }).eq('id', tokenRow.id);
+    const { error: userUpdateError } = await supabase
+      .from('app_user')
+      .update({ passwordHash: newHash })
+      .eq('userId', tokenRow.userId);
+    if (userUpdateError) {
+      console.error('[erp-db] Supabase password update failed:', userUpdateError);
+      throw new Error('Failed to update password');
+    }
+
+    const { error: markUsedError } = await supabase
+      .from('password_reset_token')
+      .update({ isUsed: true, usedAt: new Date().toISOString() })
+      .eq('id', tokenRow.id);
+    if (markUsedError) {
+      console.warn('[erp-db] Supabase mark token used warning:', markUsedError);
+    }
 
     try {
       const db = getSqliteDb();
