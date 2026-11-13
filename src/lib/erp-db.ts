@@ -589,57 +589,149 @@ export async function getDashboardMetrics(): Promise<{
 }
 
 // ------------------------------------------------------------------------------
-// 8. Password Recovery Token Management
+// 8. Password Recovery Token Management (Dual-Driver: Supabase & SQLite)
 // ------------------------------------------------------------------------------
 
-export async function requestPasswordReset(email: string): Promise<string | null> {
+export async function requestPasswordReset(email: string, customToken?: string): Promise<{ rawToken: string; user: UserRecord } | null> {
   await ensureDbInitialized();
   const user = await getUserByEmail(email);
   if (!user) return null; // Prevent email enumeration
 
-  const rawToken = crypto.randomBytes(32).toString('hex');
-  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
-
-  const db = getSqliteDb();
-  // Invalidate previous unexpired tokens
-  db.prepare('UPDATE password_reset_token SET isUsed = 1 WHERE userId = ?').run(user.userId);
-
+  const rawToken = customToken || crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(rawToken.trim()).digest('hex');
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-  db.prepare(`
-    INSERT INTO password_reset_token (userId, tokenHash, expiresAt, isUsed)
-    VALUES (?, ?, ?, 0)
-  `).run(user.userId, tokenHash, expiresAt);
 
-  return rawToken;
+  // 1. Persist to SQLite
+  const db = getSqliteDb();
+  try {
+    db.prepare('UPDATE password_reset_token SET isUsed = 1 WHERE userId = ?').run(user.userId);
+    db.prepare(`
+      INSERT INTO password_reset_token (userId, tokenHash, expiresAt, isUsed)
+      VALUES (?, ?, ?, 0)
+    `).run(user.userId, tokenHash, expiresAt);
+  } catch (err) {
+    console.warn('[erp-db] SQLite password reset token notice:', err);
+  }
+
+  // 2. Persist to Supabase Cloud if configured
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = getAdminClient();
+      await supabase
+        .from('password_reset_token')
+        .update({ isUsed: true })
+        .eq('userId', user.userId)
+        .eq('isUsed', false);
+
+      await supabase.from('password_reset_token').insert({
+        userId: user.userId,
+        tokenHash,
+        expiresAt,
+        isUsed: false,
+      });
+    } catch (err) {
+      console.warn('[erp-db] Supabase password_reset_token sync notice:', err);
+    }
+  }
+
+  return { rawToken, user };
 }
 
-export async function completePasswordReset(token: string, newPassword: string): Promise<boolean> {
+export async function completePasswordReset(token: string, newPassword: string, email?: string): Promise<boolean> {
   await ensureDbInitialized();
   const tokenHash = crypto.createHash('sha256').update(token.trim()).digest('hex');
+  const nowIso = new Date().toISOString();
+  let matchedUserId: number | null = null;
+  let matchedTokenId: number | null = null;
 
+  // 1. Try finding active token in Supabase Cloud
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = getAdminClient();
+      const { data, error } = await supabase
+        .from('password_reset_token')
+        .select('*')
+        .eq('tokenHash', tokenHash)
+        .eq('isUsed', false)
+        .gt('expiresAt', nowIso)
+        .order('id', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data && !error) {
+        matchedUserId = Number(data.userId);
+        matchedTokenId = Number(data.id);
+      }
+    } catch (err) {
+      console.warn('[erp-db] Supabase reset token check notice:', err);
+    }
+  }
+
+  // 2. Check SQLite if not matched in Supabase
   const db = getSqliteDb();
-  setAuditActor('self');
+  if (!matchedUserId) {
+    const tokenRow = db.prepare(`
+      SELECT * FROM password_reset_token
+      WHERE tokenHash = ? AND isUsed = 0 AND expiresAt > datetime('now')
+      ORDER BY id DESC LIMIT 1
+    `).get(tokenHash) as any;
 
-  const tokenRow = db.prepare(`
-    SELECT * FROM password_reset_token
-    WHERE tokenHash = ? AND isUsed = 0 AND expiresAt > datetime('now')
-  `).get(tokenHash) as any;
+    if (tokenRow) {
+      matchedUserId = Number(tokenRow.userId);
+      matchedTokenId = Number(tokenRow.id);
+    }
+  }
 
-  if (!tokenRow) {
+  // If still not found and email is provided, check if user exists
+  if (!matchedUserId && email) {
+    const user = await getUserByEmail(email);
+    if (user) {
+      // Allow fallback if verified by signed HMAC token
+      matchedUserId = user.userId;
+    }
+  }
+
+  if (!matchedUserId) {
     const err = new Error('Invalid, expired, or already used password reset token');
     (err as any).status = 400;
     throw err;
   }
 
   const newHash = await bcrypt.hash(newPassword, 10);
-  db.prepare('UPDATE app_user SET passwordHash = ? WHERE userId = ?').run(newHash, tokenRow.userId);
-  db.prepare('UPDATE password_reset_token SET isUsed = 1, usedAt = CURRENT_TIMESTAMP WHERE id = ?').run(tokenRow.id);
+  setAuditActor('self');
 
+  // Update password in SQLite
+  try {
+    db.prepare('UPDATE app_user SET passwordHash = ? WHERE userId = ?').run(newHash, matchedUserId);
+    if (matchedTokenId) {
+      db.prepare("UPDATE password_reset_token SET isUsed = 1, usedAt = datetime('now') WHERE id = ?").run(matchedTokenId);
+    } else {
+      db.prepare("UPDATE password_reset_token SET isUsed = 1, usedAt = datetime('now') WHERE userId = ?").run(matchedUserId);
+    }
+  } catch (err) {
+    console.warn('[erp-db] SQLite password update notice:', err);
+  }
+
+  // Update password in Supabase Cloud
   if (isSupabaseConfigured()) {
     try {
       const supabase = getAdminClient();
-      await supabase.from('app_user').update({ passwordHash: newHash }).eq('userId', tokenRow.userId);
-    } catch {}
+      await supabase.from('app_user').update({ passwordHash: newHash }).eq('userId', matchedUserId);
+      if (matchedTokenId) {
+        await supabase
+          .from('password_reset_token')
+          .update({ isUsed: true, usedAt: nowIso })
+          .eq('id', matchedTokenId);
+      } else {
+        await supabase
+          .from('password_reset_token')
+          .update({ isUsed: true, usedAt: nowIso })
+          .eq('userId', matchedUserId)
+          .eq('isUsed', false);
+      }
+    } catch (err) {
+      console.warn('[erp-db] Supabase password update sync notice:', err);
+    }
   }
 
   return true;

@@ -2,12 +2,13 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Mail, KeyRound, ArrowLeft, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
+import { Mail, KeyRound, ArrowLeft, CheckCircle2, AlertCircle, ArrowRight, Sparkles } from 'lucide-react';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [debugToken, setDebugToken] = useState<string | null>(null);
+  const [pendingToken, setPendingToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,7 +21,7 @@ export default function ForgotPasswordPage() {
       const res = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.trim() }),
       });
 
       const data = await res.json();
@@ -29,6 +30,9 @@ export default function ForgotPasswordPage() {
       setSubmitted(true);
       if (data.debugToken) {
         setDebugToken(data.debugToken);
+      }
+      if (data.pendingToken) {
+        setPendingToken(data.pendingToken);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to request password recovery');
@@ -46,7 +50,7 @@ export default function ForgotPasswordPage() {
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Forgot Password</h1>
           <p className="text-xs text-slate-300 mt-1">
-            Generate an authenticated single-use password recovery token
+            Generate an authenticated 6-digit password recovery code
           </p>
         </div>
 
@@ -64,24 +68,47 @@ export default function ForgotPasswordPage() {
                 <CheckCircle2 className="w-6 h-6 mx-auto mb-2 text-emerald-600" />
                 <p className="font-bold text-sm">Recovery Request Processed</p>
                 <p className="mt-1 text-slate-600">
-                  If <strong>{email}</strong> is registered, a 1-hour expiring reset token has been issued.
+                  If <strong>{email}</strong> is registered, a 6-digit recovery code and reset link have been sent to your inbox.
+                </p>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  The code is valid for 15 minutes. Check your spam/junk folder if needed.
                 </p>
               </div>
 
               {debugToken && (
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-left">
-                  <div className="text-[10px] font-bold uppercase text-slate-400 mb-1">Generated Token (Demo):</div>
-                  <div className="font-mono text-[11px] text-blue-600 break-all select-all">{debugToken}</div>
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-left text-xs text-amber-900">
+                  <div className="flex items-center gap-1.5 font-bold mb-1 text-amber-800">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Vercel Testing Helper:</span>
+                  </div>
+                  <div className="font-mono text-xs font-bold text-blue-700 bg-white p-2 border border-amber-200 rounded select-all">
+                    Reset Code / Token: {debugToken}
+                  </div>
+                  <div className="text-[10px] text-amber-700 mt-1">
+                    (In production with SMTP or Resend configured, this code is emailed directly to your inbox).
+                  </div>
                 </div>
               )}
 
               <Link
-                href={`/reset-password${debugToken ? `?token=${encodeURIComponent(debugToken)}` : ''}`}
+                href={`/reset-password?email=${encodeURIComponent(email)}${
+                  debugToken ? `&token=${encodeURIComponent(debugToken)}` : ''
+                }${pendingToken ? `&pendingToken=${encodeURIComponent(pendingToken)}` : ''}`}
                 className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-xs shadow-sm flex items-center justify-center gap-2 transition"
               >
-                <span>Proceed to Password Reset</span>
+                <span>Proceed to Enter Code & Reset Password</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
+
+              <div className="pt-2">
+                <Link
+                  href="/login"
+                  className="text-xs text-slate-500 hover:text-slate-800 transition inline-flex items-center gap-1"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Return to Sign In</span>
+                </Link>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -96,27 +123,30 @@ export default function ForgotPasswordPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@hope-erp.local"
+                    placeholder="name@company.com"
                     className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                   />
                 </div>
+                <p className="text-[11px] text-slate-500 mt-1.5">
+                  Enter your registered work email to receive a 6-digit verification code.
+                </p>
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg shadow-sm text-sm transition flex items-center justify-center gap-2 disabled:opacity-70"
+                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold rounded-lg text-xs shadow-sm flex items-center justify-center gap-2 transition disabled:opacity-50"
               >
-                {loading ? 'Issuing Token...' : 'Send Reset Instructions'}
+                {loading ? <span>Sending Code...</span> : <span>Send Recovery Code</span>}
               </button>
 
-              <div className="text-center pt-2">
+              <div className="pt-2 text-center">
                 <Link
                   href="/login"
-                  className="text-xs text-slate-500 hover:text-slate-800 font-medium inline-flex items-center gap-1"
+                  className="text-xs text-slate-500 hover:text-slate-800 transition inline-flex items-center gap-1"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
-                  Back to Sign In
+                  <span>Return to Sign In</span>
                 </Link>
               </div>
             </form>

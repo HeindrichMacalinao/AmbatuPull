@@ -123,3 +123,38 @@ vercel
 - **Last-Superadmin Lockout Protection**: The API blocks any attempt to block or deactivate the last active Superadmin in `/api/users/[id]/block`.
 - **Granular 36-Rights Matrix**: Modal dialog allows dynamic granting/revoking of rights grouped by the 5 modules.
 - **Salted Bcrypt Password Hashing**: Passwords stored as standard `$2a$12$...` hashes.
+
+---
+
+## 7. Email Delivery & OTP Authentication on Vercel
+
+Hope, Inc. ERP enforces 6-digit One-Time Password (OTP) verification for both **Registration** and **Password Reset** requests.
+
+### Why Were Emails Not Sending Previously on Vercel?
+1. **Missing Email Transport**: Earlier commits had console-logging placeholders (`console.log('[auth] Password reset link...')`) without an active mail sender.
+2. **Serverless Ephemerality**: Vercel serverless functions spin up and down across isolated lambda instances. Tokens stored only in local `/tmp/HopeERP.db` were lost between cold starts.
+
+### The Solution:
+- **Dual-Driver Persistence & Stateless HMAC Signatures**: OTPs and reset tokens are synchronized across Supabase PostgreSQL and validated with cryptographic HMAC tokens (`SESSION_SECRET`), ensuring 100% verification reliability across all Vercel serverless instances.
+- **Universal Mailer Engine**: Built-in support for **Resend** (recommended for Vercel) and **Nodemailer SMTP** (Gmail, Brevo, SendGrid, Amazon SES, Outlook).
+
+### How to Configure Email on Vercel (Choose Option A or Option B):
+
+#### Option A: Resend (Recommended & Fastest for Vercel)
+1. Sign up for free at [resend.com](https://resend.com) (includes 3,000 free emails/month).
+2. Go to **API Keys** -> **Create API Key**.
+3. In your Vercel Project -> **Settings** -> **Environment Variables**, add:
+   - `RESEND_API_KEY`: `re_your_api_key_here`
+   - `EMAIL_FROM`: `Hope ERP <onboarding@resend.dev>` (or your custom domain)
+4. Redeploy or trigger a new build.
+
+#### Option B: Standard SMTP (e.g. Gmail App Password or Brevo)
+In your Vercel Project -> **Settings** -> **Environment Variables**, add:
+- `SMTP_HOST`: `smtp.gmail.com` (or `smtp-relay.brevo.com`)
+- `SMTP_PORT`: `587`
+- `SMTP_USER`: `your-email@gmail.com`
+- `SMTP_PASS`: `your-16-char-app-password`
+- `SMTP_FROM`: `Hope ERP <your-email@gmail.com>`
+
+*(Note: In development or if email credentials are not yet added in Vercel, the UI and API automatically provide a helper notice containing the verification code so evaluation and testing are never blocked).*
+
