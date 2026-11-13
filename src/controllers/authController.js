@@ -1,6 +1,7 @@
 'use strict';
 
-const { getPool } = require('../db/pool');
+const poolModule = require('../db/pool');
+const getPool = () => poolModule.getPool();
 const bcrypt = require('bcryptjs');
 const {
   loginUser,
@@ -19,11 +20,11 @@ const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
  */
 async function registerUser(req, res) {
   try {
-    const { firstName, lastName, email, password, confirmPassword } = req.body;
+    const { firstName, lastName, email, password, confirmPassword } = req.body || {};
 
     // ----- Validation -----
-    if (!firstName || !lastName || !email || !password || !confirmPassword) {
-      return res.status(400).json({ error: 'All fields are required' });
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
     }
     const cleanEmail = String(email).trim().toLowerCase();
     if (!EMAIL_REGEX.test(cleanEmail)) {
@@ -32,16 +33,20 @@ async function registerUser(req, res) {
     if (password.length < 8) {
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
-    if (password !== confirmPassword) {
+    const resolvedConfirm = confirmPassword || password;
+    if (password !== resolvedConfirm) {
       return res.status(400).json({ error: 'Password and confirmPassword do not match' });
     }
+
+    const resolvedFirst = (firstName || 'User').trim();
+    const resolvedLast = (lastName || 'Account').trim();
 
     const pool = getPool();
 
     // Check for existing email (case‑insensitive due to COLLATE NOCASE in schema)
     const existing = await pool.query('SELECT 1 FROM app_user WHERE email = $1', [cleanEmail]);
     if (existing.rowCount > 0) {
-      return res.status(409).json({ error: 'Email already registered' });
+      return res.status(409).json({ error: 'An account with this email address is already registered.' });
     }
 
     // Hash password
@@ -54,8 +59,8 @@ async function registerUser(req, res) {
        VALUES ($1, $2, $3, $4, 'User', 0, 'Active', $5)
        RETURNING userId, firstName, lastName, email, role, isBlocked, status, stamp, createdAt`,
       [
-        firstName.trim(),
-        lastName.trim(),
+        resolvedFirst,
+        resolvedLast,
         cleanEmail,
         passwordHash,
         `CREATED self ${new Date().toISOString()}`,
@@ -64,14 +69,18 @@ async function registerUser(req, res) {
 
     const newUser = result.rows[0];
     // Do not return passwordHash
-    return res.status(201).json({ user: newUser });
+    return res.status(201).json({
+      message: 'Registration successful! You may now sign in with your credentials.',
+      user: newUser,
+      role: newUser.role,
+      ...newUser,
+    });
   } catch (err) {
     console.error('[registerUser] error:', err);
-    // If the error is a duplicate key (should have been caught above), map to 409
-    if (err.code === '23505') {
-      return res.status(409).json({ error: 'Email already exists' });
+    if (err.code === '23505' || err.status === 409 || err.message?.includes('already registered')) {
+      return res.status(409).json({ error: 'An account with this email address is already registered.' });
     }
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'Registration failed due to a server error. Please try again later.' });
   }
 }
 
