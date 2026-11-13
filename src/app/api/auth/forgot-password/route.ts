@@ -17,10 +17,13 @@ export async function POST(request: Request) {
     const cleanEmail = email.trim().toLowerCase();
     const user = await getUserByEmail(cleanEmail);
 
-    // If user does not exist, return generic success to prevent email enumeration
+    // If user does not exist, return generic notice with explicit diagnostics
     if (!user) {
       return NextResponse.json({
         message: 'If the provided email is registered, a password recovery code has been sent to your inbox.',
+        emailSent: false,
+        notRegistered: true,
+        emailError: `No registered account found with email "${cleanEmail}". Please verify the email address or register an account first.`,
       });
     }
 

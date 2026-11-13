@@ -27,6 +27,11 @@ export default function ForgotPasswordPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Request failed');
 
+      if (data.notRegistered) {
+        setError(data.emailError || `No registered account found with email "${email.trim()}".`);
+        return;
+      }
+
       setSubmitted(true);
       if (data.debugToken) {
         setDebugToken(data.debugToken);
