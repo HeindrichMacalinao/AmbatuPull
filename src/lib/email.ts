@@ -47,7 +47,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
 
   const smtpUser = process.env.SMTP_USER?.trim().replace(/^["']|["']$/g, '');
   const rawSmtpPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD;
-  const smtpPass = rawSmtpPass ? rawSmtpPass.trim().replace(/^["']|["']$/g, '') : '';
+  const smtpPass = rawSmtpPass ? rawSmtpPass.trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '') : '';
   const smtpHost =
     process.env.SMTP_HOST?.trim().replace(/^["']|["']$/g, '') ||
     (smtpUser?.toLowerCase().endsWith('@gmail.com') ? 'smtp.gmail.com' : undefined);

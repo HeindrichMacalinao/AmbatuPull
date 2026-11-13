@@ -9,6 +9,8 @@ export async function GET() {
   let sqliteConnected = false;
   let counts: any = {};
 
+  let supabaseUserCount: number | null = null;
+
   // Check SQLite
   try {
     const db = getSqliteDb();
@@ -28,6 +30,10 @@ export async function GET() {
       if (!error) {
         supabaseConnected = true;
         supabaseMessage = 'Connected to Supabase PostgreSQL';
+        const { count } = await supabase.from('app_user').select('*', { count: 'exact', head: true });
+        if (typeof count === 'number') {
+          supabaseUserCount = count;
+        }
       } else {
         supabaseMessage = `Supabase query error: ${error.message}`;
       }
@@ -49,6 +55,7 @@ export async function GET() {
       supabase: {
         configured: isSupabaseConfigured(),
         connected: supabaseConnected,
+        userCount: supabaseUserCount,
         status: supabaseMessage,
       },
     },
