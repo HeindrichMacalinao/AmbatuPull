@@ -62,6 +62,7 @@ export async function POST(request: Request) {
       pendingToken: signedToken,
       email: cleanEmail,
       emailSent: sendResult.sent,
+      emailError: sendResult.error,
       provider: sendResult.provider,
       debugToken: !sendResult.sent || process.env.NODE_ENV !== 'production' ? otpCode : undefined,
     });

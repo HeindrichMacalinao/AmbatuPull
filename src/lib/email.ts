@@ -41,16 +41,33 @@ export interface SendEmailResult {
  */
 export async function sendEmail(options: SendEmailOptions): Promise<SendEmailResult> {
   const { to, subject, html, text } = options;
-  const fromAddress = process.env.EMAIL_FROM || process.env.SMTP_FROM || 'Hope ERP <onboarding@resend.dev>';
 
   // 1. Try Resend if RESEND_API_KEY is configured
-  const resendApiKey = process.env.RESEND_API_KEY;
-  if (resendApiKey && resendApiKey.trim()) {
+  const rawKey = process.env.RESEND_API_KEY;
+  const resendApiKey = rawKey ? rawKey.trim().replace(/^["']|["']$/g, '') : '';
+
+  if (resendApiKey) {
+    // Sanitize from address for Resend
+    let fromAddress = (process.env.EMAIL_FROM || '').trim().replace(/^["']|["']$/g, '');
+
+    // Common configuration mistake: using a personal gmail address in EMAIL_FROM without domain verification in Resend.
+    // If fromAddress contains @gmail.com, @yahoo.com, @outlook.com or does not contain @, fallback to onboarding@resend.dev
+    if (
+      !fromAddress ||
+      fromAddress.includes('@gmail.com') ||
+      fromAddress.includes('@yahoo.com') ||
+      fromAddress.includes('@outlook.com') ||
+      fromAddress.includes('@hotmail.com') ||
+      !fromAddress.includes('@')
+    ) {
+      fromAddress = 'Hope ERP <onboarding@resend.dev>';
+    }
+
     try {
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${resendApiKey.trim()}`,
+          Authorization: `Bearer ${resendApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -64,11 +81,13 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
 
       const resData = await response.json();
       if (!response.ok) {
+        const errorMsg =
+          resData.message || resData.error?.message || (typeof resData === 'string' ? resData : JSON.stringify(resData));
         console.error('[email:resend] API error response:', resData);
         return {
           sent: false,
           provider: 'resend',
-          error: resData.message || 'Resend API returned an error',
+          error: errorMsg,
         };
       }
 
@@ -79,7 +98,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
         messageId: resData.id,
       };
     } catch (err: any) {
-      console.error('[email:resend] Failed to send via Resend:', err);
+      console.error('[email:resend] Failed to connect to Resend:', err);
       return {
         sent: false,
         provider: 'resend',
@@ -93,6 +112,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
   const smtpUser = process.env.SMTP_USER?.trim();
   const smtpPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD;
   const smtpPort = Number(process.env.SMTP_PORT) || 587;
+  const fromAddress = process.env.SMTP_FROM || process.env.EMAIL_FROM || 'Hope ERP <onboarding@resend.dev>';
 
   if (smtpHost && (smtpUser || smtpPass || process.env.SMTP_FROM)) {
     try {

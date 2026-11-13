@@ -34,6 +34,9 @@ export default function ForgotPasswordPage() {
       if (data.pendingToken) {
         setPendingToken(data.pendingToken);
       }
+      if (data.emailSent === false && data.emailError) {
+        setError(`Email delivery notice: ${data.emailError}`);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to request password recovery');
     } finally {

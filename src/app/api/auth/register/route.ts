@@ -80,6 +80,7 @@ export async function POST(request: Request) {
         pendingToken: token,
         email: cleanEmail,
         emailSent: sendResult.sent,
+        emailError: sendResult.error,
         provider: sendResult.provider,
         devOtp: !sendResult.sent || process.env.NODE_ENV !== 'production' ? otpCode : undefined,
       });

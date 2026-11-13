@@ -107,7 +107,16 @@ export default function RegisterPage() {
       }
       setStep('otp');
       setResendCooldown(30);
-      setSuccess(`A 6-digit verification code has been dispatched to ${email}.`);
+
+      if (data.emailSent) {
+        setSuccess(`A 6-digit verification code has been dispatched to ${email}.`);
+      } else {
+        setError(
+          data.emailError
+            ? `Email delivery notice: ${data.emailError}`
+            : 'Email could not be delivered to this address. Use the verification code displayed below for evaluation.'
+        );
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to request verification code');
     } finally {
