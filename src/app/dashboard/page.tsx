@@ -16,9 +16,7 @@ import {
   ArrowRight,
   Shield,
   Briefcase,
-  Search,
   Filter,
-  RefreshCw,
   Key,
   ExternalLink,
   ChevronRight,
@@ -31,6 +29,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import type { RoleName, AppUser } from '@/types/erp';
+import CustomerManagement from '@/components/CustomerManagement';
 
 type DashboardTab =
   | 'overview'
@@ -42,27 +41,12 @@ type DashboardTab =
   | 'reports'
   | 'system';
 
-interface CustomerRecord {
-  custNo: string;
-  custName: string;
-  address?: string;
-  creditTerm?: string;
-  status?: string;
-  stamp?: string;
-}
-
 export default function DashboardPage() {
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [activeRole, setActiveRole] = useState<RoleName>('User');
   const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
   const [metrics, setMetrics] = useState<any>(null);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
-
-  // Customer tab live data state
-  const [customers, setCustomers] = useState<CustomerRecord[]>([]);
-  const [loadingCustomers, setLoadingCustomers] = useState(false);
-  const [customerSearch, setCustomerSearch] = useState('');
-  const [customerStatusTab, setCustomerStatusTab] = useState<'all' | 'active' | 'inactive'>('active');
 
   useEffect(() => {
     // 1. Sync current user from local storage
@@ -84,28 +68,6 @@ export default function DashboardPage() {
       })
       .catch(() => setLoadingMetrics(false));
   }, []);
-
-  // Fetch customers when customer tab is selected or search/status tab changes
-  useEffect(() => {
-    if (activeTab !== 'customers') return;
-
-    setLoadingCustomers(true);
-    const q = new URLSearchParams();
-    if (customerSearch) q.append('search', customerSearch);
-    if (customerStatusTab !== 'all') q.append('status', customerStatusTab);
-
-    fetch(`/api/customers?${q.toString()}`, {
-      headers: {
-        'x-user-role': activeRole,
-      },
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.customers) setCustomers(data.customers);
-        setLoadingCustomers(false);
-      })
-      .catch(() => setLoadingCustomers(false));
-  }, [activeTab, customerSearch, customerStatusTab, activeRole]);
 
   // Tab definitions
   const navTabs: {
@@ -686,166 +648,8 @@ export default function DashboardPage() {
 
           {/* TAB 3: CUSTOMER REGISTRY */}
           {activeTab === 'customers' && (
-            <div className="space-y-5 animate-in fade-in">
-              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                    Customer Accounts Directory (CUSTOMER)
-                  </h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Live database query over Hope Relational SQLite &bull; Role visibility enforced (§1.2 &amp; §4.2)
-                  </p>
-                </div>
-              </div>
-
-              {/* Status Tabs & Search Filter */}
-              <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div className="flex items-center gap-1 border-b border-slate-200 dark:border-slate-800 w-full sm:w-auto">
-                    <button
-                      type="button"
-                      onClick={() => setCustomerStatusTab('active')}
-                      className={`px-3 py-1.5 text-xs font-semibold border-b-2 -mb-px transition ${
-                        customerStatusTab === 'active'
-                          ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                          : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                      }`}
-                    >
-                      Active Clients
-                    </button>
-                    {(activeRole === 'Admin' || activeRole === 'Superadmin') && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => setCustomerStatusTab('inactive')}
-                          className={`px-3 py-1.5 text-xs font-semibold border-b-2 -mb-px transition ${
-                            customerStatusTab === 'inactive'
-                              ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                          }`}
-                        >
-                          Inactive
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setCustomerStatusTab('all')}
-                          className={`px-3 py-1.5 text-xs font-semibold border-b-2 -mb-px transition ${
-                            customerStatusTab === 'all'
-                              ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                          }`}
-                        >
-                          All Records
-                        </button>
-                      </>
-                    )}
-                  </div>
-
-                  <div className="relative w-full sm:w-64">
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
-                    <input
-                      type="text"
-                      placeholder="Search customer name or ID..."
-                      value={customerSearch}
-                      onChange={(e) => setCustomerSearch(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
-                    />
-                  </div>
-                </div>
-
-                {/* Customers Table */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
-                    <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 text-[11px] uppercase tracking-wider font-semibold border-b border-slate-200 dark:border-slate-800">
-                      <tr>
-                        <th className="py-2.5 px-3">Account No</th>
-                        <th className="py-2.5 px-3">Customer Name</th>
-                        <th className="py-2.5 px-3">Billing Address</th>
-                        <th className="py-2.5 px-3">Credit Terms</th>
-                        {(activeRole === 'Admin' || activeRole === 'Superadmin') && (
-                          <>
-                            <th className="py-2.5 px-3">Status</th>
-                            <th className="py-2.5 px-3">Audit Stamp</th>
-                          </>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                      {loadingCustomers ? (
-                        <tr>
-                          <td
-                            colSpan={activeRole === 'User' ? 4 : 6}
-                            className="py-8 text-center text-slate-400 dark:text-slate-500"
-                          >
-                            <div className="flex items-center justify-center gap-2">
-                              <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600" />
-                              <span>Loading customer directory from SQL database...</span>
-                            </div>
-                          </td>
-                        </tr>
-                      ) : customers.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={activeRole === 'User' ? 4 : 6}
-                            className="py-8 text-center text-slate-400 dark:text-slate-500"
-                          >
-                            No customers found matching current search.
-                          </td>
-                        </tr>
-                      ) : (
-                        customers.slice(0, 15).map((c) => (
-                          <tr key={c.custNo} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50">
-                            <td className="py-2.5 px-3 font-mono font-semibold text-slate-900 dark:text-slate-100">
-                              {c.custNo}
-                            </td>
-                            <td className="py-2.5 px-3 font-medium text-slate-800 dark:text-slate-200">
-                              {c.custName}
-                            </td>
-                            <td className="py-2.5 px-3 text-slate-500 dark:text-slate-400 truncate max-w-xs">
-                              {c.address || '—'}
-                            </td>
-                            <td className="py-2.5 px-3">
-                              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                                {c.creditTerm || 'Net 30'}
-                              </span>
-                            </td>
-                            {(activeRole === 'Admin' || activeRole === 'Superadmin') && (
-                              <>
-                                <td className="py-2.5 px-3">
-                                  <span
-                                    className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                                      c.status === 'Active'
-                                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
-                                        : 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300'
-                                    }`}
-                                  >
-                                    {c.status || 'Active'}
-                                  </span>
-                                </td>
-                                <td className="py-2.5 px-3 font-mono text-[10px] text-slate-400">
-                                  {c.stamp ? new Date(c.stamp).toLocaleDateString() : '—'}
-                                </td>
-                              </>
-                            )}
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <span>
-                    Showing {Math.min(customers.length, 15)} of {customers.length} records
-                  </span>
-                  {activeRole === 'User' && (
-                    <span className="text-[11px] text-slate-400">
-                      Standard User view: Inactive records and audit timestamps omitted per §1.2 Figure 10
-                    </span>
-                  )}
-                </div>
-              </div>
+            <div className="animate-in fade-in">
+              <CustomerManagement role={activeRole} user={currentUser} />
             </div>
           )}
 
