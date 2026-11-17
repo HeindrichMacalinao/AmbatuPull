@@ -148,6 +148,13 @@ function requireRight(rightCode) {
       return next();
     }
 
+    // Check pre-attached rights (e.g. from tests or auth context)
+    if (req.user.rights && Array.isArray(req.user.rights)) {
+      if (req.user.rights.includes(rightCode) || req.user.rights.includes('*')) {
+        return next();
+      }
+    }
+
     try {
       const pool = dbPool.getPool();
       const userId = req.user.userId ?? req.user.userid;

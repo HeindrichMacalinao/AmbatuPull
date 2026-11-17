@@ -33,7 +33,48 @@ async function getCustomer(req, res, next) {
   }
 }
 
+/**
+ * POST /api/customers (Create Customer)
+ */
+async function createCustomer(req, res, next) {
+  try {
+    const customer = await customerService.createCustomer({
+      data: req.body,
+      requester: req.user,
+    });
+    res.status(201).json({
+      message: 'Customer created successfully',
+      customer,
+      ...customer,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PUT /api/customers/:custNo (Edit Customer)
+ */
+async function updateCustomer(req, res, next) {
+  try {
+    const customer = await customerService.updateCustomer({
+      custNo: req.params.custNo,
+      data: req.body,
+      requester: req.user,
+    });
+    res.status(200).json({
+      message: 'Customer updated successfully',
+      customer,
+      ...customer,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getCustomers,
   getCustomer,
+  createCustomer,
+  updateCustomer,
 };
