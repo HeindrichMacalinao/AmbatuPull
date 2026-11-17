@@ -1,6 +1,7 @@
 -- S2-DBA-03 (#102): safe, staged PostgreSQL domain checks.
 -- IMPORTANT: Historical CUSTOMER payTerms '30D'/'45D' and PRODUCT units 'ea'/'pc'
--- violate the new business lists. NOT VALID preserves those records while
+-- violate the new business lists. Existing 'License', 'Service', and 'User/Mo'
+-- units are explicitly retained as valid values. NOT VALID preserves legacy rows while
 -- enforcing each new INSERT and UPDATE; it does NOT mean old data is compliant.
 -- Audit and obtain approval for historical mappings before running VALIDATE.
 -- Nullable payTerms and unit remain nullable as in the existing S1 schema.
@@ -39,7 +40,10 @@ BEGIN
                      AND conname = 'chk_product_unit') THEN
         ALTER TABLE public."PRODUCT"
             ADD CONSTRAINT chk_product_unit
-            CHECK ("unit" IS NULL OR "unit" IN ('pcs','can','pair','meter','box','kg','set')) NOT VALID;
+            CHECK ("unit" IS NULL OR "unit" IN (
+                'pcs','can','pair','meter','box','kg','set',
+                'License','Service','User/Mo'
+            )) NOT VALID;
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_constraint

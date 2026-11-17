@@ -12,9 +12,11 @@ python scripts/check_domain_constraint_readiness.py HopeERP.db
 ```
 
 The historical baseline has 58 customer payment-term values (`30D`/`45D`) and
-57 product unit values (`ea`/`pc`) outside issue #102's new allowed lists. An
-exit code of **2** is the expected warning, not a script crash. Consult the
-team for approved mappings; never guess or silently rewrite historical rows.
+57 product unit values (`ea`/`pc`) outside issue #102's allowed lists. The
+existing `License`, `Service`, and `User/Mo` values in `data/erp_local.db` are
+preserved as valid units. An exit code of **2** is the expected warning, not a
+script crash. Consult the team for approved mappings; never guess or silently
+rewrite historical rows.
 
 ## Apply local SQLite migration
 

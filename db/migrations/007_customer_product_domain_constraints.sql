@@ -33,7 +33,10 @@ CREATE TRIGGER IF NOT EXISTS trg_product_domain_insert
 BEFORE INSERT ON PRODUCT
 BEGIN
     SELECT CASE WHEN NEW.unit IS NOT NULL
-                     AND NEW.unit NOT IN ('pcs','can','pair','meter','box','kg','set')
+                     AND NEW.unit NOT IN (
+                         'pcs','can','pair','meter','box','kg','set',
+                         'License','Service','User/Mo'
+                     )
         THEN RAISE(ABORT, 'chk_product_unit') END;
 END; -- Keep terminator on same line as comment for the project's migration runner.
 
@@ -41,7 +44,10 @@ CREATE TRIGGER IF NOT EXISTS trg_product_domain_update
 BEFORE UPDATE ON PRODUCT
 BEGIN
     SELECT CASE WHEN NEW.unit IS NOT NULL
-                     AND NEW.unit NOT IN ('pcs','can','pair','meter','box','kg','set')
+                     AND NEW.unit NOT IN (
+                         'pcs','can','pair','meter','box','kg','set',
+                         'License','Service','User/Mo'
+                     )
         THEN RAISE(ABORT, 'chk_product_unit') END;
 END; -- Keep terminator on same line as comment for the project's migration runner.
 

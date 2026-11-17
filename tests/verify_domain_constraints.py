@@ -69,7 +69,10 @@ def test_checks(conn: sqlite3.Connection) -> None:
     assert_rejected(conn, customer_insert, ('C-NEW1', 'New Customer', 'COD', 'Archived', 'TEST'))
     print('PASS: CUSTOMER valid/invalid payment terms, ID length, nonblank name, and status')
 
-    for unit in ('pcs', 'can', 'pair', 'meter', 'box', 'kg', 'set', None):
+    for unit in (
+        'pcs', 'can', 'pair', 'meter', 'box', 'kg', 'set',
+        'License', 'Service', 'User/Mo', None,
+    ):
         assert_accepted(conn, product_insert, ('P-NEW1', 'Test Product', unit, 'Active', 'TEST'))
     for unit in ('ea', 'pc', 'liter', '', 'PCS'):
         assert_rejected(conn, product_insert,

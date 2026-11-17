@@ -217,8 +217,10 @@ Every domain and administrative table across the Hope, Inc. ERP database **must*
 - First run `python scripts/check_domain_constraint_readiness.py HopeERP.db`.
   Exit status `2` means existing rows still require approved normalization.
   The approved baseline has **58 customers** with `30D`/`45D` payment terms
-  and **57 products** with `ea`/`pc` units. These are incompatible with issue
-  #102. Never guess unit conversions or rewrite historical records silently.
+  and **57 products** with `ea`/`pc` units. The existing `License`, `Service`,
+  and `User/Mo` values in `data/erp_local.db` remain valid. The `30D`/`45D`,
+  `ea`, and `pc` values are still incompatible with issue #102. Never guess
+  unit conversions or rewrite historical records silently.
 - `migrations/007_customer_product_domain_constraints.sql` installs reversible
   SQLite `BEFORE INSERT`/`BEFORE UPDATE` validation triggers. The paired `.down.sql`
   removes only these triggers. `db/migrations/007_customer_product_domain_constraints.sql`

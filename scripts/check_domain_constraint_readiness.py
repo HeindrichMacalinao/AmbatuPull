@@ -30,7 +30,8 @@ def audit(connection: sqlite3.Connection) -> dict[str, int]:
         ),
         'product_unit': (
             "SELECT COUNT(*) FROM PRODUCT WHERE unit IS NOT NULL "
-            "AND unit NOT IN ('pcs','can','pair','meter','box','kg','set')"
+            "AND unit NOT IN ('pcs','can','pair','meter','box','kg','set',"
+            "'License','Service','User/Mo')"
         ),
         'pricehist_unitprice': (
             'SELECT COUNT(*) FROM PRICEHIST WHERE unitPrice IS NULL '
