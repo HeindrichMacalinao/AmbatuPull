@@ -22,6 +22,7 @@ RESET_MIGRATION = ROOT / 'db/migrations/003_password_reset_token.sql'
 ACCESS_SEED = ROOT / 'db/seeds/003_initial_access_catalog.sql'
 AUDIT_MIGRATION = ROOT / 'db/migrations/004_audit_trail.sql'
 ACTIVE_VIEWS_MIGRATION = ROOT / 'db/migrations/006_active_customer_product_views_indexes.sql'
+DOMAIN_MIGRATION = ROOT / 'db/migrations/007_customer_product_domain_constraints.sql'
 DEFAULT_MODEL1 = ROOT / 'reference/Model1.db'
 
 
@@ -77,7 +78,10 @@ def rebuild(target: Path, source_model: Path | None) -> None:
             # S1-DBA-06 installs triggers LAST so historical/catalog seed does
             # not require an authenticated runtime session.
             conn.executescript(AUDIT_MIGRATION.read_text(encoding='utf-8'))
+            # S2-DBA-01 installs active-only read views and composite indexes.
             conn.executescript(ACTIVE_VIEWS_MIGRATION.read_text(encoding='utf-8'))
+            # S2-DBA-03 guards future writes; installed AFTER legacy seed data.
+            conn.executescript(DOMAIN_MIGRATION.read_text(encoding='utf-8'))
             assert conn.execute('PRAGMA foreign_keys').fetchone()[0] == 1
             assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
             assert conn.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
