@@ -23,22 +23,31 @@ INDEXES = {
 
 def assert_schema_and_query_plans(conn: sqlite3.Connection) -> None:
     for view, columns in VIEW_COLUMNS.items():
-        row = conn.execute("SELECT type, sql FROM sqlite_master WHERE name=?", (view,)).fetchone()
+        row = conn.execute(
+            "SELECT type, sql FROM sqlite_master WHERE name=?", (view,)
+        ).fetchone()
         assert row and row[0] == 'view', f'{view} is missing'
-        actual = tuple(col[0] for col in conn.execute(f'SELECT * FROM {view} LIMIT 0').description)
+        actual = tuple(
+            column[0] for column in conn.execute(f'SELECT * FROM {view} LIMIT 0').description
+        )
         assert actual == columns, f'{view}: wrong columns {actual}'
         assert "status = 'Active'" in row[1], f'{view}: missing active filter'
 
     for table, (index, columns) in INDEXES.items():
-        existing = {item[1] for item in conn.execute(f'PRAGMA index_list("{table}")')}
+        existing = {
+            item[1] for item in conn.execute(f'PRAGMA index_list("{table}")')
+        }
         assert index in existing, f'{table}: missing {index}'
-        actual = tuple(item[2] for item in conn.execute(f'PRAGMA index_info("{index}")'))
+        actual = tuple(
+            item[2] for item in conn.execute(f'PRAGMA index_info("{index}")')
+        )
         assert actual == columns, f'{index}: wrong columns {actual}'
 
     plans = {
         'customer': (
             'SELECT custNo FROM v_active_customer WHERE custName = ?',
-            ('Globus Medical, Inc',), 'idx_customer_status_custname',
+            ('Globus Medical, Inc',),
+            'idx_customer_status_custname',
         ),
         'product': (
             'SELECT prodCode FROM v_active_product WHERE description = ?',
@@ -52,7 +61,9 @@ def assert_schema_and_query_plans(conn: sqlite3.Connection) -> None:
         ),
     }
     for label, (sql, params, index) in plans.items():
-        plan = ' | '.join(row[3] for row in conn.execute('EXPLAIN QUERY PLAN ' + sql, params))
+        plan = ' | '.join(
+            row[3] for row in conn.execute('EXPLAIN QUERY PLAN ' + sql, params)
+        )
         assert index in plan, f'{label}: query did not use {index}: {plan}'
         print(f'PASS: EXPLAIN {label}: {plan}')
 
@@ -62,29 +73,42 @@ def assert_active_only(conn: sqlite3.Connection) -> None:
         ('CUSTOMER', 'v_active_customer', 'custNo'),
         ('PRODUCT', 'v_active_product', 'prodCode'),
     ):
-        active_count = conn.execute(f"SELECT COUNT(*) FROM {table} WHERE status='Active'").fetchone()[0]
+        active_count = conn.execute(
+            f"SELECT COUNT(*) FROM {table} WHERE status='Active'"
+        ).fetchone()[0]
         visible_count = conn.execute(f'SELECT COUNT(*) FROM {view}').fetchone()[0]
-        assert active_count == visible_count and active_count > 0, f'{view}: baseline count mismatch'
-        assert conn.execute(f"SELECT COUNT(*) FROM {view} WHERE status!='Active'").fetchone()[0] == 0
+        assert active_count == visible_count and active_count > 0, (
+            f'{view}: baseline count mismatch'
+        )
+        assert conn.execute(
+            f"SELECT COUNT(*) FROM {view} WHERE status!='Active'"
+        ).fetchone()[0] == 0
 
-        # Exercise real soft-deletion on an existing historical record, then restore it.
         record_id = conn.execute(f'SELECT {key} FROM {view} LIMIT 1').fetchone()[0]
         conn.execute(f"UPDATE {table} SET status='Inactive' WHERE {key}=?", (record_id,))
-        assert conn.execute(f'SELECT 1 FROM {view} WHERE {key}=?', (record_id,)).fetchone() is None
+        assert conn.execute(
+            f'SELECT 1 FROM {view} WHERE {key}=?', (record_id,)
+        ).fetchone() is None
         assert conn.execute(f'SELECT COUNT(*) FROM {view}').fetchone()[0] == active_count - 1
-        assert conn.execute(f'SELECT 1 FROM {table} WHERE {key}=?', (record_id,)).fetchone()
+        assert conn.execute(
+            f'SELECT COUNT(*) FROM {table} WHERE {key}=?', (record_id,)
+        ).fetchone()[0] == 1
         conn.execute(f"UPDATE {table} SET status='Active' WHERE {key}=?", (record_id,))
         assert conn.execute(f'SELECT COUNT(*) FROM {view}').fetchone()[0] == active_count
+        # Exercise real soft-deletion on an existing historical record, then restore it.
         print(f'PASS: {view}: {active_count} active rows; inactive records hidden and restored')
 
 
 def main() -> None:
     base_sql = (ROOT / 'db/migrations/001_hope_base_tables.sql').read_text(encoding='utf-8')
     seed_sql = (ROOT / 'db/seeds/002_hope_historical_data.sql').read_text(encoding='utf-8')
-    for migration in (
+    migrations = (
         'db/migrations/006_active_customer_product_views_indexes.sql',
         'migrations/005_active_customer_product_views_indexes.sql',
-    ):
+        'migrations/006_active_customer_product_views_indexes.sql',
+    )
+
+    for migration in migrations:
         conn = sqlite3.connect(':memory:')
         try:
             conn.execute('PRAGMA foreign_keys = ON')
@@ -101,6 +125,32 @@ def main() -> None:
         finally:
             conn.close()
 
+    conn = sqlite3.connect(':memory:')
+    try:
+        conn.executescript(base_sql)
+        conn.executescript(seed_sql)
+        conn.executescript(
+            (ROOT / 'migrations/006_active_customer_product_views_indexes.sql')
+            .read_text(encoding='utf-8')
+        )
+        conn.executescript(
+            (ROOT / 'migrations/006_active_customer_product_views_indexes.down.sql')
+            .read_text(encoding='utf-8')
+        )
+        remaining = conn.execute(
+            "SELECT name FROM sqlite_master WHERE name IN (?, ?, ?, ?, ?)",
+            (
+                'v_active_customer',
+                'v_active_product',
+                'idx_customer_status_custname',
+                'idx_product_status_description',
+                'idx_pricehist_prodcode_effdate_status',
+            ),
+        ).fetchall()
+        assert not remaining, f'Rollback left active-view objects behind: {remaining}'
+        print('PASS: local migration rollback removes views and indexes')
+    finally:
+        conn.close()
 
 if __name__ == '__main__':
     main()

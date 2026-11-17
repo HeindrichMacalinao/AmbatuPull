@@ -260,8 +260,10 @@ Every domain and administrative table across the Hope, Inc. ERP database **must*
 
 ### S2-DBA-01: active customer/product views
 
-- `migrations/005_active_customer_product_views_indexes.sql` is applied by the
-  local SQLite runner (`npm run migrate:up`); the paired `.down.sql` reverses it.
+- `migrations/005_active_customer_product_views_indexes.sql` and
+  `migrations/006_active_customer_product_views_indexes.sql` install the same
+  idempotent views and indexes; both are applied by the local SQLite runner
+  (`npm run migrate:up`), and each has a paired `.down.sql`.
 - `db/migrations/006_active_customer_product_views_indexes.sql` is included in
   `scripts/regenerate_hope.py` so regenerated SQLite database assets include
   the same views/indexes. Existing bundled DB assets have also been migrated.

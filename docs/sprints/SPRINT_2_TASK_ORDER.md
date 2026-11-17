@@ -117,7 +117,7 @@ flowchart TD
 | Order | Issue # | Task ID | Member | Role | Files / Focus | Prerequisites |
 | :---: | :---: | :---: | :--- | :--- | :--- | :--- |
 | **1** | **[#95]** | `S2-SM-01` | @HeindrichMacalinao | Scrum Master | `docs/sprints/sprint-2-planning.md` & GitHub Board iteration setup. | None |
-| **2** | **[#100]** | `S2-DBA-01` | @Chrollofuru | DevSecOps | `migrations/006_active_views_and_indexes.sql` (Creates `v_active_customer` and `v_active_product`). | Sprint 1 merged |
+| **2** | **[#100]** | `S2-DBA-01` | @Chrollofuru | DevSecOps | `migrations/006_active_customer_product_views_indexes.sql` (Creates `v_active_customer` and `v_active_product`). | Sprint 1 merged |
 | **3** | **[#106]** | `S2-UIX-01` | @AlexGavarra | UI/UX Developer | `docs/ui/wireframes-customers.md` (Admin view with Status tabs vs User view). | Sprint 1 merged |
 
 *Checkpoint 1:* Once **#100** is merged, DevSecOps informs Backend that database views are ready. Everyone does `git pull origin main`.

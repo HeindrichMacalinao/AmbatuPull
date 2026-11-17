@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rebuild integrated S1-DBA-01/02/03/04/05/06 SQLite database artifacts.
+"""Rebuild integrated S1/S2 SQLite database artifacts.
 
 Run from the repository root: python scripts/regenerate_hope.py
 Optional: python scripts/regenerate_hope.py --model1 path/to/Model1.db
