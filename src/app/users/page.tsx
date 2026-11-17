@@ -6,7 +6,6 @@ import {
   Search,
   UserPlus,
   Shield,
-  ShieldCheck,
   Lock,
   Unlock,
   Key,
@@ -32,6 +31,7 @@ export default function UsersPage() {
   const [provider, setProvider] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'blocked'>('all');
   const [notification, setNotification] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
 
   // Add User Modal State
@@ -219,17 +219,28 @@ export default function UsersPage() {
     groupedRights[r.moduleCode].push(r);
   });
 
+  // Calculate Status Tab counts (§3.3 & docs/ui/design-system.md)
+  const totalCount = users.length;
+  const activeCount = users.filter((u) => !u.isBlocked).length;
+  const blockedCount = users.filter((u) => u.isBlocked).length;
+
+  const displayedUsers = users.filter((u) => {
+    if (statusFilter === 'active') return !u.isBlocked;
+    if (statusFilter === 'blocked') return u.isBlocked;
+    return true;
+  });
+
   return (
     <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Users className="w-6 h-6 text-blue-600" />
-            User Management &amp; RBAC
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <Users className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
+            User Management &amp; Security
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Superadmin governance, account blocking safeguards, and granular 36-rights assignment.
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Superadmin governance, account blocking safeguards, and 36 granular rights assignment.
           </p>
         </div>
 
@@ -238,8 +249,8 @@ export default function UsersPage() {
             <span
               className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${
                 provider === 'supabase'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-amber-50 text-amber-700 border-amber-200'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                  : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
               }`}
               title={
                 provider === 'supabase'
@@ -253,21 +264,23 @@ export default function UsersPage() {
           )}
 
           <button
+            type="button"
             onClick={fetchUsers}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-lg text-sm border border-slate-300 transition shadow-sm disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium rounded-lg text-xs sm:text-sm border border-slate-300 dark:border-slate-700 transition shadow-xs disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-blue-500"
             title="Refresh user list from database"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm transition shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium rounded-lg text-xs sm:text-sm transition shadow-xs focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             <UserPlus className="w-4 h-4" />
-            Add User
+            <span>Add User</span>
           </button>
         </div>
       </div>
@@ -275,43 +288,97 @@ export default function UsersPage() {
       {/* Notification Toast */}
       {notification && (
         <div
-          className={`p-4 rounded-lg text-sm flex items-start gap-2 border ${
+          role="alert"
+          className={`p-3.5 rounded-lg text-xs sm:text-sm flex items-start gap-2.5 border transition ${
             notification.type === 'error'
-              ? 'bg-rose-50 border-rose-200 text-rose-700'
-              : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+              ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300'
+              : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/60 text-emerald-800 dark:text-emerald-300'
           }`}
         >
           {notification.type === 'error' ? (
-            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
           ) : (
-            <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
           )}
           <span className="flex-1">{notification.message}</span>
-          <button onClick={() => setNotification(null)} className="text-slate-400 hover:text-slate-600">
+          <button
+            type="button"
+            onClick={() => setNotification(null)}
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            aria-label="Dismiss notification"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
+      {/* Status Tabs (§3.3 & docs/ui/design-system.md) */}
+      <div className="flex items-center gap-1 border-b border-slate-200 dark:border-slate-800 pb-px overflow-x-auto">
+        <button
+          type="button"
+          onClick={() => setStatusFilter('all')}
+          className={`px-3.5 py-2 text-xs font-semibold rounded-t-lg border-b-2 -mb-px transition flex items-center gap-1.5 ${
+            statusFilter === 'all'
+              ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-white dark:bg-slate-900'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <span>All Accounts</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+            {totalCount}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setStatusFilter('active')}
+          className={`px-3.5 py-2 text-xs font-semibold rounded-t-lg border-b-2 -mb-px transition flex items-center gap-1.5 ${
+            statusFilter === 'active'
+              ? 'border-emerald-600 text-emerald-700 dark:text-emerald-400 bg-white dark:bg-slate-900'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <span>Active</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400">
+            {activeCount}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setStatusFilter('blocked')}
+          className={`px-3.5 py-2 text-xs font-semibold rounded-t-lg border-b-2 -mb-px transition flex items-center gap-1.5 ${
+            statusFilter === 'blocked'
+              ? 'border-rose-600 text-rose-700 dark:text-rose-400 bg-white dark:bg-slate-900'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <span>Blocked / Inactive</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400">
+            {blockedCount}
+          </span>
+        </button>
+      </div>
+
       {/* Filters Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center gap-4">
+      <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-center gap-3 transition-colors">
         <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           <input
             type="text"
             placeholder="Search by name or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+            className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 dark:focus:border-blue-400 transition"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Filter className="w-4 h-4 text-slate-500" />
+          <Filter className="w-4 h-4 text-slate-500 dark:text-slate-400" />
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="border border-slate-300 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+            className="border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg py-2 px-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 dark:focus:border-blue-400 transition"
           >
             <option value="all">All Roles</option>
             <option value="Superadmin">Superadmin</option>
@@ -322,50 +389,80 @@ export default function UsersPage() {
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden transition-colors">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
+          <table className="w-full text-left text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+            <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 text-[11px] uppercase tracking-wider font-semibold border-b border-slate-200 dark:border-slate-800">
               <tr>
-                <th className="py-3 px-4">User</th>
-                <th className="py-3 px-4">Role</th>
-                <th className="py-3 px-4">Employee ID</th>
-                <th className="py-3 px-4">Account Status</th>
-                <th className="py-3 px-4">Registered</th>
-                <th className="py-3 px-4 text-right">Actions</th>
+                <th scope="col" className="py-3 px-4">User</th>
+                <th scope="col" className="py-3 px-4">Role</th>
+                <th scope="col" className="py-3 px-4">Employee ID</th>
+                <th scope="col" className="py-3 px-4">Account Status</th>
+                <th scope="col" className="py-3 px-4">Registered</th>
+                <th scope="col" className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400">
-                    Loading users...
+                  <td colSpan={6} className="py-10 text-center text-slate-400 dark:text-slate-500">
+                    <div className="flex items-center justify-center gap-2">
+                      <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
+                      <span>Loading authorized user registry...</span>
+                    </div>
                   </td>
                 </tr>
-              ) : users.length === 0 ? (
+              ) : displayedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400">
-                    No users found matching your search.
+                  <td colSpan={6} className="py-10 text-center text-slate-400 dark:text-slate-500">
+                    <div className="max-w-sm mx-auto space-y-2">
+                      <p className="font-medium text-slate-700 dark:text-slate-300">No users found</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {search || roleFilter !== 'all' || statusFilter !== 'all'
+                          ? 'No account matches the current filter criteria.'
+                          : 'No user accounts found in the active database engine.'}
+                      </p>
+                      {(search || roleFilter !== 'all' || statusFilter !== 'all') && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSearch('');
+                            setRoleFilter('all');
+                            setStatusFilter('all');
+                          }}
+                          className="mt-2 text-xs text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                        >
+                          Clear all filters
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : (
-                users.map((u) => (
-                  <tr key={u.userId} className="hover:bg-slate-50/50 transition">
+                displayedUsers.map((u) => (
+                  <tr
+                    key={u.userId}
+                    className={`transition ${
+                      u.isBlocked
+                        ? 'bg-slate-50/50 dark:bg-slate-800/20 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-500'
+                        : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/50'
+                    }`}
+                  >
                     <td className="py-3.5 px-4">
-                      <div className="font-semibold text-slate-900">
+                      <div className="font-semibold text-slate-900 dark:text-slate-100">
                         {u.firstName} {u.lastName}
                       </div>
-                      <div className="text-xs text-slate-400">{u.email}</div>
+                      <div className="text-xs text-slate-400 dark:text-slate-500">{u.email}</div>
                     </td>
 
                     <td className="py-3.5 px-4">
                       <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-semibold ${
                           u.role === 'Superadmin'
-                            ? 'bg-purple-100 text-purple-800'
+                            ? 'bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800'
                             : u.role === 'Admin'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-slate-100 text-slate-800'
+                            ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
                         }`}
                       >
                         <Shield className="w-3 h-3" />
@@ -373,56 +470,58 @@ export default function UsersPage() {
                       </span>
                     </td>
 
-                    <td className="py-3.5 px-4 font-mono text-xs text-slate-600">
+                    <td className="py-3.5 px-4 font-mono text-xs text-slate-600 dark:text-slate-400">
                       {u.empNo || '—'}
                     </td>
 
                     <td className="py-3.5 px-4">
                       {u.isBlocked ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60">
                           <Lock className="w-3 h-3" />
                           Blocked
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60">
                           <Check className="w-3 h-3" />
                           Active
                         </span>
                       )}
                     </td>
 
-                    <td className="py-3.5 px-4 whitespace-nowrap text-xs">
+                    <td className="py-3.5 px-4 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400">
                       {formatRegistrationTime(u.createdAt)}
                     </td>
 
                     <td className="py-3.5 px-4 text-right space-x-2">
                       <button
+                        type="button"
                         onClick={() => handleOpenRights(u)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition"
-                        title="Manage 36 granular permissions"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium border border-slate-200 dark:border-slate-700 transition focus-visible:ring-2 focus-visible:ring-blue-500"
+                        title="Configure 36 granular rights"
                       >
-                        <Key className="w-3.5 h-3.5 text-blue-600" />
-                        Rights
+                        <Key className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                        <span>Rights</span>
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => handleToggleBlock(u)}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition ${
+                        className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition focus-visible:ring-2 ${
                           u.isBlocked
-                            ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                            : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border-emerald-200 dark:border-emerald-800 focus-visible:ring-emerald-500'
+                            : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 border-rose-200 dark:border-rose-900/60 focus-visible:ring-rose-500'
                         }`}
-                        title={u.isBlocked ? 'Unblock user' : 'Block user'}
+                        title={u.isBlocked ? 'Unblock user account' : 'Block user account'}
                       >
                         {u.isBlocked ? (
                           <>
                             <Unlock className="w-3.5 h-3.5" />
-                            Unblock
+                            <span>Unblock</span>
                           </>
                         ) : (
                           <>
                             <Lock className="w-3.5 h-3.5" />
-                            Block
+                            <span>Block</span>
                           </>
                         )}
                       </button>
@@ -437,68 +536,73 @@ export default function UsersPage() {
 
       {/* Add User Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <h2 className="text-lg font-bold text-slate-900">Add New ERP Account</h2>
-              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl max-w-md w-full p-6 shadow-xl border border-slate-200 dark:border-slate-800 transition-colors">
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">Add New ERP Account</h2>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                aria-label="Close add user dialog"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateUser} className="space-y-4 pt-4">
+            <form onSubmit={handleCreateUser} className="space-y-3.5 pt-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">First Name</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">First Name</label>
                   <input
                     type="text"
                     required
                     value={newFirstName}
                     onChange={(e) => setNewFirstName(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 dark:focus:border-blue-400 transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Last Name</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Last Name</label>
                   <input
                     type="text"
                     required
                     value={newLastName}
                     onChange={(e) => setNewLastName(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 dark:focus:border-blue-400 transition"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Corporate Email</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Corporate Email</label>
                 <input
                   type="email"
                   required
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 dark:focus:border-blue-400 transition"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Password</label>
                 <input
                   type="password"
                   required
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 dark:focus:border-blue-400 transition"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Role</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Role</label>
                   <select
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value as RoleName)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 dark:focus:border-blue-400 transition"
                   >
                     <option value="User">User</option>
                     <option value="Admin">Admin</option>
@@ -506,28 +610,28 @@ export default function UsersPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Employee ID (Optional)</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Employee ID (Optional)</label>
                   <input
                     type="text"
                     placeholder="e.g. EMP004"
                     value={newEmpNo}
                     onChange={(e) => setNewEmpNo(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 dark:focus:border-blue-400 transition"
                   />
                 </div>
               </div>
 
-              <div className="pt-4 flex justify-end gap-2">
+              <div className="pt-3 flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50"
+                  className="px-3.5 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg text-xs font-semibold shadow-xs transition focus-visible:ring-2 focus-visible:ring-blue-500"
                 >
                   Create User
                 </button>
@@ -539,63 +643,68 @@ export default function UsersPage() {
 
       {/* Granular Rights Modal (36 Rights) */}
       {showRightsModal && selectedUser && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 flex-shrink-0">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl max-w-2xl w-full p-6 shadow-xl border border-slate-200 dark:border-slate-800 max-h-[90vh] flex flex-col transition-colors">
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
               <div>
-                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <Key className="w-5 h-5 text-blue-600" />
-                  Configure Granular Permissions (36 Rights)
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <Key className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  Granular Permissions Matrix (36 Rights)
                 </h2>
-                <p className="text-xs text-slate-500">
-                  Editing rights for {selectedUser.firstName} {selectedUser.lastName} ({selectedUser.role})
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Configuring authorization for <strong className="text-slate-800 dark:text-slate-200">{selectedUser.firstName} {selectedUser.lastName}</strong> ({selectedUser.role})
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={selectAllRights}
-                  className="px-2.5 py-1 text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-md border border-blue-200 transition"
+                  className="px-2.5 py-1 text-xs font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded border border-blue-200 dark:border-blue-800 transition"
                 >
-                  All (Grant All 36)
+                  All (36)
                 </button>
                 <button
                   type="button"
                   onClick={clearAllRights}
-                  className="px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-md transition"
+                  className="px-2.5 py-1 text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded border border-slate-200 dark:border-slate-700 transition"
                 >
-                  None (Revoke All)
+                  None
                 </button>
-                <button onClick={() => setShowRightsModal(false)} className="text-slate-400 hover:text-slate-600 ml-2">
+                <button
+                  type="button"
+                  onClick={() => setShowRightsModal(false)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 ml-1.5"
+                  aria-label="Close permissions dialog"
+                >
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto py-4 space-y-6">
+            <div className="flex-1 overflow-y-auto py-4 space-y-4 pr-1">
               {Object.keys(groupedRights).map((moduleKey) => (
-                <div key={moduleKey} className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                <div key={moduleKey} className="bg-slate-50 dark:bg-slate-800/50 p-3.5 sm:p-4 rounded-lg border border-slate-200 dark:border-slate-700/80">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                       Module: {moduleKey.replace('_', ' ').toUpperCase()} ({groupedRights[moduleKey].length} Rights)
                     </h3>
                     <div className="flex items-center gap-2 text-xs">
                       <button
                         type="button"
                         onClick={() => selectModuleRights(moduleKey)}
-                        className="text-[11px] text-blue-600 hover:underline font-medium"
+                        className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-semibold"
                       >
                         All
                       </button>
-                      <span className="text-slate-300">&bull;</span>
+                      <span className="text-slate-300 dark:text-slate-600">&bull;</span>
                       <button
                         type="button"
                         onClick={() => clearModuleRights(moduleKey)}
-                        className="text-[11px] text-slate-500 hover:underline"
+                        className="text-[11px] text-slate-500 dark:text-slate-400 hover:underline"
                       >
                         None
                       </button>
-                      <span className="text-[11px] text-slate-500 ml-1 font-mono">
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 ml-1 font-mono">
                         ({groupedRights[moduleKey].filter((r) => userRights.includes(r.rightCode)).length} / {groupedRights[moduleKey].length})
                       </span>
                     </div>
@@ -609,19 +718,19 @@ export default function UsersPage() {
                           key={r.rightCode}
                           className={`p-2.5 rounded-lg border text-xs cursor-pointer flex items-start gap-2.5 transition ${
                             granted
-                              ? 'bg-blue-50/70 border-blue-300 text-blue-900'
-                              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                              ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-300 dark:border-blue-800 text-blue-900 dark:text-blue-200'
+                              : 'bg-white dark:bg-slate-850 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
                           }`}
                         >
                           <input
                             type="checkbox"
                             checked={granted}
                             onChange={() => toggleRight(r.rightCode)}
-                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 mt-0.5"
+                            className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 mt-0.5"
                           />
                           <div>
-                            <div className="font-mono font-medium text-[11px]">{r.rightCode}</div>
-                            <div className="text-[11px] text-slate-500 mt-0.5">{r.description}</div>
+                            <div className="font-mono font-semibold text-[11px]">{r.rightCode}</div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">{r.description}</div>
                           </div>
                         </label>
                       );
@@ -631,15 +740,15 @@ export default function UsersPage() {
               ))}
             </div>
 
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between flex-shrink-0">
-              <span className="text-xs text-slate-500">
-                Total Granted: <strong>{userRights.length}</strong> of 36 Rights
+            <div className="pt-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between flex-shrink-0">
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                Total Granted: <strong className="text-slate-800 dark:text-slate-200">{userRights.length}</strong> of 36 Rights
               </span>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setShowRightsModal(false)}
-                  className="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50"
+                  className="px-3.5 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
                 >
                   Cancel
                 </button>
@@ -647,7 +756,7 @@ export default function UsersPage() {
                   type="button"
                   onClick={handleSaveRights}
                   disabled={savingRights}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition disabled:opacity-50"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg text-xs font-semibold shadow-xs transition disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-blue-500"
                 >
                   {savingRights ? 'Saving...' : 'Save Permissions'}
                 </button>

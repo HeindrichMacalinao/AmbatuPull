@@ -8,14 +8,60 @@
   --nav-header: #0f172a;
   --nav-sidebar: #1e293b;
   --surface: #ffffff;
+  --surface-subtle: #f8fafc;
+  --surface-hover: #f1f5f9;
+  --surface-elevated: #ffffff;
   --canvas: #f8fafc;
   --text-primary: #0f172a;
+  --text-secondary: #334155;
   --text-muted: #64748b;
   --border: #e2e8f0;
+  --border-subtle: #f1f5f9;
+  --border-strong: #cbd5e1;
+  --status-active-bg: #ecfdf5;
+  --status-active-text: #065f46;
+  --status-active-border: #a7f3d0;
+  --status-inactive-bg: #fef2f2;
+  --status-inactive-text: #991b1b;
+  --status-inactive-border: #fecaca;
+  --row-deleted: #f1f5f9;
+  color-scheme: light;
+}
+
+.dark {
+  --brand-primary: #3b82f6;
+  --brand-action: #2563eb;
+  --nav-header: #0a0f1d;
+  --nav-sidebar: #0f172a;
+  --surface: #0f172a;
+  --surface-subtle: #131d33;
+  --surface-hover: #1e293b;
+  --surface-elevated: #162032;
+  --canvas: #0a0f1d;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --border: #1e293b;
+  --border-subtle: #172338;
+  --border-strong: #334155;
+  --status-active-bg: rgba(6, 95, 70, 0.2);
+  --status-active-text: #34d399;
+  --status-active-border: rgba(5, 150, 105, 0.4);
+  --status-inactive-bg: rgba(153, 27, 27, 0.2);
+  --status-inactive-text: #f87171;
+  --status-inactive-border: rgba(220, 38, 38, 0.4);
+  --row-deleted: #141c2e;
+  color-scheme: dark;
 }
 
 body {
   background-color: var(--canvas);
   color: var(--text-primary);
   font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* Accessible focus ring styling */
+:focus-visible {
+  outline: 2px solid var(--brand-action);
+  outline-offset: 2px;
 }
