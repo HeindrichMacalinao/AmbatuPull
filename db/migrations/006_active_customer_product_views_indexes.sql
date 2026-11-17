@@ -1,5 +1,9 @@
 -- S2-DBA-01 (#100): SQLite schema for regenerated HopeERP.db / HOPE_Model1.db.
+<<<<<<< HEAD
 -- Keep in sync with migrations/006_active_customer_product_views_indexes.sql.
+=======
+-- Keep in sync with migrations/005_active_customer_product_views_indexes.sql.
+>>>>>>> origin/main
 CREATE VIEW IF NOT EXISTS v_active_customer AS
 SELECT custNo, custName, address, payTerms, status, stamp
 FROM CUSTOMER

@@ -1142,6 +1142,7 @@ export async function getCustomers({
   });
 }
 
+<<<<<<< HEAD
 // ------------------------------------------------------------------------------
 // S2-DBA-02: Product pricing as of an explicit caller-supplied date.
 // This is server-side data access only; routes must enforce their own RBAC.
@@ -1176,4 +1177,99 @@ export async function getProductPricesAsOf(targetDate: string): Promise<ProductP
   }
 
   return listProductPricesAsOfSqlite(getSqliteDb(), asOf) as ProductPriceAsOf[];
+=======
+export async function createCustomer({
+  custNo,
+  custName,
+  address,
+  payTerms,
+  actor = 'system',
+}: {
+  custNo: string;
+  custName: string;
+  address?: string | null;
+  payTerms: string;
+  actor?: string;
+}): Promise<CustomerRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const existing = db.prepare('SELECT 1 FROM CUSTOMER WHERE custNo = ?').get(custNo);
+  if (existing) {
+    const err = new Error(`Customer with number '${custNo}' already exists`);
+    (err as any).status = 409;
+    throw err;
+  }
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const now = new Date();
+  let hours = now.getHours();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  const stamp = `CREATED ${actor} ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(hours)}:${pad(now.getMinutes())} ${ampm}`;
+
+  db.prepare(`
+    INSERT INTO CUSTOMER (custNo, custName, address, payTerms, status, stamp)
+    VALUES (?, ?, ?, ?, 'Active', ?)
+  `).run(custNo, custName, address || null, payTerms, stamp);
+
+  return {
+    custNo,
+    custName,
+    address: address || null,
+    payTerms,
+    status: 'Active',
+    stamp,
+  };
+}
+
+export async function updateCustomer({
+  custNo,
+  custName,
+  address,
+  payTerms,
+  actor = 'system',
+}: {
+  custNo: string;
+  custName?: string;
+  address?: string | null;
+  payTerms?: string;
+  actor?: string;
+}): Promise<CustomerRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const existing = db.prepare('SELECT * FROM CUSTOMER WHERE custNo = ?').get(custNo) as any;
+  if (!existing) {
+    const err = new Error('Customer not found');
+    (err as any).status = 404;
+    throw err;
+  }
+
+  const newName = custName !== undefined ? custName : existing.custName;
+  const newAddress = address !== undefined ? address : existing.address;
+  const newPayTerms = payTerms !== undefined ? payTerms : existing.payTerms;
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const now = new Date();
+  let hours = now.getHours();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  const stamp = `EDITED ${actor} ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(hours)}:${pad(now.getMinutes())} ${ampm}`;
+
+  db.prepare(`
+    UPDATE CUSTOMER
+    SET custName = ?, address = ?, payTerms = ?, stamp = ?
+    WHERE custNo = ?
+  `).run(newName, newAddress || null, newPayTerms, stamp, custNo);
+
+  return {
+    custNo,
+    custName: newName,
+    address: newAddress || null,
+    payTerms: newPayTerms,
+    status: existing.status,
+    stamp,
+  };
+>>>>>>> origin/main
 }

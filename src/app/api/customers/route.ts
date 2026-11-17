@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getCustomers } from '@/lib/erp-db';
+import { getCustomers, createCustomer } from '@/lib/erp-db';
 
 export async function GET(request: Request) {
   try {
@@ -16,6 +16,34 @@ export async function GET(request: Request) {
     console.error('[API GET /api/customers] error:', err);
     return NextResponse.json(
       { error: err.message || 'Failed to retrieve customers' },
+      { status: err.status || 500 }
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { custNo, custName, address, payTerms } = body;
+
+    const actor = request.headers.get('x-user-email') || request.headers.get('x-user-role') || 'system';
+
+    const newCust = await createCustomer({
+      custNo,
+      custName,
+      address,
+      payTerms,
+      actor,
+    });
+
+    return NextResponse.json(
+      { message: 'Customer created successfully', customer: newCust },
+      { status: 201 }
+    );
+  } catch (err: any) {
+    console.error('[API POST /api/customers] error:', err);
+    return NextResponse.json(
+      { error: err.message || 'Failed to create customer' },
       { status: err.status || 500 }
     );
   }

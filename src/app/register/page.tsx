@@ -16,7 +16,6 @@ import {
   Eye,
   EyeOff,
   Building,
-  KeyRound,
   RefreshCw,
   Sparkles,
 } from 'lucide-react';
@@ -159,7 +158,7 @@ export default function RegisterPage() {
       setSuccess('Account verified and created successfully! Redirecting to corporate sign in...');
       setTimeout(() => {
         router.push(`/login?email=${encodeURIComponent(email)}&registered=1`);
-      }, 1200);
+      }, 1000);
     } catch (err: any) {
       setError(err.message || 'Verification failed');
     } finally {
@@ -206,14 +205,14 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center p-4 py-12">
-      <div className="w-full max-w-xl bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+    <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center p-4 py-8">
+      <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-xl shadow-md border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors">
         {/* Top Header */}
-        <div className="bg-slate-900 px-8 py-6 text-white text-center relative">
-          <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white mx-auto mb-3 shadow-md">
-            <Building className="w-6 h-6" />
+        <div className="bg-slate-900 border-b border-slate-800 px-6 py-6 text-white text-center">
+          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white mx-auto mb-2.5 shadow-xs">
+            <Building className="w-5 h-5" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Create Corporate Account</h1>
+          <h1 className="text-xl font-bold tracking-tight text-white">Create Corporate Account</h1>
           <p className="text-xs text-slate-300 mt-1">
             {step === 'form'
               ? 'Join the Hope, Inc. Enterprise Resource Planning (ERP) platform'
@@ -221,43 +220,43 @@ export default function RegisterPage() {
           </p>
 
           {/* Stepper Indicator */}
-          <div className="flex items-center justify-center gap-2 mt-4">
+          <div className="flex items-center justify-center gap-2 mt-3">
             <span
-              className={`h-2 rounded-full transition-all ${
-                step === 'form' ? 'w-8 bg-blue-500' : 'w-2 bg-emerald-500'
+              className={`h-1.5 rounded-full transition-all ${
+                step === 'form' ? 'w-8 bg-blue-500' : 'w-3 bg-emerald-500'
               }`}
             />
             <span
-              className={`h-2 rounded-full transition-all ${
-                step === 'otp' ? 'w-8 bg-blue-500' : 'w-2 bg-slate-700'
+              className={`h-1.5 rounded-full transition-all ${
+                step === 'otp' ? 'w-8 bg-blue-500' : 'w-3 bg-slate-700'
               }`}
             />
           </div>
         </div>
 
-        <div className="p-8">
+        <div className="p-6 sm:p-7">
           {/* Security & Access Policy Notice */}
-          <div className="mb-6 p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs flex items-start gap-3">
-            <ShieldCheck className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div className="mb-5 p-3.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/80 text-blue-900 dark:text-blue-200 text-xs flex items-start gap-2.5">
+            <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold mb-0.5">Corporate Access Governance</p>
-              <p className="text-blue-800 leading-relaxed">
-                Self-registered accounts receive standard <strong>User</strong> authorization. Administrator and Superadmin governance privileges require explicit elevation by executive management.
+              <p className="text-blue-800 dark:text-blue-300 leading-relaxed text-[11px]">
+                Self-registered accounts receive standard <strong>User</strong> authorization. Administrator privileges require elevation by management.
               </p>
             </div>
           </div>
 
           {/* Alert banners */}
           {error && (
-            <div className="mb-5 p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2.5">
+            <div className="mb-5 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2">
               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <span className="leading-relaxed">{error}</span>
             </div>
           )}
 
           {success && (
-            <div className="mb-5 p-3.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-start gap-2.5">
-              <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <div className="mb-5 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-800 dark:text-emerald-300 text-xs flex items-start gap-2">
+              <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
               <span className="leading-relaxed">{success}</span>
             </div>
           )}
@@ -265,118 +264,119 @@ export default function RegisterPage() {
           {/* STEP 1: REGISTRATION DETAILS FORM */}
           {step === 'form' && (
             <form onSubmit={handleRequestOtp} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                     First Name
                   </label>
                   <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    <User className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                     <input
                       type="text"
                       required
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
                       placeholder="Jane"
-                      className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                      className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 dark:focus:border-blue-400 transition"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                     Last Name
                   </label>
                   <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    <User className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                     <input
                       type="text"
                       required
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
                       placeholder="Doe"
-                      className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                      className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 dark:focus:border-blue-400 transition"
                     />
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                   Corporate Email Address
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@company.com"
-                    className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                    className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 dark:focus:border-blue-400 transition"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                   Password
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-9 pr-10 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                    className="w-full pl-9 pr-9 py-2 bg-white dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 dark:focus:border-blue-400 transition"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition"
+                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
                 {/* Strength Indicators */}
-                <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-500">
-                  <span className={`inline-flex items-center gap-1 ${hasMinLength ? 'text-emerald-600 font-medium' : 'text-slate-400'}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${hasMinLength ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                <div className="mt-1.5 flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400">
+                  <span className={`inline-flex items-center gap-1 ${hasMinLength ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-slate-400'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${hasMinLength ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
                     8+ Characters
                   </span>
-                  <span className="text-slate-300">•</span>
-                  <span className={`inline-flex items-center gap-1 ${hasNumberOrSpecial ? 'text-emerald-600 font-medium' : 'text-slate-400'}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${hasNumberOrSpecial ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                  <span className="text-slate-300 dark:text-slate-600">•</span>
+                  <span className={`inline-flex items-center gap-1 ${hasNumberOrSpecial ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-slate-400'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${hasNumberOrSpecial ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
                     Numbers or symbols
                   </span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                   Confirm Password
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                    className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 dark:focus:border-blue-400 transition"
                   />
                 </div>
                 {confirmPassword && (
                   <div className="mt-1 text-[11px]">
                     {passwordsMatch ? (
-                      <span className="text-emerald-600 font-medium flex items-center gap-1">
+                      <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                         <CheckCircle2 className="w-3.5 h-3.5" /> Passwords match
                       </span>
                     ) : (
-                      <span className="text-rose-600 font-medium flex items-center gap-1">
+                      <span className="text-rose-600 dark:text-rose-400 font-medium flex items-center gap-1">
                         <AlertCircle className="w-3.5 h-3.5" /> Passwords do not match
                       </span>
                     )}
@@ -387,7 +387,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 py-2.5 px-4 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold rounded-lg text-sm shadow-sm hover:shadow transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full mt-2 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold rounded-lg text-sm shadow-xs transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 {loading ? (
                   <span>Dispatching Verification Code...</span>
@@ -403,31 +403,31 @@ export default function RegisterPage() {
 
           {/* STEP 2: OTP VERIFICATION SCREEN */}
           {step === 'otp' && (
-            <form onSubmit={handleVerifyOtp} className="space-y-5">
-              <div className="text-center p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <Mail className="w-5 h-5" />
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <div className="text-center p-3.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 rounded-lg">
+                <div className="w-9 h-9 bg-blue-100 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center mx-auto mb-1.5">
+                  <Mail className="w-4 h-4" />
                 </div>
-                <h3 className="text-sm font-bold text-slate-900">Check Your Email</h3>
-                <p className="text-xs text-slate-600 mt-1">
+                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">Check Your Email</h3>
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
                   We sent a 6-digit verification code to <strong>{email}</strong>.
                 </p>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  Valid for 15 minutes. Check your spam/junk folder if not in inbox.
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                  Valid for 15 minutes. Check spam folder if not received.
                 </p>
               </div>
 
-              {/* Dev/Evaluation Helper Banner (when email service is not yet configured or in testing) */}
+              {/* Dev/Evaluation Helper Banner */}
               {devOtp && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-start gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded-lg text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                   <div>
                     <span className="font-semibold">Vercel Testing Helper: </span>
                     Your verification code is{' '}
-                    <strong className="font-mono text-sm tracking-wider text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                    <strong className="font-mono text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.5 rounded">
                       {devOtp}
                     </strong>
-                    <div className="text-[10px] text-amber-700 mt-0.5">
+                    <div className="text-[10px] text-amber-700 dark:text-amber-400 mt-0.5">
                       (To deliver directly to your actual inbox on Vercel, configure RESEND_API_KEY or SMTP credentials in Vercel settings).
                     </div>
                   </div>
@@ -435,10 +435,10 @@ export default function RegisterPage() {
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2 text-center">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 text-center">
                   Enter 6-Digit Verification Code
                 </label>
-                <div className="relative max-w-xs mx-auto">
+                <div className="max-w-xs mx-auto">
                   <input
                     type="text"
                     required
@@ -447,7 +447,7 @@ export default function RegisterPage() {
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
                     placeholder="••••••"
-                    className="w-full text-center tracking-[12px] font-mono text-2xl font-bold py-3 px-4 border-2 border-blue-500 rounded-xl focus:ring-4 focus:ring-blue-100 outline-none transition text-slate-900 bg-white"
+                    className="w-full text-center tracking-[10px] font-mono text-xl font-bold py-2.5 px-4 border border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none transition text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-800"
                   />
                 </div>
               </div>
@@ -455,14 +455,14 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading || otp.length < 6}
-                className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold rounded-lg text-sm shadow-sm hover:shadow transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold rounded-lg text-sm shadow-xs transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 {loading ? (
                   <span>Verifying Code & Creating Account...</span>
                 ) : (
                   <>
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>Verify & Create Corporate Account</span>
+                    <span>Verify &amp; Create Corporate Account</span>
                   </>
                 )}
               </button>
@@ -471,7 +471,7 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setStep('form')}
-                  className="text-slate-500 hover:text-slate-800 transition flex items-center gap-1"
+                  className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition flex items-center gap-1"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>Edit Details</span>
@@ -481,7 +481,7 @@ export default function RegisterPage() {
                   type="button"
                   disabled={resendCooldown > 0 || loading}
                   onClick={handleResendCode}
-                  className="text-blue-600 hover:text-blue-800 font-medium transition disabled:text-slate-400 disabled:cursor-not-allowed flex items-center gap-1"
+                  className="text-blue-600 dark:text-blue-400 hover:underline font-medium transition disabled:text-slate-400 dark:disabled:text-slate-600 disabled:cursor-not-allowed flex items-center gap-1"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                   <span>{resendCooldown > 0 ? `Resend Code (${resendCooldown}s)` : 'Resend Code'}</span>
@@ -491,10 +491,10 @@ export default function RegisterPage() {
           )}
 
           {/* Bottom Navigation */}
-          <div className="mt-8 pt-6 border-t border-slate-200 text-center">
-            <p className="text-xs text-slate-600">
+          <div className="mt-6 pt-5 border-t border-slate-200 dark:border-slate-800 text-center">
+            <p className="text-xs text-slate-600 dark:text-slate-400">
               Already have an authorized account?{' '}
-              <Link href="/login" className="font-semibold text-blue-600 hover:text-blue-500 hover:underline transition">
+              <Link href="/login" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline transition">
                 Sign in to Corporate Portal
               </Link>
             </p>
