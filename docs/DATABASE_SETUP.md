@@ -229,11 +229,11 @@ Every domain and administrative table across the Hope, Inc. ERP database **must*
 
 ### S2-DBA-01: active customer/product views
 
-- `migrations/005_active_customer_product_views_indexes.sql` is applied by the
+- `migrations/006_active_customer_product_views_indexes.sql` is applied by the
   local SQLite runner (`npm run migrate:up`); the paired `.down.sql` reverses it.
 - `db/migrations/006_active_customer_product_views_indexes.sql` is included in
   `scripts/regenerate_hope.py` so regenerated SQLite database assets include
-  the same views/indexes. Existing bundled DB assets have also been migrated.
+  the same views/indexes.
 - `supabase/migrations/20261117_005_active_customer_product_views_indexes.sql`
   is the PostgreSQL/Supabase equivalent; apply it through the approved Supabase
   deployment process (PostgreSQL 15+ required for `security_invoker`).
