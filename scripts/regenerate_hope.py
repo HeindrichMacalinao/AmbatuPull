@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rebuild integrated S1-DBA-01/02/03/04/05/06 SQLite database artifacts.
+"""Rebuild integrated S1/S2 SQLite database artifacts.
 
 Run from the repository root: python scripts/regenerate_hope.py
 Optional: python scripts/regenerate_hope.py --model1 path/to/Model1.db
@@ -21,6 +21,7 @@ USER_MIGRATION = ROOT / 'db/migrations/002_user_management_tables.sql'
 RESET_MIGRATION = ROOT / 'db/migrations/003_password_reset_token.sql'
 ACCESS_SEED = ROOT / 'db/seeds/003_initial_access_catalog.sql'
 AUDIT_MIGRATION = ROOT / 'db/migrations/004_audit_trail.sql'
+ACTIVE_VIEWS_MIGRATION = ROOT / 'db/migrations/006_active_customer_product_views_indexes.sql'
 DEFAULT_MODEL1 = ROOT / 'reference/Model1.db'
 
 
@@ -76,6 +77,7 @@ def rebuild(target: Path, source_model: Path | None) -> None:
             # S1-DBA-06 installs triggers LAST so historical/catalog seed does
             # not require an authenticated runtime session.
             conn.executescript(AUDIT_MIGRATION.read_text(encoding='utf-8'))
+            conn.executescript(ACTIVE_VIEWS_MIGRATION.read_text(encoding='utf-8'))
             assert conn.execute('PRAGMA foreign_keys').fetchone()[0] == 1
             assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
             assert conn.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
