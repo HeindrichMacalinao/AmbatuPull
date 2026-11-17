@@ -1,11 +1,6 @@
-<<<<<<< HEAD
--- S2-DBA-01 (#100): PostgreSQL / Supabase equivalent of SQLite migration 006.
--- PostgreSQL 15+ is required for security_invoker views.
-=======
 -- S2-DBA-01 (#100): PostgreSQL / Supabase equivalent of SQLite migration 005.
 -- Supabase requires PostgreSQL 15+ for security_invoker views. This ensures
 -- view queries respect the underlying table grants and row-level security.
->>>>>>> origin/main
 CREATE OR REPLACE VIEW public.v_active_customer
 WITH (security_invoker = true) AS
 SELECT "custNo", "custName", "address", "payTerms", "status", "stamp"

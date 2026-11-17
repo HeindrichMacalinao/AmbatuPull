@@ -1142,7 +1142,6 @@ export async function getCustomers({
   });
 }
 
-<<<<<<< HEAD
 // ------------------------------------------------------------------------------
 // S2-DBA-02: Product pricing as of an explicit caller-supplied date.
 // This is server-side data access only; routes must enforce their own RBAC.
@@ -1177,7 +1176,8 @@ export async function getProductPricesAsOf(targetDate: string): Promise<ProductP
   }
 
   return listProductPricesAsOfSqlite(getSqliteDb(), asOf) as ProductPriceAsOf[];
-=======
+}
+
 export async function createCustomer({
   custNo,
   custName,
@@ -1271,5 +1271,4 @@ export async function updateCustomer({
     status: existing.status,
     stamp,
   };
->>>>>>> origin/main
 }
