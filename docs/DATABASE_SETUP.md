@@ -212,6 +212,37 @@ Every domain and administrative table across the Hope, Inc. ERP database **must*
 
 ## 7. How to Author New Migrations
 
+### S2-DBA-02: effective-date product pricing
+
+- `src/db/productPrices.cjs` contains the SQLite prepared query, binds the
+  caller's validated `YYYY-MM-DD` date, and keeps products with no price in the
+  result (`currentPrice` is `NULL`). No SQLite schema migration is needed.
+- `src/lib/erp-db.ts` exports `getProductPricesAsOf(targetDate)`; it executes
+  the SQLite query locally or calls the `product_prices_as_of` RPC on Supabase.
+- `supabase/migrations/20261117_006_product_prices_as_of.sql` installs that
+  PostgreSQL function. It is `SECURITY INVOKER`, executable by `service_role`
+  only; deploy the migration before using the RPC on Supabase.
+- The PRICEHIST `(prodCode, effDate)` primary key already indexes date lookups;
+  the S2-DBA-01 compound index can also support related lookups. The
+  Figure 11 `P-001`–`P-005` sample codes are test-only fixtures, not part of the
+  approved historical `AK0001`-style seed dataset.
+
+### S2-DBA-01: active customer/product views
+
+- `migrations/005_active_customer_product_views_indexes.sql` is applied by the
+  local SQLite runner (`npm run migrate:up`); the paired `.down.sql` reverses it.
+- `db/migrations/006_active_customer_product_views_indexes.sql` is included in
+  `scripts/regenerate_hope.py` so regenerated SQLite database assets include
+  the same views/indexes. Existing bundled DB assets have also been migrated.
+- `supabase/migrations/20261117_005_active_customer_product_views_indexes.sql`
+  is the PostgreSQL/Supabase equivalent; apply it through the approved Supabase
+  deployment process (PostgreSQL 15+ required for `security_invoker`).
+- Normal customer/product reads use `v_active_customer` and `v_active_product`.
+  Administrative inactive/all customer queries still use `CUSTOMER` directly;
+  callers must enforce authenticated roles. The composite indexes help status
+  and exact-name lookups; substring
+  searches using `LOWER(name) LIKE '%term%'` can still require a scan.
+
 When contributing new schema changes:
 
 1. Create a forward migration file in `migrations/` following the numerical naming standard:

@@ -867,8 +867,8 @@ export async function getDashboardMetrics(): Promise<{
     try {
       const supabase = getAdminClient();
       const [custRes, prodRes, salesRes, payRes, userRes] = await Promise.all([
-        supabase.from('CUSTOMER').select('custNo', { count: 'exact', head: true }).eq('status', 'Active'),
-        supabase.from('PRODUCT').select('prodCode', { count: 'exact', head: true }).eq('status', 'Active'),
+        supabase.from('v_active_customer').select('custNo', { count: 'exact', head: true }),
+        supabase.from('v_active_product').select('prodCode', { count: 'exact', head: true }),
         supabase.from('SALES').select('transNo', { count: 'exact', head: true }).eq('status', 'Active'),
         supabase.from('PAYMENT').select('amount').eq('status', 'Active'),
         supabase.from('app_user').select('userId', { count: 'exact', head: true }).eq('status', 'Active'),
@@ -895,8 +895,8 @@ export async function getDashboardMetrics(): Promise<{
   try {
     const db = getSqliteDb();
 
-    const custRow = db.prepare("SELECT COUNT(*) as count FROM CUSTOMER WHERE status = 'Active'").get() as any;
-    const prodRow = db.prepare("SELECT COUNT(*) as count FROM PRODUCT WHERE status = 'Active'").get() as any;
+    const custRow = db.prepare('SELECT COUNT(*) as count FROM v_active_customer').get() as any;
+    const prodRow = db.prepare('SELECT COUNT(*) as count FROM v_active_product').get() as any;
     const salesRow = db.prepare("SELECT COUNT(*) as count FROM SALES WHERE status = 'Active'").get() as any;
     const payRow = db.prepare("SELECT SUM(amount) as total FROM PAYMENT WHERE status = 'Active'").get() as any;
     const userRow = db.prepare("SELECT COUNT(*) as count FROM app_user WHERE status = 'Active'").get() as any;
@@ -1094,24 +1094,18 @@ export async function getCustomers({
   status?: string;
   role?: string;
 } = {}): Promise<CustomerRecord[]> {
-  const isUser = role === 'User';
+  // Only recognized administrative roles may request inactive/all rows.
+  const isUser = role !== 'Admin' && role !== 'Superadmin';
   const db = getSqliteDb();
 
-  let query = 'SELECT custNo, custName, address, payTerms, status, stamp FROM CUSTOMER';
+  const normalizedStatus = String(status || '').trim().toLowerCase();
+  const activeOnly = isUser || !['inactive', 'all'].includes(normalizedStatus);
+  let query = `SELECT custNo, custName, address, payTerms, status, stamp FROM ${activeOnly ? 'v_active_customer' : 'CUSTOMER'}`;
   const conditions: string[] = [];
   const params: any[] = [];
 
-  if (isUser) {
-    conditions.push("status = 'Active'");
-  } else {
-    const s = String(status || '').trim().toLowerCase();
-    if (s === 'inactive') {
-      conditions.push("status = 'Inactive'");
-    } else if (s === 'all') {
-      // all
-    } else {
-      conditions.push("status = 'Active'");
-    }
+  if (!isUser && normalizedStatus === 'inactive') {
+    conditions.push("status = 'Inactive'");
   }
 
   if (search && search.trim()) {
@@ -1146,4 +1140,40 @@ export async function getCustomers({
       stamp: r.stamp,
     };
   });
+}
+
+// ------------------------------------------------------------------------------
+// S2-DBA-02: Product pricing as of an explicit caller-supplied date.
+// This is server-side data access only; routes must enforce their own RBAC.
+// ------------------------------------------------------------------------------
+export interface ProductPriceAsOf {
+  prodCode: string;
+  description: string;
+  unit: string | null;
+  status: string;
+  stamp: string;
+  currentPrice: number | null;
+}
+
+export async function getProductPricesAsOf(targetDate: string): Promise<ProductPriceAsOf[]> {
+  const { assertTargetDate, listProductPricesAsOfSqlite } = require('../db/productPrices.cjs');
+  const asOf = assertTargetDate(targetDate);
+  await ensureDbInitialized();
+
+  if (isSupabaseConfigured()) {
+    const { data, error } = await getAdminClient().rpc('product_prices_as_of', {
+      p_target_date: asOf,
+    });
+    if (error) throw new Error(`Product price lookup failed: ${error.message}`);
+    return (data || []).map((row: any) => ({
+      prodCode: row.prodCode,
+      description: row.description,
+      unit: row.unit ?? null,
+      status: row.status,
+      stamp: row.stamp,
+      currentPrice: row.currentPrice == null ? null : Number(row.currentPrice),
+    }));
+  }
+
+  return listProductPricesAsOfSqlite(getSqliteDb(), asOf) as ProductPriceAsOf[];
 }
