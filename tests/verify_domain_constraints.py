@@ -114,7 +114,7 @@ def test_checks(conn: sqlite3.Connection) -> None:
 
 def main() -> None:
     for file in (
-        'migrations/006_customer_product_domain_constraints.sql',
+        'migrations/007_customer_product_domain_constraints.sql',
         'db/migrations/007_customer_product_domain_constraints.sql',
     ):
         conn = sqlite3.connect(':memory:')
@@ -146,8 +146,8 @@ def main() -> None:
     conn = sqlite3.connect(':memory:')
     try:
         conn.executescript(BASE_SQL)
-        conn.executescript((ROOT / 'migrations/006_customer_product_domain_constraints.sql').read_text())
-        conn.executescript((ROOT / 'migrations/006_customer_product_domain_constraints.down.sql').read_text())
+        conn.executescript((ROOT / 'migrations/007_customer_product_domain_constraints.sql').read_text())
+        conn.executescript((ROOT / 'migrations/007_customer_product_domain_constraints.down.sql').read_text())
         names = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='trigger'")}
         assert not TRIGGERS.intersection(names)
         assert_accepted(conn, "INSERT INTO CUSTOMER(custNo,custName,payTerms,stamp) VALUES ('C-123','Test','InvalidTerm','TEST')")

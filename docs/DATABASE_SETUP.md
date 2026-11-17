@@ -212,6 +212,66 @@ Every domain and administrative table across the Hope, Inc. ERP database **must*
 
 ## 7. How to Author New Migrations
 
+### S2-DBA-03: staged customer/product/price constraints
+
+- First run `python scripts/check_domain_constraint_readiness.py HopeERP.db`.
+  Exit status `2` means existing rows still require approved normalization.
+  The approved baseline has **58 customers** with `30D`/`45D` payment terms
+  and **57 products** with `ea`/`pc` units. These are incompatible with issue
+  #102. Never guess unit conversions or rewrite historical records silently.
+- `migrations/007_customer_product_domain_constraints.sql` installs reversible
+  SQLite `BEFORE INSERT`/`BEFORE UPDATE` validation triggers. The paired `.down.sql`
+  removes only these triggers. `db/migrations/007_customer_product_domain_constraints.sql`
+  installs the same rules after historical seeding when rebuilding DB assets.
+- `supabase/migrations/20261117_007_customer_product_domain_constraints.sql`
+  adds named PostgreSQL `CHECK ... NOT VALID` constraints. New writes are
+  rejected even though existing incompatible rows remain. After approved
+  cleanup, apply `ALTER TABLE ... VALIDATE CONSTRAINT` in a separate migration.
+- `custNo` uses length 1–10 rather than a `C-` prefix because historical
+  customer IDs use `C0001` and the local seed uses `CUST-001`; changing IDs
+  would require updates to sales foreign-key references.
+- `payTerms` and `unit` remain nullable because the original schema permits
+  `NULL`. Existing status checks and the PRICEHIST `(prodCode, effDate)`
+  composite primary key already enforce their requirements.
+- **Operational caution:** even an UPDATE of a different column on a legacy
+  noncompliant row fails until that row's domain values are corrected. Plan
+  data remediation with the product owner before enabling production updates.
+- **Cross-issue conflict:** S2-DBA-02 Figure 11 uses a demonstration price
+  `P-003 = 0.00`, whereas S2-DBA-03 requires `unitPrice > 0`. That Figure 11
+  fixture cannot be stored in a database enforcing this new constraint; obtain
+  a business decision before using it as real production data.
+
+### S2-DBA-02: effective-date product pricing
+
+- `src/db/productPrices.cjs` contains the SQLite prepared query, binds the
+  caller's validated `YYYY-MM-DD` date, and keeps products with no price in the
+  result (`currentPrice` is `NULL`). No SQLite schema migration is needed.
+- `src/lib/erp-db.ts` exports `getProductPricesAsOf(targetDate)`; it executes
+  the SQLite query locally or calls the `product_prices_as_of` RPC on Supabase.
+- `supabase/migrations/20261117_006_product_prices_as_of.sql` installs that
+  PostgreSQL function. It is `SECURITY INVOKER`, executable by `service_role`
+  only; deploy the migration before using the RPC on Supabase.
+- The PRICEHIST `(prodCode, effDate)` primary key already indexes date lookups;
+  the S2-DBA-01 compound index can also support related lookups. The
+  Figure 11 `P-001`–`P-005` sample codes are test-only fixtures, not part of the
+  approved historical `AK0001`-style seed dataset.
+
+### S2-DBA-01: active customer/product views
+
+- `migrations/005_active_customer_product_views_indexes.sql` is applied by the
+  local SQLite runner (`npm run migrate:up`); the paired `.down.sql` reverses it.
+- `db/migrations/006_active_customer_product_views_indexes.sql` is included in
+  `scripts/regenerate_hope.py` so regenerated SQLite database assets include
+  the same views/indexes. Existing bundled DB assets have also been migrated.
+- `supabase/migrations/20261117_005_active_customer_product_views_indexes.sql`
+  is the PostgreSQL/Supabase equivalent; apply it through the approved Supabase
+  deployment process (PostgreSQL 15+ required for `security_invoker`).
+- Normal customer/product reads use `v_active_customer` and `v_active_product`.
+  Administrative inactive/all customer queries still use `CUSTOMER` directly;
+  callers must enforce authenticated roles. The composite indexes help status
+  and exact-name lookups; substring
+  searches using `LOWER(name) LIKE '%term%'` can still require a scan.
+
 When contributing new schema changes:
 
 1. Create a forward migration file in `migrations/` following the numerical naming standard:

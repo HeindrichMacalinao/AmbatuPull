@@ -1,5 +1,5 @@
 -- S2-DBA-03 (#102): trigger-based SQLite domain rules for regenerated DBs.
--- Must stay equivalent to migrations/006_customer_product_domain_constraints.sql.
+-- Must stay equivalent to migrations/007_customer_product_domain_constraints.sql.
 -- Install AFTER importing historical data; otherwise approved legacy rows would
 -- be blocked. Legacy data remains unchanged pending an approved cleanup plan.
 
