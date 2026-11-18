@@ -435,6 +435,166 @@ async function updateCustomer({ custNo, data, requester } = {}) {
   };
 }
 
+/**
+ * DELETE /api/customers/:custNo (Soft Delete Customer) (§2.3, §3.8, S2-DEV-03).
+ * - Requires right: 'customer.delete' (or Superadmin/Admin)
+ * - Prohibits hard delete; sets status = 'Inactive', stamp = 'DELETED <currentUser> <YYYY-MM-DD HH:MM AM/PM>'
+ * - Rejects if customer not found (404) or already Inactive (400)
+ * - Records action to audit_log
+ */
+async function softDeleteCustomer({ custNo, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  await assertCustomerRight(pool, requester, 'customer.delete');
+
+  const trimmedCustNo = typeof custNo === 'string' ? custNo.trim() : '';
+  if (!trimmedCustNo) {
+    const err = new Error('Customer number is required');
+    err.status = 400;
+    throw err;
+  }
+
+  const existingRes = await pool.query('SELECT * FROM CUSTOMER WHERE custNo = $1', [trimmedCustNo]);
+  if (existingRes.rows.length === 0) {
+    const err = new Error('Customer not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const existing = existingRes.rows[0];
+  if (existing.status === 'Inactive') {
+    const err = new Error('Customer is already inactive / deleted');
+    err.status = 400;
+    throw err;
+  }
+
+  const stamp = formatAuditStamp('DELETED', requester);
+
+  await pool.query(
+    `UPDATE CUSTOMER
+     SET status = 'Inactive', stamp = $1
+     WHERE custNo = $2`,
+    [stamp, trimmedCustNo]
+  );
+
+  // Audit Logging (S2-DEV-03 Requirement 1)
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'DELETED', 'CUSTOMER', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.role || 'system',
+        trimmedCustNo,
+        JSON.stringify({
+          before: {
+            status: existing.status,
+            custName: existing.custName ?? existing.custname,
+          },
+          after: {
+            status: 'Inactive',
+          },
+        }),
+      ]
+    );
+  } catch {
+    // Non-fatal if audit_log table is absent or handled by trigger
+  }
+
+  return {
+    custNo: trimmedCustNo,
+    custName: existing.custName ?? existing.custname,
+    address: existing.address,
+    payTerms: existing.payTerms ?? existing.payterms,
+    status: 'Inactive',
+    stamp,
+  };
+}
+
+/**
+ * PUT /api/customers/:custNo/restore (Restore Customer) (§2.3, §3.8, S2-DEV-03).
+ * - Strictly restricted to Admin and Superadmin
+ * - Sets status = 'Active', stamp = 'RESTORED <currentUser> <YYYY-MM-DD HH:MM AM/PM>'
+ * - Rejects if customer not found (404) or already Active (400)
+ * - Records action to audit_log
+ */
+async function restoreCustomer({ custNo, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  if (!requester || !requester.role) {
+    const err = new Error('Unauthorized: authentication required');
+    err.status = 401;
+    throw err;
+  }
+
+  if (requester.role !== 'Admin' && requester.role !== 'Superadmin') {
+    const err = new Error('Forbidden: only Admin or Superadmin can restore customers');
+    err.status = 403;
+    throw err;
+  }
+
+  const trimmedCustNo = typeof custNo === 'string' ? custNo.trim() : '';
+  if (!trimmedCustNo) {
+    const err = new Error('Customer number is required');
+    err.status = 400;
+    throw err;
+  }
+
+  const existingRes = await pool.query('SELECT * FROM CUSTOMER WHERE custNo = $1', [trimmedCustNo]);
+  if (existingRes.rows.length === 0) {
+    const err = new Error('Customer not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const existing = existingRes.rows[0];
+  if (existing.status === 'Active') {
+    const err = new Error('Customer is already active');
+    err.status = 400;
+    throw err;
+  }
+
+  const stamp = formatAuditStamp('RESTORED', requester);
+
+  await pool.query(
+    `UPDATE CUSTOMER
+     SET status = 'Active', stamp = $1
+     WHERE custNo = $2`,
+    [stamp, trimmedCustNo]
+  );
+
+  // Audit Logging (S2-DEV-03 Requirement 2)
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'RESTORED', 'CUSTOMER', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.role || 'system',
+        trimmedCustNo,
+        JSON.stringify({
+          before: {
+            status: existing.status,
+            custName: existing.custName ?? existing.custname,
+          },
+          after: {
+            status: 'Active',
+          },
+        }),
+      ]
+    );
+  } catch {
+    // Non-fatal if audit_log table is absent or handled by trigger
+  }
+
+  return {
+    custNo: trimmedCustNo,
+    custName: existing.custName ?? existing.custname,
+    address: existing.address,
+    payTerms: existing.payTerms ?? existing.payterms,
+    status: 'Active',
+    stamp,
+  };
+}
+
 module.exports = {
   ALLOWED_PAY_TERMS,
   validatePayTerms,
@@ -445,4 +605,6 @@ module.exports = {
   getCustomerByNo,
   createCustomer,
   updateCustomer,
+  softDeleteCustomer,
+  restoreCustomer,
 };

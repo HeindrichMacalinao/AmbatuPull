@@ -1272,3 +1272,95 @@ export async function updateCustomer({
     stamp,
   };
 }
+
+export async function softDeleteCustomer({
+  custNo,
+  actor = 'system',
+}: {
+  custNo: string;
+  actor?: string;
+}): Promise<CustomerRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const existing = db.prepare('SELECT * FROM CUSTOMER WHERE custNo = ?').get(custNo) as any;
+  if (!existing) {
+    const err = new Error('Customer not found');
+    (err as any).status = 404;
+    throw err;
+  }
+
+  if (existing.status === 'Inactive') {
+    const err = new Error('Customer is already inactive / deleted');
+    (err as any).status = 400;
+    throw err;
+  }
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const now = new Date();
+  let hours = now.getHours();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  const stamp = `DELETED ${actor} ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(hours)}:${pad(now.getMinutes())} ${ampm}`;
+
+  db.prepare(`
+    UPDATE CUSTOMER
+    SET status = 'Inactive', stamp = ?
+    WHERE custNo = ?
+  `).run(stamp, custNo);
+
+  return {
+    custNo,
+    custName: existing.custName,
+    address: existing.address,
+    payTerms: existing.payTerms,
+    status: 'Inactive',
+    stamp,
+  };
+}
+
+export async function restoreCustomer({
+  custNo,
+  actor = 'system',
+}: {
+  custNo: string;
+  actor?: string;
+}): Promise<CustomerRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const existing = db.prepare('SELECT * FROM CUSTOMER WHERE custNo = ?').get(custNo) as any;
+  if (!existing) {
+    const err = new Error('Customer not found');
+    (err as any).status = 404;
+    throw err;
+  }
+
+  if (existing.status === 'Active') {
+    const err = new Error('Customer is already active');
+    (err as any).status = 400;
+    throw err;
+  }
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const now = new Date();
+  let hours = now.getHours();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  const stamp = `RESTORED ${actor} ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(hours)}:${pad(now.getMinutes())} ${ampm}`;
+
+  db.prepare(`
+    UPDATE CUSTOMER
+    SET status = 'Active', stamp = ?
+    WHERE custNo = ?
+  `).run(stamp, custNo);
+
+  return {
+    custNo,
+    custName: existing.custName,
+    address: existing.address,
+    payTerms: existing.payTerms,
+    status: 'Active',
+    stamp,
+  };
+}

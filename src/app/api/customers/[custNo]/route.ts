@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { updateCustomer, getSqliteDb } from '@/lib/erp-db';
+import { updateCustomer, softDeleteCustomer, getSqliteDb } from '@/lib/erp-db';
 
 export async function GET(
   request: Request,
@@ -48,6 +48,32 @@ export async function PUT(
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || 'Failed to update customer' },
+      { status: err.status || 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ custNo: string }> }
+) {
+  try {
+    const { custNo } = await params;
+    const actor = request.headers.get('x-user-email') || request.headers.get('x-user-role') || 'system';
+
+    const deleted = await softDeleteCustomer({
+      custNo,
+      actor,
+    });
+
+    return NextResponse.json({
+      message: 'Customer soft deleted successfully',
+      customer: deleted,
+      ...deleted,
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message || 'Failed to soft delete customer' },
       { status: err.status || 500 }
     );
   }
