@@ -72,9 +72,49 @@ async function updateCustomer(req, res, next) {
   }
 }
 
+/**
+ * DELETE /api/customers/:custNo (Soft Delete Customer)
+ */
+async function deleteCustomer(req, res, next) {
+  try {
+    const customer = await customerService.softDeleteCustomer({
+      custNo: req.params.custNo,
+      requester: req.user,
+    });
+    res.status(200).json({
+      message: 'Customer soft deleted successfully',
+      customer,
+      ...customer,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PUT /api/customers/:custNo/restore (Restore Customer)
+ */
+async function restoreCustomer(req, res, next) {
+  try {
+    const customer = await customerService.restoreCustomer({
+      custNo: req.params.custNo,
+      requester: req.user,
+    });
+    res.status(200).json({
+      message: 'Customer restored successfully',
+      customer,
+      ...customer,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getCustomers,
   getCustomer,
   createCustomer,
   updateCustomer,
+  deleteCustomer,
+  restoreCustomer,
 };
