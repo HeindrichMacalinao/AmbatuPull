@@ -212,6 +212,102 @@ Every domain and administrative table across the Hope, Inc. ERP database **must*
 
 ## 7. How to Author New Migrations
 
+### S2-DBA-04: protect historical sales on hard/soft deletion
+
+- Existing SQLite FKs already enforce `NO ACTION` for `SALES.custNo ->
+  CUSTOMER.custNo`, `SALESDETAIL.prodCode -> PRODUCT.prodCode`, and
+  `PRICEHIST.prodCode -> PRODUCT.prodCode`. With `PRAGMA foreign_keys=ON` on
+  **each connection**, `DELETE` of any referenced parent fails. The migration
+  runner and application connection adapter already enable this PRAGMA.
+- Existing Supabase/PostgreSQL FKs specify `ON DELETE RESTRICT`. No parent
+  tables or data are rebuilt, and no foreign keys are dropped.
+- **S2-DBA-03 compatibility:** its original domain checks also blocked
+  `status='Inactive'` for historical `30D`/`45D` and `ea`/`pc` values. The
+  new SQLite migration `migrations/007_customer_product_referential_soft_delete.sql`
+  and `db/migrations/008_customer_product_referential_soft_delete.sql` keep
+  domain validation on `INSERT` and changes to domain fields, but permit
+  status/stamp-only updates on grandfathered historical records. A paired
+  `.down.sql` restores the previous SQLite trigger behavior if needed.
+- `supabase/migrations/20261118_008_customer_product_referential_soft_delete.sql`
+  replaces *only* the staged PostgreSQL `payTerms` and `unit` checks from #102
+  with column-specific triggers. It has not been run on a live Supabase DB.
+- Run `python tests/verify_customer_product_restrict.py`. This harness runs
+  the committed `db/verify/verify_customer_product_restrict.sql` on **in-memory
+  databases only**, catches expected FK errors, verifies JOINs after soft
+  deletion, and rolls back. No test data remains in database assets.
+- For PostgreSQL, use the separate transactional verification script at
+  `supabase/verify/20261118_customer_product_restrict.sql` after applying the
+  Supabase migration. Execute it as an authorized database operator, confirm
+  the PASS notice, and ensure it finishes with `ROLLBACK`. It has not been
+  exercised against a live Supabase instance.
+- Issue #S2-DBA-04 mentions `C-001`, but the approved HOPE baseline has
+  `C0001` rather than `C-001`. The script creates a temporary `C-001` with a
+  linked sale, then rolls it back. It additionally checks *real historical*
+  `C0001` and `NB0005` links while soft-deleting them inside a rolled-back
+  transaction. The Supabase schema uses `saleNo`/`saleDate` while local SQLite
+  uses `transNo`/`salesDate`; the supplied SQL script targets SQLite.
+
+### S2-DBA-03: staged customer/product/price constraints
+
+- First run `python scripts/check_domain_constraint_readiness.py HopeERP.db`.
+  Exit status `2` means existing rows still require approved normalization.
+  The approved baseline has **58 customers** with `30D`/`45D` payment terms
+  and **57 products** with `ea`/`pc` units. These are incompatible with issue
+  #102. Never guess unit conversions or rewrite historical records silently.
+- `migrations/006_customer_product_domain_constraints.sql` installs reversible
+  SQLite `BEFORE INSERT`/`BEFORE UPDATE` validation triggers. The paired `.down.sql`
+  removes only these triggers. `db/migrations/007_customer_product_domain_constraints.sql`
+  installs the same rules after historical seeding when rebuilding DB assets.
+- `supabase/migrations/20261117_007_customer_product_domain_constraints.sql`
+  adds named PostgreSQL `CHECK ... NOT VALID` constraints. New writes are
+  rejected even though existing incompatible rows remain. After approved
+  cleanup, apply `ALTER TABLE ... VALIDATE CONSTRAINT` in a separate migration.
+- `custNo` uses length 1–10 rather than a `C-` prefix because historical
+  customer IDs use `C0001` and the local seed uses `CUST-001`; changing IDs
+  would require updates to sales foreign-key references.
+- `payTerms` and `unit` remain nullable because the original schema permits
+  `NULL`. Existing status checks and the PRICEHIST `(prodCode, effDate)`
+  composite primary key already enforce their requirements.
+- **Operational caution:** #102 alone rejects even status-only updates to
+  historical rows with incompatible domain values. Apply #104 afterward to
+  allow soft deletion; changes to their invalid domain columns still require
+  approved data cleanup. The historical violations remain unresolved.
+- **Cross-issue conflict:** S2-DBA-02 Figure 11 uses a demonstration price
+  `P-003 = 0.00`, whereas S2-DBA-03 requires `unitPrice > 0`. That Figure 11
+  fixture cannot be stored in a database enforcing this new constraint; obtain
+  a business decision before using it as real production data.
+
+### S2-DBA-02: effective-date product pricing
+
+- `src/db/productPrices.cjs` contains the SQLite prepared query, binds the
+  caller's validated `YYYY-MM-DD` date, and keeps products with no price in the
+  result (`currentPrice` is `NULL`). No SQLite schema migration is needed.
+- `src/lib/erp-db.ts` exports `getProductPricesAsOf(targetDate)`; it executes
+  the SQLite query locally or calls the `product_prices_as_of` RPC on Supabase.
+- `supabase/migrations/20261117_006_product_prices_as_of.sql` installs that
+  PostgreSQL function. It is `SECURITY INVOKER`, executable by `service_role`
+  only; deploy the migration before using the RPC on Supabase.
+- The PRICEHIST `(prodCode, effDate)` primary key already indexes date lookups;
+  the S2-DBA-01 compound index can also support related lookups. The
+  Figure 11 `P-001`–`P-005` sample codes are test-only fixtures, not part of the
+  approved historical `AK0001`-style seed dataset.
+
+### S2-DBA-01: active customer/product views
+
+- `migrations/005_active_customer_product_views_indexes.sql` is applied by the
+  local SQLite runner (`npm run migrate:up`); the paired `.down.sql` reverses it.
+- `db/migrations/006_active_customer_product_views_indexes.sql` is included in
+  `scripts/regenerate_hope.py` so regenerated SQLite database assets include
+  the same views/indexes. Existing bundled DB assets have also been migrated.
+- `supabase/migrations/20261117_005_active_customer_product_views_indexes.sql`
+  is the PostgreSQL/Supabase equivalent; apply it through the approved Supabase
+  deployment process (PostgreSQL 15+ required for `security_invoker`).
+- Normal customer/product reads use `v_active_customer` and `v_active_product`.
+  Administrative inactive/all customer queries still use `CUSTOMER` directly;
+  callers must enforce authenticated roles. The composite indexes help status
+  and exact-name lookups; substring
+  searches using `LOWER(name) LIKE '%term%'` can still require a scan.
+
 When contributing new schema changes:
 
 1. Create a forward migration file in `migrations/` following the numerical naming standard:
