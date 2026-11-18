@@ -15,6 +15,12 @@ system](design-system.md). Product records, prices, and timestamps below are
 illustrative documentation examples; this document does not implement UI or
 application behavior.
 
+Current Price represents the most recent Active Price History entry whose
+effective date is on or before the selected as-of date. In the example, the
+2026-11-01 P-003 entry is the latest applicable Active price, so the list shows
+₱650.00 as of 2026-11-18. The inactive P-004 display rule takes precedence:
+show `—` rather than an old or active price.
+
 ## 2. Roles and Visibility Rules
 
 - Admin sees Active, Inactive, and All products, with status tabs, status and
@@ -194,6 +200,8 @@ assumed to have either permission.
 - The User product list includes only active products, has no status tabs,
   STATUS, or STAMP column, and does not show Delete or Restore.
 - An inactive product such as P-004 displays `—` for Current Price.
+- Current Price comes from the latest Active history entry effective on or
+  before the as-of date; the P-003 example resolves to ₱650.00 on 2026-11-18.
 - Selecting Prices opens the selected product's history in the role-appropriate
   modal, when the User is permitted to access it.
 - The modal header identifies P-003 exactly as
@@ -217,6 +225,7 @@ assumed to have either permission.
 - [ ] Admin product table includes Status and Stamp columns.
 - [ ] User product table hides Status and Stamp columns.
 - [ ] Inactive product P-004 displays `—` in Current Price.
+- [ ] Current Price reflects the latest Active price-history entry effective on the as-of date.
 - [ ] Admin Price History modal (Figure 12) is documented.
 - [ ] User Price History modal (Figure 13) is documented.
 - [ ] Modal header displays the exact product identification.
