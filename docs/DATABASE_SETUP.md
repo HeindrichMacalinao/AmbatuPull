@@ -212,7 +212,6 @@ Every domain and administrative table across the Hope, Inc. ERP database **must*
 
 ## 7. How to Author New Migrations
 
-<<<<<<< HEAD
 ### S2-DBA-04: protect historical sales on hard/soft deletion
 
 - Existing SQLite FKs already enforce `NO ACTION` for `SALES.custNo ->
@@ -248,24 +247,16 @@ Every domain and administrative table across the Hope, Inc. ERP database **must*
   transaction. The Supabase schema uses `saleNo`/`saleDate` while local SQLite
   uses `transNo`/`salesDate`; the supplied SQL script targets SQLite.
 
-=======
->>>>>>> origin/main
 ### S2-DBA-03: staged customer/product/price constraints
 
 - First run `python scripts/check_domain_constraint_readiness.py HopeERP.db`.
   Exit status `2` means existing rows still require approved normalization.
   The approved baseline has **58 customers** with `30D`/`45D` payment terms
-<<<<<<< HEAD
-  and **57 products** with `ea`/`pc` units. These are incompatible with issue
-  #102. Never guess unit conversions or rewrite historical records silently.
-- `migrations/006_customer_product_domain_constraints.sql` installs reversible
-=======
   and **57 products** with `ea`/`pc` units. The existing `License`, `Service`,
   and `User/Mo` values in `data/erp_local.db` remain valid. The `30D`/`45D`,
   `ea`, and `pc` values are still incompatible with issue #102. Never guess
   unit conversions or rewrite historical records silently.
 - `migrations/007_customer_product_domain_constraints.sql` installs reversible
->>>>>>> origin/main
   SQLite `BEFORE INSERT`/`BEFORE UPDATE` validation triggers. The paired `.down.sql`
   removes only these triggers. `db/migrations/007_customer_product_domain_constraints.sql`
   installs the same rules after historical seeding when rebuilding DB assets.
@@ -279,16 +270,10 @@ Every domain and administrative table across the Hope, Inc. ERP database **must*
 - `payTerms` and `unit` remain nullable because the original schema permits
   `NULL`. Existing status checks and the PRICEHIST `(prodCode, effDate)`
   composite primary key already enforce their requirements.
-<<<<<<< HEAD
 - **Operational caution:** #102 alone rejects even status-only updates to
   historical rows with incompatible domain values. Apply #104 afterward to
   allow soft deletion; changes to their invalid domain columns still require
   approved data cleanup. The historical violations remain unresolved.
-=======
-- **Operational caution:** even an UPDATE of a different column on a legacy
-  noncompliant row fails until that row's domain values are corrected. Plan
-  data remediation with the product owner before enabling production updates.
->>>>>>> origin/main
 - **Cross-issue conflict:** S2-DBA-02 Figure 11 uses a demonstration price
   `P-003 = 0.00`, whereas S2-DBA-03 requires `unitPrice > 0`. That Figure 11
   fixture cannot be stored in a database enforcing this new constraint; obtain
@@ -311,15 +296,10 @@ Every domain and administrative table across the Hope, Inc. ERP database **must*
 
 ### S2-DBA-01: active customer/product views
 
-<<<<<<< HEAD
-- `migrations/005_active_customer_product_views_indexes.sql` is applied by the
-  local SQLite runner (`npm run migrate:up`); the paired `.down.sql` reverses it.
-=======
 - `migrations/005_active_customer_product_views_indexes.sql` and
   `migrations/006_active_customer_product_views_indexes.sql` install the same
   idempotent views and indexes; both are applied by the local SQLite runner
   (`npm run migrate:up`), and each has a paired `.down.sql`.
->>>>>>> origin/main
 - `db/migrations/006_active_customer_product_views_indexes.sql` is included in
   `scripts/regenerate_hope.py` so regenerated SQLite database assets include
   the same views/indexes. Existing bundled DB assets have also been migrated.

@@ -174,7 +174,7 @@ def fresh_schema(filename: str, migration: str) -> sqlite3.Connection:
         conn.executescript((ROOT / 'db/seeds/002_hope_historical_data.sql').read_text(encoding='utf-8'))
         domain = 'db/migrations/007_customer_product_domain_constraints.sql'
     else:
-        domain = 'migrations/006_customer_product_domain_constraints.sql'
+        domain = 'migrations/007_customer_product_domain_constraints.sql'
     conn.executescript((ROOT / domain).read_text(encoding='utf-8'))
     conn.executescript((ROOT / migration).read_text(encoding='utf-8'))
     return conn
