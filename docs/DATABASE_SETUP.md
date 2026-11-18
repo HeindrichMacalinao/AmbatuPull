@@ -32,14 +32,18 @@ Before setting up the project, ensure your development machine has the following
 - **Operating System:** Windows 10 / 11 (64-bit), macOS, or Linux.
 - **Node.js:** Version 18.0.0 or higher (Node.js 20+ LTS or 22+ recommended).
   - Verify installation:
+
     ```powershell
     node -v
     npm -v
     ```
+
   - *If Node.js is not yet installed on Windows:*
+
     ```powershell
     winget install OpenJS.NodeJS.LTS
     ```
+
 - **Git:** Git for Windows (v2.30+).
 
 ---
@@ -49,37 +53,45 @@ Before setting up the project, ensure your development machine has the following
 Follow these exact steps when checking out the project for the first time:
 
 ### Step 1: Clone the Repository
+
 ```powershell
 git clone https://github.com/HeindrichMacalinao/AmbatuPull.git
 cd AmbatuPull
 ```
 
 ### Step 2: Install Project Dependencies
+
 Run `npm install` in the project root:
+
 ```powershell
 npm install
 ```
 
 > **Note on Windows Script Execution Policy:**  
 > If PowerShell displays an error stating `npm.ps1 cannot be loaded because running scripts is disabled on this system`, allow local script execution for the current user:
+>
 > ```powershell
 > Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
 > ```
 
 ### Step 3: Configure Environment Variables
+
 Copy `.env.example` to create your local `.env` configuration file:
 
 **Windows PowerShell:**
+
 ```powershell
 Copy-Item .env.example .env
 ```
 
 **Bash / Git Bash / macOS:**
+
 ```bash
 cp .env.example .env
 ```
 
 The default values inside `.env` are pre-configured to run out of the box:
+
 ```env
 NODE_ENV=development
 PORT=3000
@@ -99,12 +111,15 @@ BCRYPT_ROUNDS=10
 ```
 
 ### Step 4: Run Database Migrations
+
 Execute the migration runner:
+
 ```powershell
 npm run migrate:up
 ```
 
 Verify migration status:
+
 ```powershell
 npm run migrate:status
 ```
@@ -114,7 +129,8 @@ npm run migrate:status
 ## 4. Expected Successful Terminal Output
 
 ### Initial Migration (`npm run migrate:up`)
-```
+
+```text
 ============================================================
  🚀 Hope, Inc. ERP — Running Database Migrations (UP)
 ============================================================
@@ -131,7 +147,8 @@ Found 2 pending migration(s) to apply:
 ```
 
 ### Checking Migration Status (`npm run migrate:status`)
-```
+
+```text
 ============================================================
  📊 Hope, Inc. ERP — Migration Status
 ============================================================
@@ -163,6 +180,7 @@ The migration runner is located at `scripts/migrate/index.js` and provides full 
 | `node scripts/migrate/index.js help` | — | Displays the interactive CLI manual and usage flags. |
 
 ### CLI Options & Flags
+
 - `--db=<path>`: Override SQLite database file destination (default: `./data/erp_local.db` or `DB_PATH`).
 - `--dir=<path>`: Custom migrations folder (default: `./migrations`).
 - `--steps=<number>`: Number of steps to roll back in `down` command (default: `1`).
@@ -172,7 +190,9 @@ The migration runner is located at `scripts/migrate/index.js` and provides full 
 ## 6. Migration Tracking & Database Schema Standards
 
 ### Migration Tracking Table: `schema_migrations`
+
 The runner automatically provisions and maintains the tracking table:
+
 ```sql
 CREATE TABLE IF NOT EXISTS schema_migrations (
     version VARCHAR(100) PRIMARY KEY,
@@ -181,7 +201,9 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 ```
 
 ### Mandatory Table Standards (§2.3 of Student Guide)
+
 Every domain and administrative table across the Hope, Inc. ERP database **must** incorporate the following standard audit columns:
+
 1. `status VARCHAR(8) NOT NULL DEFAULT 'Active' CHECK (status IN ('Active', 'Inactive'))`
    - Governs soft-deletion. Active records are accessible in standard user workflows; Inactive records are archived.
 2. `stamp VARCHAR(80) NOT NULL`
@@ -189,6 +211,7 @@ Every domain and administrative table across the Hope, Inc. ERP database **must*
      e.g., `'CREATED system 2026-10-25 00:00:00'` or `'EDITED user@hope.com 2026-10-25 14:30:00'`.
 
 ### Initial Schema Baseline (10 Core Tables + User Management)
+
 - **Core ERP Tables (`001_init_core_schema.sql`):**
   - `CUSTOMER`
   - `PRODUCT`
@@ -315,22 +338,28 @@ Every domain and administrative table across the Hope, Inc. ERP database **must*
 When contributing new schema changes:
 
 1. Create a forward migration file in `migrations/` following the numerical naming standard:
-   ```
+
+   ```text
    migrations/003_add_customer_credit_limit.sql
    ```
+
 2. Create the corresponding reversal file:
-   ```
+
+   ```text
    migrations/003_add_customer_credit_limit.down.sql
    ```
+
    *(Alternatively, embed a `-- DOWN` delimiter directly at the bottom of the SQL file).*
 3. Ensure all table creations include `status` and `stamp` columns and proper foreign keys.
 4. Test your migration locally:
+
    ```powershell
    npm run migrate:up
    npm run migrate:status
    npm run migrate:down
    npm run migrate:up
    ```
+
 5. Commit your migration files to your task branch (e.g. `feature/S1-DBA-03-...`). Never check in binary database files (`*.db` is ignored by `.gitignore`).
 
 ---
