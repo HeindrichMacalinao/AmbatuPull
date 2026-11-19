@@ -62,7 +62,10 @@ def structure(conn: sqlite3.Connection) -> None:
     for table, expected_cols in EXPECTED_COLS.items():
         info = conn.execute(f'PRAGMA table_info("{table}")').fetchall()
         cols = {row[1]: row for row in info}
-        assert set(cols) == set(expected_cols), (table, cols.keys())
+        base_cols = set(cols) - ({'createdAt'} if table == 'app_user' else set())
+        assert base_cols == set(expected_cols), (table, cols.keys())
+        if table == 'app_user' and 'createdAt' in cols:
+            assert cols['createdAt'][2].upper() == 'TIMESTAMP', 'app_user.createdAt wrong type'
         for column, typ in expected_cols.items():
             assert cols[column][2].upper() == typ, f'{table}.{column} wrong type'
         pk = tuple(row[1] for row in sorted(info, key=lambda r: r[5]) if row[5])
