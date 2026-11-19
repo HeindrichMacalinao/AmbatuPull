@@ -23,8 +23,31 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const role = request.headers.get('x-user-role') || 'User';
+    if (role !== 'Admin' && role !== 'Superadmin') {
+      return NextResponse.json(
+        { error: 'Forbidden: only Admin or Superadmin can create customers' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { custNo, custName, address, payTerms } = body;
+
+    if (!custNo?.trim() || !custName?.trim() || !address?.trim() || !payTerms) {
+      return NextResponse.json(
+        { error: 'Customer number, name, billing address, and payment terms are required' },
+        { status: 400 }
+      );
+    }
+
+    const allowedPayTerms = ['Net 15', 'Net 30', 'Net 45', 'COD', 'Prepaid'];
+    if (!allowedPayTerms.includes(payTerms)) {
+      return NextResponse.json(
+        { error: `Invalid payment terms. Allowed values: ${allowedPayTerms.join(', ')}` },
+        { status: 400 }
+      );
+    }
 
     const actor = request.headers.get('x-user-email') || request.headers.get('x-user-role') || 'system';
 

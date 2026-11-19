@@ -191,6 +191,32 @@ export async function ensureDbInitialized(): Promise<void> {
       );
     `);
 
+    // Ensure active customer & product views and indexes exist (S2-DBA-01)
+    try {
+      db.exec(`
+        CREATE VIEW IF NOT EXISTS v_active_customer AS
+        SELECT custNo, custName, address, payTerms, status, stamp
+        FROM CUSTOMER
+        WHERE status = 'Active';
+
+        CREATE VIEW IF NOT EXISTS v_active_product AS
+        SELECT prodCode, description, unit, status, stamp
+        FROM PRODUCT
+        WHERE status = 'Active';
+
+        CREATE INDEX IF NOT EXISTS idx_customer_status_custname
+          ON CUSTOMER(status, custName);
+
+        CREATE INDEX IF NOT EXISTS idx_product_status_description
+          ON PRODUCT(status, description);
+
+        CREATE INDEX IF NOT EXISTS idx_pricehist_prodcode_effdate_status
+          ON PRICEHIST(prodCode, effDate, status);
+      `);
+    } catch {
+      // Ignored if base ERP tables are not yet loaded in test/memory mode
+    }
+
     const userColumns = db.prepare('PRAGMA table_info(app_user)').all() as { name: string }[];
     if (!userColumns.some((column) => column.name === 'createdAt')) {
       db.exec('ALTER TABLE app_user ADD COLUMN createdAt TIMESTAMP');
