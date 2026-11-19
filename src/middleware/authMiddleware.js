@@ -223,10 +223,60 @@ async function requireCustomerAccess(req, res, next) {
   }
 }
 
+/**
+ * Product Module Access Middleware (§4.2 & S2-DEV-04).
+ * Superadmin and Admin have access.
+ * Standard User must have at least one active Product or Price right (e.g. product.*, price.*).
+ */
+async function requireProductAccess(req, res, next) {
+  if (!req.user || !req.user.role) {
+    return res.status(401).json({ error: 'Unauthorized: authentication required' });
+  }
+
+  if (req.user.role === 'Superadmin' || req.user.role === 'Admin') {
+    return next();
+  }
+
+  if (req.user.rights && Array.isArray(req.user.rights)) {
+    const hasRight = req.user.rights.some(
+      (r) =>
+        typeof r === 'string' &&
+        (r.startsWith('product.') || r === 'product' || r.startsWith('price.') || r === 'price' || r === '*')
+    );
+    if (hasRight) {
+      return next();
+    }
+  }
+
+  try {
+    const pool = dbPool.getPool();
+    const userId = req.user.userId ?? req.user.userid;
+    const { rows } = await pool.query(
+      `SELECT 1 FROM user_permission
+       WHERE userId = $1
+         AND status = 'Active'
+         AND (rightCode LIKE 'product.%' OR rightCode = 'product' OR rightCode LIKE 'price.%' OR rightCode = 'price')
+       LIMIT 1`,
+      [userId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(403).json({
+        error: 'Forbidden: product module access required',
+      });
+    }
+
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   authenticate,
   requireAdminOrSuperadmin,
   requireRole,
   requireRight,
   requireCustomerAccess,
+  requireProductAccess,
 };

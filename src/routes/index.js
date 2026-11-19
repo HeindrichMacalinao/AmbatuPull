@@ -7,6 +7,7 @@ const usersRouter = require('./users');
 const navigationRouter = require('./navigation');
 const dashboardRouter = require('./dashboard');
 const customersRouter = require('./customers');
+const productsRouter = require('./products');
 
 const router = express.Router();
 
@@ -16,5 +17,6 @@ router.use('/users', usersRouter);
 router.use('/navigation', navigationRouter);
 router.use('/dashboard', dashboardRouter);
 router.use('/customers', customersRouter);
+router.use('/products', productsRouter);
 
 module.exports = router;
