@@ -1204,6 +1204,84 @@ export async function getProductPricesAsOf(targetDate: string): Promise<ProductP
   return listProductPricesAsOfSqlite(getSqliteDb(), asOf) as ProductPriceAsOf[];
 }
 
+export interface ProductRecord {
+  prodCode: string;
+  description: string;
+  unit?: string | null;
+  currentPrice: number | null;
+  status?: string;
+  stamp?: string;
+}
+
+export async function getProducts({
+  search,
+  status,
+  role = 'User',
+}: {
+  search?: string;
+  status?: string;
+  role?: string;
+} = {}): Promise<ProductRecord[]> {
+  const isUser = role !== 'Admin' && role !== 'Superadmin';
+  const db = getSqliteDb();
+
+  const normalizedStatus = String(status || '').trim().toLowerCase();
+  const activeOnly = isUser || !['inactive', 'all'].includes(normalizedStatus);
+
+  let query = `
+    SELECT p.prodCode, p.description, p.unit, p.status, p.stamp,
+           (SELECT ph.unitPrice
+            FROM PRICEHIST ph
+            WHERE ph.prodCode = p.prodCode
+              AND ph.effDate <= CURRENT_DATE
+              AND ph.status = 'Active'
+            ORDER BY ph.effDate DESC
+            LIMIT 1) AS currentPrice
+    FROM ${activeOnly ? 'v_active_product' : 'PRODUCT'} p
+  `;
+
+  const conditions: string[] = [];
+  const params: any[] = [];
+
+  if (!isUser && normalizedStatus === 'inactive') {
+    conditions.push("p.status = 'Inactive'");
+  }
+
+  if (search && search.trim()) {
+    conditions.push('(LOWER(p.prodCode) LIKE ? OR LOWER(p.description) LIKE ?)');
+    const term = `%${search.trim().toLowerCase()}%`;
+    params.push(term, term);
+  }
+
+  if (conditions.length > 0) {
+    query += ' WHERE ' + conditions.join(' AND ');
+  }
+
+  query += ' ORDER BY p.prodCode ASC';
+
+  const rows = db.prepare(query).all(...params) as any[];
+
+  return rows.map((r) => {
+    const currentPrice = r.currentPrice != null ? Number(r.currentPrice) : null;
+    if (isUser) {
+      return {
+        prodCode: r.prodCode,
+        description: r.description,
+        unit: r.unit ?? null,
+        currentPrice,
+      };
+    }
+    return {
+      prodCode: r.prodCode,
+      description: r.description,
+      unit: r.unit ?? null,
+      currentPrice,
+      status: r.status,
+      stamp: r.stamp,
+    };
+  });
+}
+
 export async function createCustomer({
   custNo,
   custName,
