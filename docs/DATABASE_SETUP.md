@@ -32,14 +32,18 @@ Before setting up the project, ensure your development machine has the following
 - **Operating System:** Windows 10 / 11 (64-bit), macOS, or Linux.
 - **Node.js:** Version 18.0.0 or higher (Node.js 20+ LTS or 22+ recommended).
   - Verify installation:
+
     ```powershell
     node -v
     npm -v
     ```
+
   - *If Node.js is not yet installed on Windows:*
+
     ```powershell
     winget install OpenJS.NodeJS.LTS
     ```
+
 - **Git:** Git for Windows (v2.30+).
 
 ---
@@ -49,37 +53,45 @@ Before setting up the project, ensure your development machine has the following
 Follow these exact steps when checking out the project for the first time:
 
 ### Step 1: Clone the Repository
+
 ```powershell
 git clone https://github.com/HeindrichMacalinao/AmbatuPull.git
 cd AmbatuPull
 ```
 
 ### Step 2: Install Project Dependencies
+
 Run `npm install` in the project root:
+
 ```powershell
 npm install
 ```
 
 > **Note on Windows Script Execution Policy:**  
 > If PowerShell displays an error stating `npm.ps1 cannot be loaded because running scripts is disabled on this system`, allow local script execution for the current user:
+>
 > ```powershell
 > Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
 > ```
 
 ### Step 3: Configure Environment Variables
+
 Copy `.env.example` to create your local `.env` configuration file:
 
 **Windows PowerShell:**
+
 ```powershell
 Copy-Item .env.example .env
 ```
 
 **Bash / Git Bash / macOS:**
+
 ```bash
 cp .env.example .env
 ```
 
 The default values inside `.env` are pre-configured to run out of the box:
+
 ```env
 NODE_ENV=development
 PORT=3000
@@ -99,12 +111,15 @@ BCRYPT_ROUNDS=10
 ```
 
 ### Step 4: Run Database Migrations
+
 Execute the migration runner:
+
 ```powershell
 npm run migrate:up
 ```
 
 Verify migration status:
+
 ```powershell
 npm run migrate:status
 ```
@@ -114,7 +129,8 @@ npm run migrate:status
 ## 4. Expected Successful Terminal Output
 
 ### Initial Migration (`npm run migrate:up`)
-```
+
+```text
 ============================================================
  🚀 Hope, Inc. ERP — Running Database Migrations (UP)
 ============================================================
@@ -131,7 +147,8 @@ Found 2 pending migration(s) to apply:
 ```
 
 ### Checking Migration Status (`npm run migrate:status`)
-```
+
+```text
 ============================================================
  📊 Hope, Inc. ERP — Migration Status
 ============================================================
@@ -163,6 +180,7 @@ The migration runner is located at `scripts/migrate/index.js` and provides full 
 | `node scripts/migrate/index.js help` | — | Displays the interactive CLI manual and usage flags. |
 
 ### CLI Options & Flags
+
 - `--db=<path>`: Override SQLite database file destination (default: `./data/erp_local.db` or `DB_PATH`).
 - `--dir=<path>`: Custom migrations folder (default: `./migrations`).
 - `--steps=<number>`: Number of steps to roll back in `down` command (default: `1`).
@@ -172,7 +190,9 @@ The migration runner is located at `scripts/migrate/index.js` and provides full 
 ## 6. Migration Tracking & Database Schema Standards
 
 ### Migration Tracking Table: `schema_migrations`
+
 The runner automatically provisions and maintains the tracking table:
+
 ```sql
 CREATE TABLE IF NOT EXISTS schema_migrations (
     version VARCHAR(100) PRIMARY KEY,
@@ -181,7 +201,9 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 ```
 
 ### Mandatory Table Standards (§2.3 of Student Guide)
+
 Every domain and administrative table across the Hope, Inc. ERP database **must** incorporate the following standard audit columns:
+
 1. `status VARCHAR(8) NOT NULL DEFAULT 'Active' CHECK (status IN ('Active', 'Inactive'))`
    - Governs soft-deletion. Active records are accessible in standard user workflows; Inactive records are archived.
 2. `stamp VARCHAR(80) NOT NULL`
@@ -189,6 +211,7 @@ Every domain and administrative table across the Hope, Inc. ERP database **must*
      e.g., `'CREATED system 2026-10-25 00:00:00'` or `'EDITED user@hope.com 2026-10-25 14:30:00'`.
 
 ### Initial Schema Baseline (10 Core Tables + User Management)
+
 - **Core ERP Tables (`001_init_core_schema.sql`):**
   - `CUSTOMER`
   - `PRODUCT`
@@ -211,6 +234,41 @@ Every domain and administrative table across the Hope, Inc. ERP database **must*
 ---
 
 ## 7. How to Author New Migrations
+
+### S2-DBA-04: protect historical sales on hard/soft deletion
+
+- Existing SQLite FKs already enforce `NO ACTION` for `SALES.custNo ->
+  CUSTOMER.custNo`, `SALESDETAIL.prodCode -> PRODUCT.prodCode`, and
+  `PRICEHIST.prodCode -> PRODUCT.prodCode`. With `PRAGMA foreign_keys=ON` on
+  **each connection**, `DELETE` of any referenced parent fails. The migration
+  runner and application connection adapter already enable this PRAGMA.
+- Existing Supabase/PostgreSQL FKs specify `ON DELETE RESTRICT`. No parent
+  tables or data are rebuilt, and no foreign keys are dropped.
+- **S2-DBA-03 compatibility:** its original domain checks also blocked
+  `status='Inactive'` for historical `30D`/`45D` and `ea`/`pc` values. The
+  new SQLite migration `migrations/007_customer_product_referential_soft_delete.sql`
+  and `db/migrations/008_customer_product_referential_soft_delete.sql` keep
+  domain validation on `INSERT` and changes to domain fields, but permit
+  status/stamp-only updates on grandfathered historical records. A paired
+  `.down.sql` restores the previous SQLite trigger behavior if needed.
+- `supabase/migrations/20261118_008_customer_product_referential_soft_delete.sql`
+  replaces *only* the staged PostgreSQL `payTerms` and `unit` checks from #102
+  with column-specific triggers. It has not been run on a live Supabase DB.
+- Run `python tests/verify_customer_product_restrict.py`. This harness runs
+  the committed `db/verify/verify_customer_product_restrict.sql` on **in-memory
+  databases only**, catches expected FK errors, verifies JOINs after soft
+  deletion, and rolls back. No test data remains in database assets.
+- For PostgreSQL, use the separate transactional verification script at
+  `supabase/verify/20261118_customer_product_restrict.sql` after applying the
+  Supabase migration. Execute it as an authorized database operator, confirm
+  the PASS notice, and ensure it finishes with `ROLLBACK`. It has not been
+  exercised against a live Supabase instance.
+- Issue #S2-DBA-04 mentions `C-001`, but the approved HOPE baseline has
+  `C0001` rather than `C-001`. The script creates a temporary `C-001` with a
+  linked sale, then rolls it back. It additionally checks *real historical*
+  `C0001` and `NB0005` links while soft-deleting them inside a rolled-back
+  transaction. The Supabase schema uses `saleNo`/`saleDate` while local SQLite
+  uses `transNo`/`salesDate`; the supplied SQL script targets SQLite.
 
 ### S2-DBA-03: staged customer/product/price constraints
 
@@ -235,9 +293,10 @@ Every domain and administrative table across the Hope, Inc. ERP database **must*
 - `payTerms` and `unit` remain nullable because the original schema permits
   `NULL`. Existing status checks and the PRICEHIST `(prodCode, effDate)`
   composite primary key already enforce their requirements.
-- **Operational caution:** even an UPDATE of a different column on a legacy
-  noncompliant row fails until that row's domain values are corrected. Plan
-  data remediation with the product owner before enabling production updates.
+- **Operational caution:** #102 alone rejects even status-only updates to
+  historical rows with incompatible domain values. Apply #104 afterward to
+  allow soft deletion; changes to their invalid domain columns still require
+  approved data cleanup. The historical violations remain unresolved.
 - **Cross-issue conflict:** S2-DBA-02 Figure 11 uses a demonstration price
   `P-003 = 0.00`, whereas S2-DBA-03 requires `unitPrice > 0`. That Figure 11
   fixture cannot be stored in a database enforcing this new constraint; obtain
@@ -279,22 +338,28 @@ Every domain and administrative table across the Hope, Inc. ERP database **must*
 When contributing new schema changes:
 
 1. Create a forward migration file in `migrations/` following the numerical naming standard:
-   ```
+
+   ```text
    migrations/003_add_customer_credit_limit.sql
    ```
+
 2. Create the corresponding reversal file:
-   ```
+
+   ```text
    migrations/003_add_customer_credit_limit.down.sql
    ```
+
    *(Alternatively, embed a `-- DOWN` delimiter directly at the bottom of the SQL file).*
 3. Ensure all table creations include `status` and `stamp` columns and proper foreign keys.
 4. Test your migration locally:
+
    ```powershell
    npm run migrate:up
    npm run migrate:status
    npm run migrate:down
    npm run migrate:up
    ```
+
 5. Commit your migration files to your task branch (e.g. `feature/S1-DBA-03-...`). Never check in binary database files (`*.db` is ignored by `.gitignore`).
 
 ---

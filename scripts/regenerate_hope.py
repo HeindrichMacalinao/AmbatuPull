@@ -21,8 +21,10 @@ USER_MIGRATION = ROOT / 'db/migrations/002_user_management_tables.sql'
 RESET_MIGRATION = ROOT / 'db/migrations/003_password_reset_token.sql'
 ACCESS_SEED = ROOT / 'db/seeds/003_initial_access_catalog.sql'
 AUDIT_MIGRATION = ROOT / 'db/migrations/004_audit_trail.sql'
+CREATED_AT_MIGRATION = ROOT / 'db/migrations/005_app_user_created_at.sql'
 ACTIVE_VIEWS_MIGRATION = ROOT / 'db/migrations/006_active_customer_product_views_indexes.sql'
 DOMAIN_MIGRATION = ROOT / 'db/migrations/007_customer_product_domain_constraints.sql'
+SOFT_DELETE_MIGRATION = ROOT / 'db/migrations/008_customer_product_referential_soft_delete.sql'
 DEFAULT_MODEL1 = ROOT / 'reference/Model1.db'
 
 
@@ -78,10 +80,15 @@ def rebuild(target: Path, source_model: Path | None) -> None:
             # S1-DBA-06 installs triggers LAST so historical/catalog seed does
             # not require an authenticated runtime session.
             conn.executescript(AUDIT_MIGRATION.read_text(encoding='utf-8'))
+            # Preserve registration timestamps across fresh and original-model builds.
+            conn.executescript(CREATED_AT_MIGRATION.read_text(encoding='utf-8'))
             # S2-DBA-01 installs active-only read views and composite indexes.
             conn.executescript(ACTIVE_VIEWS_MIGRATION.read_text(encoding='utf-8'))
             # S2-DBA-03 guards future writes; installed AFTER legacy seed data.
             conn.executescript(DOMAIN_MIGRATION.read_text(encoding='utf-8'))
+            # S2-DBA-04 permits soft-delete of legacy values without weakening
+            # FK restrictions or domain validation on inserted/changed values.
+            conn.executescript(SOFT_DELETE_MIGRATION.read_text(encoding='utf-8'))
             assert conn.execute('PRAGMA foreign_keys').fetchone()[0] == 1
             assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
             assert conn.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
