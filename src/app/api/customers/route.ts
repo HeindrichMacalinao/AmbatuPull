@@ -1,5 +1,30 @@
 import { NextResponse } from 'next/server';
-import { getCustomers, createCustomer } from '@/lib/erp-db';
+import { getCustomers, createCustomer, getUserGrantedRights } from '@/lib/erp-db';
+
+async function assertAddCustomerRight(request: Request) {
+  const role = request.headers.get('x-user-role') || 'User';
+  if (role === 'Admin' || role === 'Superadmin') return;
+
+  if (role !== 'User') {
+    const error = new Error('Forbidden');
+    (error as any).status = 403;
+    throw error;
+  }
+
+  const userId = Number(request.headers.get('x-user-id'));
+  if (!Number.isInteger(userId) || userId <= 0) {
+    const error = new Error('Unauthorized: user identity is required');
+    (error as any).status = 401;
+    throw error;
+  }
+
+  const rights = await getUserGrantedRights(userId);
+  if (!rights.includes('customer.add') && !rights.includes('*')) {
+    const error = new Error("Forbidden: missing required permission 'customer.add'");
+    (error as any).status = 403;
+    throw error;
+  }
+}
 
 export async function GET(request: Request) {
   try {
@@ -23,13 +48,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const role = request.headers.get('x-user-role') || 'User';
-    if (role !== 'Admin' && role !== 'Superadmin') {
-      return NextResponse.json(
-        { error: 'Forbidden: only Admin or Superadmin can create customers' },
-        { status: 403 }
-      );
-    }
+    await assertAddCustomerRight(request);
 
     const body = await request.json();
     const { custNo, custName, address, payTerms } = body;

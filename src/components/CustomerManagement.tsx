@@ -362,8 +362,9 @@ export default function CustomerManagement({ role, user }: CustomerManagementPro
     setCustomers(Array.isArray(data.customers) ? data.customers.map((customer: CustomerRecord) => ({ ...customer, status: customer.status || 'Active' })) : []);
   }, [debouncedSearch, isAdmin, refreshCounts, role, statusFilter, user]);
 
-  const canEdit = role === 'User' && userRights.includes('customer.edit') && !rightsLoading && !rightsError;
-  const canDelete = role === 'User' && userRights.includes('customer.delete') && !rightsLoading && !rightsError;
+  const canAdd = isAdmin || (role === 'User' && userRights.includes('customer.add') && !rightsLoading && !rightsError);
+  const canEdit = isAdmin || (role === 'User' && userRights.includes('customer.edit') && !rightsLoading && !rightsError);
+  const canDelete = isAdmin || (role === 'User' && userRights.includes('customer.delete') && !rightsLoading && !rightsError);
 
   const openAdd = () => {
     setFormMode('add');
@@ -462,7 +463,7 @@ export default function CustomerManagement({ role, user }: CustomerManagementPro
           <h1 id="customer-management-title" className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Customer Management</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Manage customer records and payment terms.</p>
         </div>
-        {isAdmin && (
+        {canAdd && (
           <button type="button" onClick={openAdd} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-xs transition hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500">
             <Plus aria-hidden="true" className="h-4 w-4" /> Add Customer
           </button>
