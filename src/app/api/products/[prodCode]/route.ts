@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { updateProduct, getSqliteDb, getUserGrantedRights, ALLOWED_PRODUCT_UNITS } from '@/lib/erp-db';
+import { updateProduct, softDeleteProduct, restoreProduct, getSqliteDb, getUserGrantedRights, ALLOWED_PRODUCT_UNITS } from '@/lib/erp-db';
 
 async function assertEditProductRight(request: Request) {
   const role = request.headers.get('x-user-role') || 'User';
@@ -23,6 +23,18 @@ async function assertEditProductRight(request: Request) {
     const error = new Error("Forbidden: missing required permission 'product.edit'");
     (error as any).status = 403;
     throw error;
+  }
+}
+
+async function assertDeleteProductRight(request: Request) {
+  const role = request.headers.get('x-user-role') || 'User';
+  if (role === 'Admin' || role === 'Superadmin') return;
+  if (role !== 'User') throw Object.assign(new Error('Forbidden'), { status: 403 });
+  const userId = Number(request.headers.get('x-user-id'));
+  if (!Number.isInteger(userId) || userId <= 0) throw Object.assign(new Error('Unauthorized: user identity is required'), { status: 401 });
+  const rights = await getUserGrantedRights(userId);
+  if (!rights.includes('product.delete') && !rights.includes('*')) {
+    throw Object.assign(new Error("Forbidden: missing required permission 'product.delete'"), { status: 403 });
   }
 }
 
@@ -136,5 +148,20 @@ export async function PUT(
       { error: err.message || 'Failed to update product' },
       { status: err.status || 500 }
     );
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ prodCode: string }> }
+) {
+  try {
+    await assertDeleteProductRight(request);
+    const { prodCode } = await params;
+    const actor = request.headers.get('x-user-email') || request.headers.get('x-user-role') || 'system';
+    const deleted = await softDeleteProduct({ prodCode, actor });
+    return NextResponse.json({ message: 'Product deleted successfully', product: deleted, ...deleted });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'Failed to delete product' }, { status: err.status || 500 });
   }
 }

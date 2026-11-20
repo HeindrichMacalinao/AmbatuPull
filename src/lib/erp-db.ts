@@ -1385,6 +1385,48 @@ export async function updateProduct({
   };
 }
 
+export async function softDeleteProduct({
+  prodCode,
+  actor = 'system',
+}: {
+  prodCode: string;
+  actor?: string;
+}): Promise<ProductRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+  const existing = db.prepare('SELECT * FROM PRODUCT WHERE prodCode = ?').get(prodCode) as any;
+  if (!existing) {
+    const err = new Error('Product not found');
+    (err as any).status = 404;
+    throw err;
+  }
+  if (existing.status === 'Inactive') return existing as ProductRecord;
+
+  const stamp = `DELETED ${actor} ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`;
+  db.prepare("UPDATE PRODUCT SET status = 'Inactive', stamp = ? WHERE prodCode = ?").run(stamp, prodCode);
+  return { ...existing, status: 'Inactive', stamp, currentPrice: null };
+}
+
+export async function restoreProduct({
+  prodCode,
+  actor = 'system',
+}: {
+  prodCode: string;
+  actor?: string;
+}): Promise<ProductRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+  const existing = db.prepare('SELECT * FROM PRODUCT WHERE prodCode = ?').get(prodCode) as any;
+  if (!existing) {
+    const err = new Error('Product not found');
+    (err as any).status = 404;
+    throw err;
+  }
+  const stamp = `RESTORED ${actor} ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`;
+  db.prepare("UPDATE PRODUCT SET status = 'Active', stamp = ? WHERE prodCode = ?").run(stamp, prodCode);
+  return { ...existing, status: 'Active', stamp, currentPrice: null };
+}
+
 export async function createCustomer({
   custNo,
   custName,
