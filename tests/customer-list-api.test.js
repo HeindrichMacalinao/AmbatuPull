@@ -51,10 +51,10 @@ const sampleDbRows = [
     stamp: 'ADD historical_import 2026-10-28',
   },
   {
-    custNo: 'C0003',
-    custName: 'Trisha Macdowell',
-    address: '7642 Clairemont Mesa Blvd San Diego CA 90321',
-    payTerms: 'COD',
+    custNo: 'C-004',
+    custName: 'Umbrella Corp',
+    address: '1 Raccoon City Blvd',
+    payTerms: 'Prepaid',
     status: 'Inactive',
     stamp: 'SOFT_DELETE admin@hope.com 2026-11-01',
   },
@@ -220,7 +220,7 @@ test('Role Visibility: Admin receives active, inactive, or all customers with st
     status: 'inactive',
   });
   assert.equal(inactiveRes.length, 1);
-  assert.equal(inactiveRes[0].custNo, 'C0003');
+  assert.equal(inactiveRes[0].custNo, 'C-004');
   assert.equal(inactiveRes[0].status, 'Inactive');
   assert.ok(inactiveRes[0].stamp);
 
@@ -246,26 +246,34 @@ test('Role Visibility: Admin receives active, inactive, or all customers with st
 // ==============================================================================
 
 test('Live Search: filters matching custNo, custName, or address (case-insensitive)', async () => {
-  queryHandler = async (sql, params) => {
-    if (sql.includes('FROM CUSTOMER')) {
-      assert.ok(
-        sql.includes('LOWER(custNo) LIKE') &&
-        sql.includes('LOWER(custName) LIKE') &&
-        sql.includes('LOWER(address) LIKE'),
-        'Query must filter custNo, custName, and address'
-      );
-      assert.equal(params[0], '%globus%');
-      return { rows: [sampleDbRows[0]], rowCount: 1 };
-    }
-    return { rows: [], rowCount: 0 };
-  };
+  const searchCases = [
+    ['c0001', sampleDbRows[0], 'custNo'],
+    ['globus', sampleDbRows[0], 'custName'],
+    ['audubon', sampleDbRows[0], 'address'],
+  ];
 
-  const results = await customerService.listCustomers({
-    requester: { role: 'Admin', email: 'admin@hope.com' },
-    search: 'Globus',
-  });
-  assert.equal(results.length, 1);
-  assert.equal(results[0].custNo, 'C0001');
+  for (const [term, expected, field] of searchCases) {
+    queryHandler = async (sql, params) => {
+      if (sql.includes('FROM CUSTOMER')) {
+        assert.ok(
+          sql.includes('LOWER(custNo) LIKE') &&
+          sql.includes('LOWER(custName) LIKE') &&
+          sql.includes('LOWER(address) LIKE'),
+          'Query must filter custNo, custName, and address'
+        );
+        assert.equal(params[0], `%${term}%`);
+        return { rows: [expected], rowCount: 1 };
+      }
+      return { rows: [], rowCount: 0 };
+    };
+
+    const results = await customerService.listCustomers({
+      requester: { role: 'Admin', email: 'admin@hope.com' },
+      search: term,
+    });
+    assert.equal(results.length, 1, `Expected ${field} search to return one customer`);
+    assert.equal(results[0].custNo, 'C0001');
+  }
 });
 
 // ==============================================================================
@@ -381,7 +389,7 @@ test('HTTP GET /api/customers enforces auth, permissions, status tabs, search, a
     assert.equal(inactiveRes.status, 200);
     const inactiveBody = await inactiveRes.json();
     assert.equal(inactiveBody.customers.length, 1);
-    assert.equal(inactiveBody.customers[0].custNo, 'C0003');
+    assert.equal(inactiveBody.customers[0].custNo, 'C-004');
     assert.equal(inactiveBody.customers[0].status, 'Inactive');
 
     // 6. Admin searching
