@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import type { RoleName, AppUser } from '@/types/erp';
 import CustomerManagement from '@/components/CustomerManagement';
+import ProductManagement from '@/components/ProductManagement';
 
 type DashboardTab =
   | 'overview'
@@ -655,51 +656,8 @@ export default function DashboardPage() {
 
           {/* TAB 4: PRODUCTS & PRICING */}
           {activeTab === 'products' && (
-            <div className="space-y-5 animate-in fade-in">
-              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <FileSpreadsheet className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                  Product Catalog &amp; Dynamic Chronological Pricing (§3.4)
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  57 SKUs categorized in PRODUCT and dynamic price boundaries in PRICEHIST
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
-                    Effective Pricing Algorithm
-                  </h3>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-3">
-                    Products in Hope ERP dynamically evaluate unit price based on transaction timestamp:
-                  </p>
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 font-mono text-[11px] text-blue-700 dark:text-blue-300 space-y-1">
-                    <div>SELECT unitPrice FROM PRICEHIST</div>
-                    <div>WHERE prodCode = :code AND effectiveDate &lt;= :saleDate</div>
-                    <div>ORDER BY effectiveDate DESC LIMIT 1</div>
-                  </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
-                    Ensures historical sales transactions retain exact billed amounts even after price adjustments.
-                  </p>
-                </div>
-
-                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
-                    Catalog Metrics
-                  </h3>
-                  <div className="grid grid-cols-2 gap-3 text-center">
-                    <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                      <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">57</div>
-                      <div className="text-xs text-slate-500 mt-0.5">Standard SKUs</div>
-                    </div>
-                    <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                      <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">6</div>
-                      <div className="text-xs text-slate-500 mt-0.5">Assigned Rights</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className="animate-in fade-in">
+              <ProductManagement role={activeRole} user={currentUser} />
             </div>
           )}
 
