@@ -14,24 +14,26 @@
 
 ## Description & Objectives
 
-Implemented Task S2-UIX-04 for the Hope, Inc. ERP frontend. The workbench now includes a live Product Management screen in the Dashboard Products tab and a live Price History modal for each product. The implementation provides role-aware UI states, product and chronological price CRUD interactions, loading and error handling, confirmations, inline validation, and live backend persistence.
+Design UX state variations (empty, error, and confirmation modals) and implement the live Product Management screen and Price History modal dialog in the frontend workbench. The implementation connects the products and chronological price history interfaces to live backend APIs.
 
 ## Detailed Requirements
 
 ### Interactive UI State Design & Documentation
-- [x] Empty search state is implemented and documented.
-- [x] Empty price history state is implemented and documented.
-- [x] Missing-field, non-positive-price, and duplicate-date validation is implemented.
-- [x] Delete and restore confirmation copy is implemented.
+- [x] Empty search state displays: `No customers/products found matching '[query]'. Clear search or add a new record.`
+- [x] Empty price history state displays: `No price records found for this product. Click '+ Add Price' to set an initial price.`
+- [x] Missing required fields, non-positive unit prices, and duplicate effective dates are validated.
+- [x] Duplicate effective dates display: `A price record already exists for this effective date.`
+- [x] Delete confirmation: `Are you sure you want to delete this record? This action will deactivate the record.`
+- [x] Restore confirmation: `Are you sure you want to restore this record? It will become available again.`
 - [x] Documentation is published in `docs/ui/ui-states-error-empty.md`.
 
 ### Live Product Management Screen
 - [x] Embedded in the Dashboard under the Products tab.
 - [x] Live `GET /api/products?search=...&status=...` integration is implemented.
-- [x] Current Price is derived by the existing backend from the latest active, effective-on-or-before-today price.
-- [x] Inactive/unpriced products display `—`.
+- [x] Current Price uses the latest active price effective on or before today.
+- [x] Inactive products and unpriced products display `—`.
 - [x] Admin status tabs, counts, STATUS, STAMP, Prices, Edit, Delete, and Restore are implemented.
-- [x] User view is active-only with STATUS, STAMP, tabs, and administrative actions omitted.
+- [x] User view is active-only with status tabs, STATUS, STAMP, and administrative product actions omitted.
 
 ### Add/Edit Product Modals
 - [x] Add Product submits to `POST /api/products`.
@@ -47,19 +49,19 @@ Implemented Task S2-UIX-04 for the Hope, Inc. ERP frontend. The workbench now in
 - [x] Opens from the product row's Prices action.
 - [x] Header uses `Price History — [prodCode] ([description] · Unit: [unit])`.
 - [x] X, Escape, and backdrop dismissal are implemented.
-- [x] Price history loads from `GET /api/products/:prodCode/prices` ordered newest first.
+- [x] Price history loads from `GET /api/products/:prodCode/prices` and is ordered by `effDate DESC`.
 - [x] Admin status tabs, Add Price, STATUS, STAMP, Edit, and Delete are implemented.
-- [x] User status/tabs, STATUS, STAMP, and Add Price are omitted.
-- [x] User Edit/Delete actions are permission-gated and omitted for view-only users.
+- [x] User status tabs, STATUS, STAMP, and Add Price are omitted.
+- [x] User Edit/Delete actions are independently permission-gated; view-only users receive no Actions column.
 
 ## Acceptance Criteria
 
-- [x] UI states documentation is committed.
+- [x] UI states documentation is committed to `docs/ui/ui-states-error-empty.md`.
 - [x] Product Management is embedded in the Dashboard with live API integration.
 - [x] Current price is derived correctly; inactive/unpriced products display `—`.
 - [x] Product Add/Edit and soft-delete/restore work with live database persistence.
 - [x] Price History opens over a dimmed page with the exact header format.
-- [x] Add/Edit/soft-delete prices work through live price API routes.
+- [x] Adding, editing, and soft-deleting chronological prices work through live price API routes.
 - [x] Admin and User role differences are strictly enforced.
 - [x] Related issue is linked.
 
@@ -98,6 +100,8 @@ Result: Passed. 27 tests passed, 0 failed.
 git diff --check
 Result: Passed with no whitespace errors.
 ```
+
+No manual browser screenshots or automated browser interaction results are available.
 
 ## Screenshots
 
