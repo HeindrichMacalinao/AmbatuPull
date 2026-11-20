@@ -15,10 +15,19 @@ async function authenticate(req, res, next) {
 
     // 2. Direct test/dev headers for ease of contract & automated testing
     if (req.headers['x-user-role'] || req.headers['x-requester-role']) {
+      let rights = [];
+      if (req.headers['x-user-rights']) {
+        try {
+          rights = JSON.parse(req.headers['x-user-rights']);
+        } catch {
+          rights = req.headers['x-user-rights'].split(',').map((s) => s.trim());
+        }
+      }
       req.user = {
         userId: Number(req.headers['x-user-id']) || 0,
         email: req.headers['x-user-email'] || 'test@hope.com',
         role: req.headers['x-user-role'] || req.headers['x-requester-role'],
+        rights,
         status: 'Active',
         isBlocked: false,
       };
@@ -77,6 +86,17 @@ async function authenticate(req, res, next) {
       return res.status(403).json({ error: 'Account is not active' });
     }
 
+    let userRights = [];
+    try {
+      const permRes = await pool.query(
+        "SELECT rightCode FROM user_permission WHERE userId = $1 AND status = 'Active'",
+        [user.userId ?? user.userid]
+      );
+      userRights = permRes.rows.map((r) => r.rightCode ?? r.rightcode);
+    } catch {
+      userRights = [];
+    }
+
     req.user = {
       userId: user.userId ?? user.userid,
       firstName: user.firstName ?? user.firstname,
@@ -85,6 +105,7 @@ async function authenticate(req, res, next) {
       role: user.role,
       status: user.status,
       isBlocked: false,
+      rights: userRights,
     };
 
     next();

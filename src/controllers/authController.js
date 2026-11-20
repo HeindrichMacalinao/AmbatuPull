@@ -135,10 +135,31 @@ async function resetPassword(req, res, next) {
   }
 }
 
+
+/**
+ * GET /api/auth/session (S2-DEV-08)
+ * Returns the current authenticated user profile, active role, and permission rights.
+ */
+async function getSession(req, res, next) {
+  try {
+    if (!req.user || !req.user.role) {
+      return res.status(401).json({ error: 'Unauthorized: authentication required' });
+    }
+    return res.status(200).json({
+      user: req.user,
+      role: req.user.role,
+      rights: req.user.rights || [],
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   registerUser,
   login,
   logout,
   forgotPassword,
   resetPassword,
+  getSession,
 };
