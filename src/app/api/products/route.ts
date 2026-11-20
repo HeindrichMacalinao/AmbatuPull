@@ -1,10 +1,29 @@
 import { NextResponse } from 'next/server';
-import { getProducts, createProduct } from '@/lib/erp-db';
+import { getProducts, createProduct, ALLOWED_PRODUCT_UNITS, getUserGrantedRights } from '@/lib/erp-db';
 
 async function assertAddProductRight(request: Request) {
   const role = request.headers.get('x-user-role') || 'User';
   if (role === 'Admin' || role === 'Superadmin') return;
-  throw Object.assign(new Error('Forbidden'), { status: 403 });
+
+  if (role !== 'User') {
+    const error = new Error('Forbidden');
+    (error as any).status = 403;
+    throw error;
+  }
+
+  const userId = Number(request.headers.get('x-user-id'));
+  if (!Number.isInteger(userId) || userId <= 0) {
+    const error = new Error('Unauthorized: user identity is required');
+    (error as any).status = 401;
+    throw error;
+  }
+
+  const rights = await getUserGrantedRights(userId);
+  if (!rights.includes('product.add') && !rights.includes('*')) {
+    const error = new Error("Forbidden: missing required permission 'product.add'");
+    (error as any).status = 403;
+    throw error;
+  }
 }
 
 export async function GET(request: Request) {
@@ -58,11 +77,10 @@ export async function POST(request: Request) {
     }
 
     const trimmedUnit = typeof unit === 'string' ? unit.trim() : '';
-    const allowedUnits = ['pcs', 'can', 'pair', 'meter', 'roll', 'box', 'kg'];
-    const matchedUnit = allowedUnits.find((u) => u.toLowerCase() === trimmedUnit.toLowerCase());
+    const matchedUnit = ALLOWED_PRODUCT_UNITS.find((u) => u.toLowerCase() === trimmedUnit.toLowerCase());
     if (!matchedUnit) {
       return NextResponse.json(
-        { error: `Invalid packaging unit. Allowed values: ${allowedUnits.join(', ')}` },
+        { error: `Invalid packaging unit. Allowed values: ${ALLOWED_PRODUCT_UNITS.join(', ')}` },
         { status: 400 }
       );
     }
