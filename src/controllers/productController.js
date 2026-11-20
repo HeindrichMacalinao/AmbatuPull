@@ -33,7 +33,48 @@ async function getProduct(req, res, next) {
   }
 }
 
+/**
+ * POST /api/products (Create Product)
+ */
+async function createProduct(req, res, next) {
+  try {
+    const product = await productService.createProduct({
+      data: req.body,
+      requester: req.user,
+    });
+    res.status(201).json({
+      message: 'Product created successfully',
+      product,
+      ...product,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PUT /api/products/:prodCode (Edit Product)
+ */
+async function updateProduct(req, res, next) {
+  try {
+    const product = await productService.updateProduct({
+      prodCode: req.params.prodCode,
+      data: req.body,
+      requester: req.user,
+    });
+    res.status(200).json({
+      message: 'Product updated successfully',
+      product,
+      ...product,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getProducts,
   getProduct,
+  createProduct,
+  updateProduct,
 };
