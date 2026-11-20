@@ -1,7 +1,7 @@
 # Hope, Inc. ERP — Sprint 2 Optimal Task Execution Order
 
 > **Sprint Objective:** Deliver Customer Management (Full CRUD, Live Search, Soft Delete/Restore, Stamp), Product Management with Chronological Price History, and enforce all 9 Customer/Product per-action rights on both UI and Server.
-> 
+>
 > **Core Principle:** Tasks are organized into **Waves**. Tasks within the same Wave touch different files and can be worked on **in parallel**. A Wave must be merged into `main` before the next Wave starts to guarantee **zero merge conflicts**.
 
 ---
@@ -216,3 +216,42 @@ flowchart TD
 | **28** | **[#123]** | `S2-TST-05` | @YthanOrogo | Test Engineer | `docs/testing/sprint-2-regression.md` (Verifying Sprint 1 Auth & User Mgmt). | All DEV tasks |
 | **29** | **[#124]** | `S2-TST-06` | @YthanOrogo | Test Engineer | `docs/testing/sprint-2-signoff.md` (Official QA Sign-Off report). | #120–#123 |
 | **30** | **[#99]** | `S2-SM-05` | @HeindrichMacalinao | Scrum Master | `docs/sprints/sprint-2-retrospective.md` (Live demo & midterm report). | All 29 PRs merged |
+
+---
+
+## 4. Sprint 2 Task Plan & Pull Request Tracking Spreadsheet
+
+> 🏆 **Midterm Milestone Status:** **30 / 30 Sprint 2 Tasks Merged** | **60 / 60 Cumulative Tasks Merged (100%)**
+
+| Task ID | Issue | Role | Member | Pull Request | Delivery Title | Status |
+| :--- | :---: | :--- | :--- | :---: | :--- | :---: |
+| `S2-SM-01` | [#95](https://github.com/HeindrichMacalinao/AmbatuPull/issues/95) | Scrum Master | @HeindrichMacalinao | [PR #125](https://github.com/HeindrichMacalinao/AmbatuPull/pull/125) | [S2-SM-01] Sprint 2 Planning Notes, Task Order & Board Setup | **Merged** |
+| `S2-DBA-01` | [#100](https://github.com/HeindrichMacalinao/AmbatuPull/issues/100) | DevSecOps | @Chrollofuru | [PR #141](https://github.com/HeindrichMacalinao/AmbatuPull/pull/141) | [S2-DBA-01] Active Customer & Product Views and Indexes | **Merged** |
+| `S2-UIX-01` | [#106](https://github.com/HeindrichMacalinao/AmbatuPull/issues/106) | UI/UX Dev | @AlexGavarra | [PR #146](https://github.com/HeindrichMacalinao/AmbatuPull/pull/146) | [S2-UIX-01] Customer Management Wireframes (Admin & User) | **Merged** |
+| `S2-SM-02` | [#96](https://github.com/HeindrichMacalinao/AmbatuPull/issues/96) | Scrum Master | @HeindrichMacalinao | [PR #145](https://github.com/HeindrichMacalinao/AmbatuPull/pull/145) | [S2-SM-02] Follow Up Sprint 1 Retrospective Action Items | **Merged** |
+| `S2-DEV-01` | [#111](https://github.com/HeindrichMacalinao/AmbatuPull/issues/111) | Backend Dev | @Tysennn | [PR #128](https://github.com/HeindrichMacalinao/AmbatuPull/pull/128) | [S2-DEV-01] Customer-List-API | **Merged** |
+| `S2-DEV-02` | [#112](https://github.com/HeindrichMacalinao/AmbatuPull/issues/112) | Backend Dev | @Tysennn | [PR #144](https://github.com/HeindrichMacalinao/AmbatuPull/pull/144) | feat(customer): customer create/edit endpoints with validation & stamp | **Merged** |
+| `S2-UIX-02` | [#107](https://github.com/HeindrichMacalinao/AmbatuPull/issues/107) | UI/UX Dev | @AlexGavarra | [PR #147](https://github.com/HeindrichMacalinao/AmbatuPull/pull/147) | [S2-UIX-02] Product Management & Price History Wireframes | **Merged** |
+| `S2-DEV-03` | [#113](https://github.com/HeindrichMacalinao/AmbatuPull/issues/113) | Backend Dev | @Tysennn | [PR #148](https://github.com/HeindrichMacalinao/AmbatuPull/pull/148) | feat(customer): customer soft delete & restore with audit trail | **Merged** |
+| `S2-DBA-02` | [#101](https://github.com/HeindrichMacalinao/AmbatuPull/issues/101) | DevSecOps | @Chrollofuru | [PR #142](https://github.com/HeindrichMacalinao/AmbatuPull/pull/142) | Wave 2: Current Product Price as of Target Date Query | **Merged** |
+| `S2-TST-01` | [#119](https://github.com/HeindrichMacalinao/AmbatuPull/issues/119) | Test Engineer | @YthanOrogo | [PR #163](https://github.com/HeindrichMacalinao/AmbatuPull/pull/163) | test: cover customer module CRUD, search, and role views | **Merged** |
+| `S2-SM-03` | [#97](https://github.com/HeindrichMacalinao/AmbatuPull/issues/97) | Scrum Master | @HeindrichMacalinao | [PR #149](https://github.com/HeindrichMacalinao/AmbatuPull/pull/149) | docs(sprint-2): document mid-sprint check and impediment log | **Merged** |
+| `S2-DBA-03` | [#102](https://github.com/HeindrichMacalinao/AmbatuPull/issues/102) | DevSecOps | @Chrollofuru | [PR #143](https://github.com/HeindrichMacalinao/AmbatuPull/pull/143) | Wave 3: payTerms & unit validation constraints | **Merged** |
+| `S2-UIX-03` | [#108](https://github.com/HeindrichMacalinao/AmbatuPull/issues/108) | UI/UX Dev | @AlexGavarra | [PR #150](https://github.com/HeindrichMacalinao/AmbatuPull/pull/150) | [S2-UIX-03] Hi-Fi Mockups & Live Customer CRUD UI | **Merged** |
+| `S2-DEV-04` | [#114](https://github.com/HeindrichMacalinao/AmbatuPull/issues/114) | Backend Dev | @Tysennn | [PR #152](https://github.com/HeindrichMacalinao/AmbatuPull/pull/152) | feat(product): product list API with dynamic pricing & search | **Merged** |
+| `S2-DEV-05` | [#115](https://github.com/HeindrichMacalinao/AmbatuPull/issues/115) | Backend Dev | @Tysennn | [PR #154](https://github.com/HeindrichMacalinao/AmbatuPull/pull/154) | feat(product): product create/edit endpoints with packaging unit check | **Merged** |
+| `S2-DEV-06` | [#116](https://github.com/HeindrichMacalinao/AmbatuPull/issues/116) | Backend Dev | @Tysennn | [PR #158](https://github.com/HeindrichMacalinao/AmbatuPull/pull/158) | feat(product): product soft delete and admin restore API | **Merged** |
+| `S2-DEV-07` | [#117](https://github.com/HeindrichMacalinao/AmbatuPull/issues/117) | Backend Dev | @Tysennn | [PR #159](https://github.com/HeindrichMacalinao/AmbatuPull/pull/159) | feat(product): price history management API with chronological ordering | **Merged** |
+| `S2-DBA-04` | [#103](https://github.com/HeindrichMacalinao/AmbatuPull/issues/103) | DevSecOps | @Chrollofuru | [PR #153](https://github.com/HeindrichMacalinao/AmbatuPull/pull/153) | Wave 4: Child-Record Delete Checks & Referential Integrity | **Merged** |
+| `S2-DBA-05` | [#104](https://github.com/HeindrichMacalinao/AmbatuPull/issues/104) | DevSecOps | @Chrollofuru | [PR #155](https://github.com/HeindrichMacalinao/AmbatuPull/pull/155) | Wave 5: Seed Demo Data: Customers, Products & Prices | **Merged** |
+| `S2-UIX-04` | [#109](https://github.com/HeindrichMacalinao/AmbatuPull/issues/109) | UI/UX Dev | @AlexGavarra | [PR #156](https://github.com/HeindrichMacalinao/AmbatuPull/pull/156) | [S2-UIX-04] Live Product Management UI & Price History Modal | **Merged** |
+| `S2-SM-04` | [#98](https://github.com/HeindrichMacalinao/AmbatuPull/issues/98) | Scrum Master | @HeindrichMacalinao | [PR #169](https://github.com/HeindrichMacalinao/AmbatuPull/pull/169) | docs(sprint-2): update team velocity and burndown metrics report | **Merged** |
+| `S2-TST-02` | [#120](https://github.com/HeindrichMacalinao/AmbatuPull/issues/120) | Test Engineer | @YthanOrogo | [PR #164](https://github.com/HeindrichMacalinao/AmbatuPull/pull/164) | test: cover product price effective-date cases | **Merged** |
+| `S2-TST-03` | [#121](https://github.com/HeindrichMacalinao/AmbatuPull/issues/121) | Test Engineer | @YthanOrogo | [PR #165](https://github.com/HeindrichMacalinao/AmbatuPull/pull/165) | test: cover soft delete restore dependencies | **Merged** |
+| `S2-DEV-08` | [#118](https://github.com/HeindrichMacalinao/AmbatuPull/issues/118) | Backend Dev | @Tysennn | [PR #160](https://github.com/HeindrichMacalinao/AmbatuPull/pull/160) | feat(security): enforce 9-rights matrix and dynamic pricing | **Merged** |
+| `S2-DBA-06` | [#105](https://github.com/HeindrichMacalinao/AmbatuPull/issues/105) | DevSecOps | @Chrollofuru | [PR #161](https://github.com/HeindrichMacalinao/AmbatuPull/pull/161) | Wave 6: Database performance check & index tuning | **Merged** |
+| `S2-TST-04` | [#122](https://github.com/HeindrichMacalinao/AmbatuPull/issues/122) | Test Engineer | @YthanOrogo | [PR #166](https://github.com/HeindrichMacalinao/AmbatuPull/pull/166) | test: verify customer product permission matrix | **Merged** |
+| `S2-UIX-05` | [#110](https://github.com/HeindrichMacalinao/AmbatuPull/issues/110) | UI/UX Dev | @AlexGavarra | [PR #162](https://github.com/HeindrichMacalinao/AmbatuPull/pull/162) | feat(ui): complete Sprint 2 usability audit and UI polish | **Merged** |
+| `S2-TST-05` | [#123](https://github.com/HeindrichMacalinao/AmbatuPull/issues/123) | Test Engineer | @YthanOrogo | [PR #167](https://github.com/HeindrichMacalinao/AmbatuPull/pull/167) | test: add sprint one regression coverage | **Merged** |
+| `S2-TST-06` | [#124](https://github.com/HeindrichMacalinao/AmbatuPull/issues/124) | Test Engineer | @YthanOrogo | [PR #168](https://github.com/HeindrichMacalinao/AmbatuPull/pull/168) | test: add sprint two quality signoff | **Merged** |
+| `S2-SM-05` | [#99](https://github.com/HeindrichMacalinao/AmbatuPull/issues/99) | Scrum Master | @HeindrichMacalinao | [PR #170](https://github.com/HeindrichMacalinao/AmbatuPull/pull/170) | docs(sprint-2): Sprint 2 Review & Retrospective Report | **Merged** |
