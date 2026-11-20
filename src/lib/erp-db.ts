@@ -1282,6 +1282,109 @@ export async function getProducts({
   });
 }
 
+export const ALLOWED_PRODUCT_UNITS = [
+  'pcs',
+  'can',
+  'pair',
+  'meter',
+  'box',
+  'kg',
+  'set',
+  'License',
+  'Service',
+  'User/Mo',
+];
+
+export async function createProduct({
+  prodCode,
+  description,
+  unit,
+  actor = 'system',
+}: {
+  prodCode: string;
+  description: string;
+  unit: string;
+  actor?: string;
+}): Promise<ProductRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const existing = db.prepare('SELECT 1 FROM PRODUCT WHERE prodCode = ?').get(prodCode);
+  if (existing) {
+    const err = new Error(`Product with code '${prodCode}' already exists`);
+    (err as any).status = 409;
+    throw err;
+  }
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const now = new Date();
+  let hours = now.getHours();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  const stamp = `CREATED ${actor} ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(hours)}:${pad(now.getMinutes())} ${ampm}`;
+
+  db.prepare(`
+    INSERT INTO PRODUCT (prodCode, description, unit, status, stamp)
+    VALUES (?, ?, ?, 'Active', ?)
+  `).run(prodCode, description, unit, stamp);
+
+  return {
+    prodCode,
+    description,
+    unit,
+    currentPrice: null,
+    status: 'Active',
+    stamp,
+  };
+}
+
+export async function updateProduct({
+  prodCode,
+  description,
+  unit,
+  actor = 'system',
+}: {
+  prodCode: string;
+  description?: string;
+  unit?: string;
+  actor?: string;
+}): Promise<ProductRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const existing = db.prepare('SELECT * FROM PRODUCT WHERE prodCode = ?').get(prodCode) as any;
+  if (!existing) {
+    const err = new Error('Product not found');
+    (err as any).status = 404;
+    throw err;
+  }
+
+  const newDescription = description !== undefined ? description : existing.description;
+  const newUnit = unit !== undefined ? unit : existing.unit;
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const now = new Date();
+  let hours = now.getHours();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  const stamp = `EDITED ${actor} ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(hours)}:${pad(now.getMinutes())} ${ampm}`;
+
+  db.prepare(`
+    UPDATE PRODUCT
+    SET description = ?, unit = ?, stamp = ?
+    WHERE prodCode = ?
+  `).run(newDescription, newUnit, stamp, prodCode);
+
+  return {
+    prodCode,
+    description: newDescription,
+    unit: newUnit,
+    currentPrice: null,
+    status: existing.status,
+    stamp,
+  };
+}
+
 export async function createCustomer({
   custNo,
   custName,
