@@ -43,6 +43,7 @@ export default function ProductManagement({ role, user }: { role: RoleName; user
   const [error, setError] = useState('');
   const [userRights, setUserRights] = useState<string[]>([]);
   const [rightsError, setRightsError] = useState(false);
+  const [rightsLoading, setRightsLoading] = useState(false);
   const [formMode, setFormMode] = useState<'add' | 'edit' | null>(null);
   const [selected, setSelected] = useState<ProductRecord | null>(null);
   const [prodCode, setProdCode] = useState('');
@@ -75,9 +76,12 @@ export default function ProductManagement({ role, user }: { role: RoleName; user
     if (role !== 'User' || !user?.userId) {
       setUserRights([]);
       setRightsError(false);
+      setRightsLoading(false);
       return;
     }
     const controller = new AbortController();
+    setRightsLoading(true);
+    setRightsError(false);
     fetch(`/api/users/${user.userId}/rights`, { signal: controller.signal })
       .then(async (response) => {
         const data = await response.json();
@@ -89,6 +93,9 @@ export default function ProductManagement({ role, user }: { role: RoleName; user
         if (caught instanceof Error && caught.name === 'AbortError') return;
         setUserRights([]);
         setRightsError(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setRightsLoading(false);
       });
     return () => controller.abort();
   }, [role, user?.userId]);
@@ -207,8 +214,10 @@ export default function ProductManagement({ role, user }: { role: RoleName; user
     }
   };
 
-  const canEdit = isAdmin;
-  const canDelete = isAdmin;
+  const canAdd = isAdmin || (role === 'User' && userRights.includes('product.add') && !rightsLoading && !rightsError);
+  const canEdit = isAdmin || (role === 'User' && userRights.includes('product.edit') && !rightsLoading && !rightsError);
+  const canDelete = isAdmin || (role === 'User' && userRights.includes('product.delete') && !rightsLoading && !rightsError);
+  const canPrice = isAdmin || (role === 'User' && ['price.add', 'price.edit', 'price.delete'].some((right) => userRights.includes(right)) && !rightsLoading && !rightsError);
   const visibleCount = useMemo(() => `${products.length} product${products.length === 1 ? '' : 's'}`, [products.length]);
 
   return (
@@ -222,6 +231,7 @@ export default function ProductManagement({ role, user }: { role: RoleName; user
         {isAdmin && <div className="flex gap-1 border-b border-slate-200" role="tablist" aria-label="Product status">{(['Active', 'Inactive', 'All'] as const).map((status) => <button key={status} type="button" role="tab" aria-selected={statusFilter === status} onClick={() => setStatusFilter(status)} className={`px-3 py-2 text-sm font-semibold border-b-2 -mb-px ${statusFilter === status ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500'}`}>{status}<span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs">{counts[status]}</span></button>)}</div>}
         <div className="flex items-center justify-between gap-3"><div className="relative w-full sm:max-w-sm"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="search" aria-label="Search products" placeholder="Search products..." value={search} onChange={(event) => setSearch(event.target.value)} className="h-10 w-full rounded-lg border border-slate-300 pl-9 pr-3 text-sm" /></div>{isAdmin && <span className="text-xs text-slate-500">{visibleCount}</span>}</div>
         {role === 'User' && rightsError && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">Product permissions could not be loaded. Restricted actions are unavailable.</p>}
+        {role === 'User' && rightsLoading && <p role="status" className="text-sm text-slate-500">Loading product permissions…</p>}
         {error && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{error}</p>}
         <div className="overflow-x-auto"><table className="w-full min-w-[780px] text-left text-sm"><thead className="border-b bg-slate-50 text-xs font-semibold uppercase"><tr><th className="px-4 py-3">PROD CODE</th><th className="px-4 py-3">DESCRIPTION</th><th className="px-4 py-3">UNIT</th><th className="px-4 py-3">CURRENT PRICE</th>{isAdmin && <><th className="px-4 py-3">STATUS</th><th className="px-4 py-3">STAMP</th></>}<th className="px-4 py-3 text-right">ACTIONS</th></tr></thead><tbody className="divide-y">{loading ? <tr><td colSpan={isAdmin ? 7 : 5} className="px-4 py-10 text-center text-slate-500">Loading products…</td></tr> : products.length === 0 ? <tr><td colSpan={isAdmin ? 7 : 5} className="px-4 py-10 text-center text-slate-500">{error ? 'Products unavailable.' : search.trim() ? `No customers/products found matching '${search.trim()}'. Clear search or add a new record.` : 'No products found.'}</td></tr> : products.map((product) => {
           const status = product.status || 'Active';
