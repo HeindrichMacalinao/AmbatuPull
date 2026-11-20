@@ -99,6 +99,8 @@ def main() -> None:
         conn = sqlite3.connect(':memory:')
         try:
             source.backup(conn)
+            constraints = ROOT / 'migrations/007_customer_product_domain_constraints.sql'
+            conn.executescript(constraints.read_text(encoding='utf-8'))
             verify(conn, asset)
         finally:
             conn.close()
@@ -110,7 +112,7 @@ def main() -> None:
         for migration in (
             'migrations/001_init_core_schema.sql',
             'migrations/005_active_customer_product_views_indexes.sql',
-            'migrations/006_customer_product_domain_constraints.sql',
+            'migrations/007_customer_product_domain_constraints.sql',
             'migrations/007_customer_product_referential_soft_delete.sql',
         ):
             conn.executescript((ROOT / migration).read_text(encoding='utf-8'))
