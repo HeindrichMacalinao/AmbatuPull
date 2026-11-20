@@ -234,6 +234,7 @@ export default function CustomerManagement({ role, user }: CustomerManagementPro
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [counts, setCounts] = useState<Record<StatusFilter, number>>({ Active: 0, Inactive: 0, All: 0 });
   const [loading, setLoading] = useState(true);
+  const hasLoadedCustomers = useRef(false);
   const [listError, setListError] = useState('');
   const [userRights, setUserRights] = useState<string[]>([]);
   const [rightsError, setRightsError] = useState(false);
@@ -325,7 +326,7 @@ export default function CustomerManagement({ role, user }: CustomerManagementPro
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
+    if (!hasLoadedCustomers.current) setLoading(true);
     setListError('');
     const params = new URLSearchParams();
     if (debouncedSearch) params.set('search', debouncedSearch);
@@ -346,7 +347,10 @@ export default function CustomerManagement({ role, user }: CustomerManagementPro
       setCustomers([]);
       setListError(error instanceof Error ? error.message : 'Failed to load customers');
     }).finally(() => {
-      if (!controller.signal.aborted) setLoading(false);
+      if (!controller.signal.aborted) {
+        hasLoadedCustomers.current = true;
+        setLoading(false);
+      }
     });
     return () => controller.abort();
   }, [debouncedSearch, isAdmin, role, statusFilter, user]);
