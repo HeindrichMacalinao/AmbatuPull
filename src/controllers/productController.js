@@ -72,9 +72,49 @@ async function updateProduct(req, res, next) {
   }
 }
 
+/**
+ * DELETE /api/products/:prodCode (Soft Delete Product)
+ */
+async function deleteProduct(req, res, next) {
+  try {
+    const product = await productService.softDeleteProduct({
+      prodCode: req.params.prodCode,
+      requester: req.user,
+    });
+    res.status(200).json({
+      message: 'Product deleted successfully',
+      product,
+      ...product,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PUT /api/products/:prodCode/restore (Restore Product)
+ */
+async function restoreProduct(req, res, next) {
+  try {
+    const product = await productService.restoreProduct({
+      prodCode: req.params.prodCode,
+      requester: req.user,
+    });
+    res.status(200).json({
+      message: 'Product restored successfully',
+      product,
+      ...product,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getProducts,
   getProduct,
   createProduct,
   updateProduct,
+  deleteProduct,
+  restoreProduct,
 };

@@ -29,7 +29,26 @@ async function assertEditProductRight(request: Request) {
 async function assertDeleteProductRight(request: Request) {
   const role = request.headers.get('x-user-role') || 'User';
   if (role === 'Admin' || role === 'Superadmin') return;
-  throw Object.assign(new Error('Forbidden'), { status: 403 });
+
+  if (role !== 'User') {
+    const error = new Error('Forbidden');
+    (error as any).status = 403;
+    throw error;
+  }
+
+  const userId = Number(request.headers.get('x-user-id'));
+  if (!Number.isInteger(userId) || userId <= 0) {
+    const error = new Error('Unauthorized: user identity is required');
+    (error as any).status = 401;
+    throw error;
+  }
+
+  const rights = await getUserGrantedRights(userId);
+  if (!rights.includes('product.delete') && !rights.includes('*')) {
+    const error = new Error("Forbidden: missing required permission 'product.delete'");
+    (error as any).status = 403;
+    throw error;
+  }
 }
 
 export async function GET(

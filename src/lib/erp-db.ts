@@ -1400,9 +1400,19 @@ export async function softDeleteProduct({
     (err as any).status = 404;
     throw err;
   }
-  if (existing.status === 'Inactive') return existing as ProductRecord;
+  if (existing.status === 'Inactive') {
+    const err = new Error('Product is already inactive / deleted');
+    (err as any).status = 400;
+    throw err;
+  }
 
-  const stamp = `DELETED ${actor} ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const now = new Date();
+  let hours = now.getHours();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  const stamp = `DELETED ${actor} ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(hours)}:${pad(now.getMinutes())} ${ampm}`;
+
   db.prepare("UPDATE PRODUCT SET status = 'Inactive', stamp = ? WHERE prodCode = ?").run(stamp, prodCode);
   return { ...existing, status: 'Inactive', stamp, currentPrice: null };
 }
@@ -1422,7 +1432,19 @@ export async function restoreProduct({
     (err as any).status = 404;
     throw err;
   }
-  const stamp = `RESTORED ${actor} ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`;
+  if (existing.status === 'Active') {
+    const err = new Error('Product is already active');
+    (err as any).status = 400;
+    throw err;
+  }
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const now = new Date();
+  let hours = now.getHours();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  const stamp = `RESTORED ${actor} ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(hours)}:${pad(now.getMinutes())} ${ampm}`;
+
   db.prepare("UPDATE PRODUCT SET status = 'Active', stamp = ? WHERE prodCode = ?").run(stamp, prodCode);
   return { ...existing, status: 'Active', stamp, currentPrice: null };
 }

@@ -465,6 +465,167 @@ async function updateProduct({ prodCode, data, requester } = {}) {
   };
 }
 
+/**
+ * DELETE /api/products/:prodCode (Soft Delete Product) (§2.3, §3.4, §3.8, S2-DEV-06).
+ * - Requires right: 'product.delete' (or Superadmin/Admin)
+ * - Prohibits hard delete; sets status = 'Inactive', stamp = 'DELETED <currentUser> <YYYY-MM-DD HH:MM AM/PM>'
+ * - Rejects if product not found (404) or already Inactive (400)
+ * - Preserves historical links in PRICEHIST and SALESDETAIL
+ * - Records action to audit_log
+ */
+async function softDeleteProduct({ prodCode, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  await assertProductRight(pool, requester, 'product.delete');
+
+  const trimmedCode = typeof prodCode === 'string' ? prodCode.trim() : '';
+  if (!trimmedCode) {
+    const err = new Error('Product code is required');
+    err.status = 400;
+    throw err;
+  }
+
+  const existingRes = await pool.query('SELECT * FROM PRODUCT WHERE prodCode = $1', [trimmedCode]);
+  if (existingRes.rows.length === 0) {
+    const err = new Error('Product not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const existing = existingRes.rows[0];
+  if (existing.status === 'Inactive') {
+    const err = new Error('Product is already inactive / deleted');
+    err.status = 400;
+    throw err;
+  }
+
+  const stamp = formatAuditStamp('DELETED', requester);
+
+  await pool.query(
+    `UPDATE PRODUCT
+     SET status = 'Inactive', stamp = $1
+     WHERE prodCode = $2`,
+    [stamp, trimmedCode]
+  );
+
+  // Audit Logging (S2-DEV-06 Requirement 1)
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'DELETED', 'PRODUCT', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.role || 'system',
+        trimmedCode,
+        JSON.stringify({
+          before: {
+            status: existing.status,
+            description: existing.description,
+            unit: existing.unit,
+          },
+          after: {
+            status: 'Inactive',
+          },
+        }),
+      ]
+    );
+  } catch {
+    // Non-fatal if audit_log table is absent or handled by trigger
+  }
+
+  return {
+    prodCode: trimmedCode,
+    description: existing.description,
+    unit: existing.unit,
+    status: 'Inactive',
+    stamp,
+  };
+}
+
+/**
+ * PUT /api/products/:prodCode/restore (Restore Product) (§2.3, §3.4, §3.8, S2-DEV-06).
+ * - Strictly restricted to Admin and Superadmin
+ * - Sets status = 'Active', stamp = 'RESTORED <currentUser> <YYYY-MM-DD HH:MM AM/PM>'
+ * - Rejects if product not found (404) or already Active (400)
+ * - Records action to audit_log
+ */
+async function restoreProduct({ prodCode, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  if (!requester || !requester.role) {
+    const err = new Error('Unauthorized: authentication required');
+    err.status = 401;
+    throw err;
+  }
+
+  if (requester.role !== 'Admin' && requester.role !== 'Superadmin') {
+    const err = new Error('Forbidden: only Admin or Superadmin can restore products');
+    err.status = 403;
+    throw err;
+  }
+
+  const trimmedCode = typeof prodCode === 'string' ? prodCode.trim() : '';
+  if (!trimmedCode) {
+    const err = new Error('Product code is required');
+    err.status = 400;
+    throw err;
+  }
+
+  const existingRes = await pool.query('SELECT * FROM PRODUCT WHERE prodCode = $1', [trimmedCode]);
+  if (existingRes.rows.length === 0) {
+    const err = new Error('Product not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const existing = existingRes.rows[0];
+  if (existing.status === 'Active') {
+    const err = new Error('Product is already active');
+    err.status = 400;
+    throw err;
+  }
+
+  const stamp = formatAuditStamp('RESTORED', requester);
+
+  await pool.query(
+    `UPDATE PRODUCT
+     SET status = 'Active', stamp = $1
+     WHERE prodCode = $2`,
+    [stamp, trimmedCode]
+  );
+
+  // Audit Logging (S2-DEV-06 Requirement 2)
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'RESTORED', 'PRODUCT', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.role || 'system',
+        trimmedCode,
+        JSON.stringify({
+          before: {
+            status: existing.status,
+            description: existing.description,
+            unit: existing.unit,
+          },
+          after: {
+            status: 'Active',
+          },
+        }),
+      ]
+    );
+  } catch {
+    // Non-fatal if audit_log table is absent or handled by trigger
+  }
+
+  return {
+    prodCode: trimmedCode,
+    description: existing.description,
+    unit: existing.unit,
+    status: 'Active',
+    stamp,
+  };
+}
+
 module.exports = {
   ALLOWED_UNITS,
   validatePackagingUnit,
@@ -475,4 +636,6 @@ module.exports = {
   getProductByCode,
   createProduct,
   updateProduct,
+  softDeleteProduct,
+  restoreProduct,
 };
