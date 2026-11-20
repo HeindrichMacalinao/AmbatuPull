@@ -40,6 +40,7 @@ export default function ProductManagement({ role, user }: { role: RoleName; user
   const [products, setProducts] = useState<ProductRecord[]>([]);
   const [counts, setCounts] = useState<Record<StatusFilter, number>>({ Active: 0, Inactive: 0, All: 0 });
   const [loading, setLoading] = useState(true);
+  const hasLoadedProducts = useRef(false);
   const [error, setError] = useState('');
   const [userRights, setUserRights] = useState<string[]>([]);
   const [rightsError, setRightsError] = useState(false);
@@ -120,7 +121,7 @@ export default function ProductManagement({ role, user }: { role: RoleName; user
   }, [isAdmin, role, user, products.length]);
 
   const loadProducts = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
+    if (!hasLoadedProducts.current) setLoading(true);
     setError('');
     const params = new URLSearchParams();
     if (debouncedSearch) params.set('search', debouncedSearch);
@@ -138,7 +139,10 @@ export default function ProductManagement({ role, user }: { role: RoleName; user
       setProducts([]);
       setError(caught instanceof Error ? caught.message : 'Failed to load products');
     } finally {
-      if (!signal?.aborted) setLoading(false);
+      if (!signal?.aborted) {
+        hasLoadedProducts.current = true;
+        setLoading(false);
+      }
     }
   }, [debouncedSearch, isAdmin, refreshCounts, role, statusFilter, user]);
 
@@ -221,19 +225,19 @@ export default function ProductManagement({ role, user }: { role: RoleName; user
   const visibleCount = useMemo(() => `${products.length} product${products.length === 1 ? '' : 's'}`, [products.length]);
 
   return (
-    <section className="space-y-5" aria-labelledby="product-management-title">
+    <section className="product-management space-y-5" aria-labelledby="product-management-title">
       {toast && <div role="status" className={`fixed right-4 top-4 z-[70] rounded-lg border px-4 py-3 text-sm font-semibold shadow-lg ${toast.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-rose-200 bg-rose-50 text-rose-800'}`}>{toast.message}</div>}
       <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
-        <div><h1 id="product-management-title" className="text-xl font-bold text-slate-900 dark:text-slate-100">Product Management</h1><p className="mt-1 text-sm text-slate-500">Manage product records and dynamic pricing.</p></div>
+        <div><h1 id="product-management-title" className="text-xl font-bold text-slate-900 dark:text-slate-100">Product Management</h1><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Manage product records and dynamic pricing.</p></div>
         {canAdd && <button type="button" onClick={() => openForm('add')} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700"><Plus className="h-4 w-4" />Add Product</button>}
       </div>
       <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
         {isAdmin && <div className="flex gap-1 border-b border-slate-200" role="tablist" aria-label="Product status">{(['Active', 'Inactive', 'All'] as const).map((status) => <button key={status} type="button" role="tab" aria-selected={statusFilter === status} onClick={() => setStatusFilter(status)} className={`px-3 py-2 text-sm font-semibold border-b-2 -mb-px ${statusFilter === status ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500'}`}>{status}<span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs">{counts[status]}</span></button>)}</div>}
-        <div className="flex items-center justify-between gap-3"><div className="relative w-full sm:max-w-sm"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="search" aria-label="Search products" placeholder="Search products..." value={search} onChange={(event) => setSearch(event.target.value)} className="h-10 w-full rounded-lg border border-slate-300 pl-9 pr-3 text-sm" /></div>{isAdmin && <span className="text-xs text-slate-500">{visibleCount}</span>}</div>
+        <div className="flex items-center justify-between gap-3"><div className="relative w-full sm:max-w-sm"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="search" aria-label="Search products" placeholder="Search products..." value={search} onChange={(event) => setSearch(event.target.value)} className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" /></div>{isAdmin && <span className="text-xs text-slate-500 dark:text-slate-400">{visibleCount}</span>}</div>
         {role === 'User' && rightsError && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">Product permissions could not be loaded. Restricted actions are unavailable.</p>}
         {role === 'User' && rightsLoading && <p role="status" className="text-sm text-slate-500">Loading product permissions…</p>}
         {error && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{error}</p>}
-        <div className="overflow-x-auto"><table className="w-full min-w-[780px] text-left text-sm"><thead className="border-b bg-slate-50 text-xs font-semibold uppercase"><tr><th className="px-4 py-3">PROD CODE</th><th className="px-4 py-3">DESCRIPTION</th><th className="px-4 py-3">UNIT</th><th className="px-4 py-3">CURRENT PRICE</th>{isAdmin && <><th className="px-4 py-3">STATUS</th><th className="px-4 py-3">STAMP</th></>}<th className="px-4 py-3 text-right">ACTIONS</th></tr></thead><tbody className="divide-y">{loading ? <tr><td colSpan={isAdmin ? 7 : 5} className="px-4 py-10 text-center text-slate-500">Loading products…</td></tr> : products.length === 0 ? <tr><td colSpan={isAdmin ? 7 : 5} className="px-4 py-10 text-center text-slate-500">{error ? 'Products unavailable.' : search.trim() ? `No customers/products found matching '${search.trim()}'. Clear search or add a new record.` : 'No products found.'}</td></tr> : products.map((product) => {
+        <div className="overflow-x-auto"><table className="w-full min-w-[780px] text-left text-sm"><thead className="border-b bg-slate-50 text-xs font-semibold uppercase"><tr><th className="px-4 py-3">PROD CODE</th><th className="px-4 py-3">DESCRIPTION</th><th className="px-4 py-3">UNIT</th><th className="px-4 py-3">CURRENT PRICE</th>{isAdmin && <><th className="px-4 py-3">STATUS</th><th className="px-4 py-3">STAMP</th></>}<th className="px-4 py-3 text-right">ACTIONS</th></tr></thead><tbody className="divide-y">{loading ? <tr><td colSpan={isAdmin ? 7 : 5} className="px-4 py-10 text-center text-slate-500">Loading products…</td></tr> : products.length === 0 ? <tr><td colSpan={isAdmin ? 7 : 5} className="px-4 py-10 text-center text-slate-500">{error ? 'Products unavailable.' : search.trim() ? `No products found matching '${search.trim()}'. Clear search or add a new product.` : 'No products found.'}</td></tr> : products.map((product) => {
           const status = product.status || 'Active';
           return <tr key={product.prodCode} className={status === 'Inactive' ? 'bg-slate-100 dark:bg-slate-800/70' : ''}><td className="px-4 py-3 font-mono font-semibold">{product.prodCode}</td><td className="px-4 py-3 font-medium">{product.description}</td><td className="px-4 py-3">{product.unit || '—'}</td><td className="px-4 py-3">{status === 'Inactive' || product.currentPrice == null ? '—' : `₱${Number(product.currentPrice).toFixed(2)}`}</td>{isAdmin && <><td className="px-4 py-3"><span className={status === 'Active' ? 'rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800' : 'rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-800'}>{status}</span></td><td className="px-4 py-3 text-xs text-slate-500">{product.stamp || '—'}</td></>}<td className="px-4 py-3"><div className="flex justify-end gap-2">{canPrice && <button type="button" onClick={() => setPriceProduct(product)} className="h-8 rounded-md border px-2.5 text-xs font-semibold text-blue-700">Prices</button>}{canEdit && <button type="button" onClick={() => openForm('edit', product)} className="h-8 rounded-md border px-2.5 text-xs font-semibold">Edit</button>}{status === 'Inactive' && isAdmin ? <button type="button" onClick={() => setConfirmation({ product, action: 'restore' })} className="h-8 rounded-md border border-emerald-200 px-2.5 text-xs font-semibold text-emerald-800">Restore</button> : canDelete && <button type="button" onClick={() => setConfirmation({ product, action: 'delete' })} className="h-8 rounded-md border border-rose-200 px-2.5 text-xs font-semibold text-rose-700">Delete</button>}</div></td></tr>;
         })}</tbody></table></div>

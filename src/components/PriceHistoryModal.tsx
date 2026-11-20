@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import type { AppUser, RoleName } from '@/types/erp';
 
@@ -43,6 +43,7 @@ export default function PriceHistoryModal({ product, role, user, onClose }: {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('Active');
   const [prices, setPrices] = useState<PriceRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const hasLoadedPrices = useRef(false);
   const [error, setError] = useState('');
   const [rights, setRights] = useState<string[]>([]);
   const [rightsError, setRightsError] = useState(false);
@@ -86,7 +87,7 @@ export default function PriceHistoryModal({ product, role, user, onClose }: {
   }, [role, user?.userId]);
 
   const loadPrices = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
+    if (!hasLoadedPrices.current) setLoading(true);
     setError('');
     try {
       const params = new URLSearchParams();
@@ -104,7 +105,10 @@ export default function PriceHistoryModal({ product, role, user, onClose }: {
       setPrices([]);
       setError(caught instanceof Error ? caught.message : 'Failed to load price history');
     } finally {
-      if (!signal?.aborted) setLoading(false);
+      if (!signal?.aborted) {
+        hasLoadedPrices.current = true;
+        setLoading(false);
+      }
     }
   }, [isAdmin, product.prodCode, role, statusFilter, user]);
 
@@ -180,7 +184,7 @@ export default function PriceHistoryModal({ product, role, user, onClose }: {
   const showActions = isAdmin || canEdit || canDelete;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && onClose()}>
+    <div className="price-history-modal fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && onClose()}>
       <div role="dialog" aria-modal="true" aria-labelledby="price-history-title" className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
         <div className="flex items-center justify-between border-b px-5 py-4">
           <h2 id="price-history-title" className="text-base font-bold">Price History — {product.prodCode} ({product.description} · Unit: {product.unit || '—'})</h2>

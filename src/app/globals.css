@@ -65,3 +65,109 @@ body {
   outline: 2px solid var(--brand-action);
   outline-offset: 2px;
 }
+
+.dark .product-management table,
+.dark .price-history-modal table {
+  color: var(--text-secondary);
+}
+
+.dark .product-management thead,
+.dark .price-history-modal thead {
+  border-color: var(--border);
+  background-color: var(--surface-hover);
+  color: var(--text-secondary);
+}
+
+.dark .product-management tbody,
+.dark .price-history-modal tbody,
+.dark .product-management [role="tablist"] {
+  border-color: var(--border);
+}
+
+.dark .product-management tr[class*="bg-slate-"],
+.dark .price-history-modal tr[class*="bg-slate-"] {
+  background-color: var(--row-deleted);
+}
+
+.dark .product-management [role="dialog"],
+.dark .product-management [role="alertdialog"],
+.dark .price-history-modal [role="dialog"],
+.dark .price-history-modal [role="alertdialog"] {
+  border-color: var(--border-strong);
+  background-color: var(--surface);
+  color: var(--text-primary);
+}
+
+.dark .product-management [role="dialog"] > div,
+.dark .product-management [role="alertdialog"] > div,
+.dark .price-history-modal [role="dialog"] > div,
+.dark .price-history-modal [role="alertdialog"] > div {
+  border-color: var(--border);
+}
+
+.dark .product-management [role="dialog"] label,
+.dark .price-history-modal [role="dialog"] label {
+  color: var(--text-secondary);
+}
+
+.dark .product-management [role="dialog"] input,
+.dark .product-management [role="dialog"] select,
+.dark .price-history-modal [role="dialog"] input,
+.dark .price-history-modal [role="dialog"] select {
+  border-color: var(--border-strong);
+  background-color: var(--surface-elevated);
+  color: var(--text-primary);
+}
+
+.dark .product-management button:not([class*="bg-"]),
+.dark .price-history-modal button:not([class*="bg-"]) {
+  border-color: var(--border-strong);
+  color: var(--text-secondary);
+}
+
+.dark .product-management button[role="tab"][aria-selected="true"] {
+  border-bottom-color: var(--brand-action);
+  color: var(--brand-primary);
+}
+
+.dark .price-history-modal button[class*="border-blue-600"] {
+  color: var(--brand-primary);
+}
+
+.dark .product-management button[class*="text-blue-"],
+.dark .price-history-modal button[class*="text-blue-"] {
+  color: var(--brand-primary);
+}
+
+.dark .price-history-modal [class*="border-b"] {
+  border-color: var(--border);
+}
+
+.dark .product-management button[class*="text-rose-"],
+.dark .price-history-modal button[class*="text-rose-"] {
+  border-color: var(--status-inactive-border);
+  color: var(--status-inactive-text);
+}
+
+.dark .product-management button[class*="text-emerald-"],
+.dark .price-history-modal button[class*="text-emerald-"] {
+  border-color: var(--status-active-border);
+  color: var(--status-active-text);
+}
+
+.dark .product-management td span[class*="bg-emerald-"] {
+  border-color: var(--status-active-border);
+  background-color: var(--status-active-bg);
+  color: var(--status-active-text);
+}
+
+.dark .product-management td span[class*="bg-rose-"] {
+  border-color: var(--status-inactive-border);
+  background-color: var(--status-inactive-bg);
+  color: var(--status-inactive-text);
+}
+
+.dark .product-management td[class*="text-slate-500"],
+.dark .price-history-modal td[class*="text-slate-500"] {
+  color: var(--text-muted);
+}
