@@ -207,8 +207,8 @@ export default function ProductManagement({ role, user }: { role: RoleName; user
     }
   };
 
-  const canEdit = isAdmin || (role === 'User' && userRights.includes('product.edit'));
-  const canDelete = isAdmin || (role === 'User' && userRights.includes('product.delete'));
+  const canEdit = isAdmin;
+  const canDelete = isAdmin;
   const visibleCount = useMemo(() => `${products.length} product${products.length === 1 ? '' : 's'}`, [products.length]);
 
   return (
