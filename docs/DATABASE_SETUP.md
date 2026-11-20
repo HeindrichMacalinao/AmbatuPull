@@ -235,6 +235,38 @@ Every domain and administrative table across the Hope, Inc. ERP database **must*
 
 ## 7. How to Author New Migrations
 
+### S2-DBA-05: Sprint 2 demo customers/products and price history
+
+- The standalone SQLite seed lives at
+  `scripts/migrate/seed_sprint2_demo_data.sql`. Apply ordered migrations first,
+  back up the target database, then run:
+
+  ```bash
+  python scripts/migrate/apply_sprint2_demo_seed.py HopeERP.db
+  python tests/verify_sprint2_demo_seed.py
+  ```
+
+- The runner refuses to create a missing DB, checks `PRAGMA foreign_keys=ON`,
+  requires the S2-DBA-03 domain triggers, and refuses mismatched existing demo
+  IDs. SQL uses `BEGIN IMMEDIATE`, targeted `ON CONFLICT ... DO NOTHING`, and
+  never updates/deletes non-demo records. Reruns preserve the original stamps.
+- Seeds exactly C-001 through C-005 and P-001 through P-005, including
+  Inactive C-004/P-004. Creates four strictly positive, Active price rows:
+  P-001 (2026-09-01, 0.50; 2026-10-01, 0.75), P-002 (2026-10-01, 0.50),
+  and P-005 (2026-10-01, 0.35). P-004 has no price. The supplied instructions
+  do not specify the `stamp` on price records; the script uses their actual
+  import time and `system` actor rather than inventing historical activity.
+- **Unresolved acceptance conflict:** The requested P-003 2026-02-01 **Active
+  0.00** row violates S2-DBA-03's mandatory `unitPrice > 0` constraint.
+  Therefore the script does **not** seed that row and the current price for
+  P-003 remains `NULL`, not `0.00`. Do not weaken constraints or substitute an
+  unapproved number. The team must choose a revised rule/price before all
+  S2-DBA-05 price-history acceptance checks can pass.
+- The repository does not contain the actual Student Guide Figures 9, 11, and
+  12; fields are transcribed from the issue's provided values, with the single
+  zero-price exception documented above. The seed targets local SQLite, not
+  Supabase/PostgreSQL (which has different sales field names and SQL dialect).
+
 ### S2-DBA-04: protect historical sales on hard/soft deletion
 
 - Existing SQLite FKs already enforce `NO ACTION` for `SALES.custNo ->
