@@ -25,7 +25,13 @@ export async function PUT(
     const existing = db.prepare('SELECT 1 FROM PRICEHIST WHERE prodCode = ? AND effDate = ?').get(prodCode, effDate);
     if (!existing) return NextResponse.json({ error: 'Price record not found' }, { status: 404 });
     const actor = request.headers.get('x-user-email') || request.headers.get('x-user-role') || 'system';
-    const stamp = `EDITED ${actor} ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`;
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    let hours = now.getHours();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    const stamp = `EDITED ${actor} ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(hours)}:${pad(now.getMinutes())} ${ampm}`;
+
     db.prepare('UPDATE PRICEHIST SET unitPrice = ?, stamp = ? WHERE prodCode = ? AND effDate = ?').run(unitPrice, stamp, prodCode, effDate);
     const price = db.prepare('SELECT prodCode, effDate, unitPrice, status, stamp FROM PRICEHIST WHERE prodCode = ? AND effDate = ?').get(prodCode, effDate) as any;
     return NextResponse.json({ message: 'Price record updated successfully', price: { ...price, unitPrice: Number(price.unitPrice) } });
@@ -42,10 +48,18 @@ export async function DELETE(
     await assertPriceRight(request, 'price.delete');
     const { prodCode, effDate } = await params;
     const db = getSqliteDb();
-    const existing = db.prepare('SELECT 1 FROM PRICEHIST WHERE prodCode = ? AND effDate = ?').get(prodCode, effDate);
+    const existing = db.prepare('SELECT status FROM PRICEHIST WHERE prodCode = ? AND effDate = ?').get(prodCode, effDate) as any;
     if (!existing) return NextResponse.json({ error: 'Price record not found' }, { status: 404 });
+    if (existing.status === 'Inactive') return NextResponse.json({ error: 'Price record is already inactive' }, { status: 400 });
+
     const actor = request.headers.get('x-user-email') || request.headers.get('x-user-role') || 'system';
-    const stamp = `DELETED ${actor} ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`;
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    let hours = now.getHours();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    const stamp = `DELETED ${actor} ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(hours)}:${pad(now.getMinutes())} ${ampm}`;
+
     db.prepare("UPDATE PRICEHIST SET status = 'Inactive', stamp = ? WHERE prodCode = ? AND effDate = ?").run(stamp, prodCode, effDate);
     return NextResponse.json({ message: 'Price record deleted successfully' });
   } catch (err: any) {

@@ -110,6 +110,105 @@ async function restoreProduct(req, res, next) {
   }
 }
 
+
+/**
+ * GET /api/products/:prodCode/prices
+ */
+async function getProductPrices(req, res, next) {
+  try {
+    const prices = await productService.listPrices({
+      prodCode: req.params.prodCode,
+      requester: req.user,
+      status: req.query.status,
+    });
+    res.status(200).json({ prices, total: prices.length });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/products/:prodCode/prices (Add Price)
+ */
+async function addPrice(req, res, next) {
+  try {
+    const price = await productService.addPrice({
+      prodCode: req.params.prodCode,
+      effDate: req.body.effDate,
+      unitPrice: req.body.unitPrice,
+      requester: req.user,
+    });
+    res.status(201).json({
+      message: 'Price record created successfully',
+      price,
+      ...price,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PUT /api/products/:prodCode/prices/:effDate (Edit Price)
+ */
+async function updatePrice(req, res, next) {
+  try {
+    const price = await productService.updatePrice({
+      prodCode: req.params.prodCode,
+      effDate: req.params.effDate,
+      unitPrice: req.body.unitPrice,
+      requester: req.user,
+    });
+    res.status(200).json({
+      message: 'Price record updated successfully',
+      price,
+      ...price,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * DELETE /api/products/:prodCode/prices/:effDate (Delete Price)
+ */
+async function deletePrice(req, res, next) {
+  try {
+    const price = await productService.softDeletePrice({
+      prodCode: req.params.prodCode,
+      effDate: req.params.effDate,
+      requester: req.user,
+    });
+    res.status(200).json({
+      message: 'Price record deleted successfully',
+      price,
+      ...price,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PUT /api/products/:prodCode/prices/:effDate/restore (Restore Price)
+ */
+async function restorePrice(req, res, next) {
+  try {
+    const price = await productService.restorePrice({
+      prodCode: req.params.prodCode,
+      effDate: req.params.effDate,
+      requester: req.user,
+    });
+    res.status(200).json({
+      message: 'Price record restored successfully',
+      price,
+      ...price,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getProducts,
   getProduct,
@@ -117,4 +216,9 @@ module.exports = {
   updateProduct,
   deleteProduct,
   restoreProduct,
+  getProductPrices,
+  addPrice,
+  updatePrice,
+  deletePrice,
+  restorePrice,
 };

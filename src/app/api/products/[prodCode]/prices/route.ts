@@ -33,6 +33,15 @@ export async function GET(
     }
     query += ' ORDER BY effDate DESC';
     const rows = db.prepare(query).all(...queryParams) as Array<{ prodCode: string; effDate: string; unitPrice: number; status: string; stamp: string }>;
+    if (!isAdmin) {
+      return NextResponse.json({
+        prices: rows.map((row) => ({
+          prodCode: row.prodCode,
+          effDate: row.effDate,
+          unitPrice: Number(row.unitPrice),
+        })),
+      });
+    }
     return NextResponse.json({ prices: rows.map((row) => ({ ...row, unitPrice: Number(row.unitPrice) })) });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to retrieve price history' }, { status: err.status || 500 });
@@ -54,10 +63,20 @@ export async function POST(
     if (!Number.isFinite(unitPrice) || unitPrice <= 0) return NextResponse.json({ error: 'Unit price must be greater than zero.' }, { status: 400 });
 
     const db = getSqliteDb();
+    const product = db.prepare('SELECT 1 FROM PRODUCT WHERE prodCode = ?').get(prodCode);
+    if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+
     const duplicate = db.prepare('SELECT 1 FROM PRICEHIST WHERE prodCode = ? AND effDate = ?').get(prodCode, effDate);
-    if (duplicate) return NextResponse.json({ error: 'A price record already exists for this effective date.' }, { status: 409 });
+    if (duplicate) return NextResponse.json({ error: 'A price record already exists for this effective date.' }, { status: 400 });
+
     const actor = request.headers.get('x-user-email') || request.headers.get('x-user-role') || 'system';
-    const stamp = `CREATED ${actor} ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`;
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    let hours = now.getHours();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    const stamp = `CREATED ${actor} ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(hours)}:${pad(now.getMinutes())} ${ampm}`;
+
     db.prepare("INSERT INTO PRICEHIST (prodCode, effDate, unitPrice, status, stamp) VALUES (?, ?, ?, 'Active', ?)").run(prodCode, effDate, unitPrice, stamp);
     const price = db.prepare('SELECT prodCode, effDate, unitPrice, status, stamp FROM PRICEHIST WHERE prodCode = ? AND effDate = ?').get(prodCode, effDate) as any;
     return NextResponse.json({ message: 'Price record created successfully', price: { ...price, unitPrice: Number(price.unitPrice) } }, { status: 201 });

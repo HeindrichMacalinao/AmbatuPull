@@ -626,6 +626,417 @@ async function restoreProduct({ prodCode, requester } = {}) {
   };
 }
 
+
+/**
+ * GET /api/products/:prodCode/prices (§3.4 Figures 12 & 13, §4.2, S2-DEV-07).
+ * Chronological price history ordered by effDate DESC.
+ * Admin view includes status and stamp.
+ * User view strictly returns active prices without status/stamp.
+ */
+async function listPrices({ prodCode, requester, status } = {}) {
+  const pool = dbPool.getPool();
+
+  await assertProductAccess(pool, requester);
+
+  const trimmedCode = typeof prodCode === 'string' ? prodCode.trim() : '';
+  if (!trimmedCode) {
+    const err = new Error('Product code is required');
+    err.status = 400;
+    throw err;
+  }
+
+  const prodRes = await pool.query('SELECT 1 FROM PRODUCT WHERE prodCode = $1', [trimmedCode]);
+  if (prodRes.rows.length === 0) {
+    const err = new Error('Product not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const isUser = requester.role !== 'Admin' && requester.role !== 'Superadmin';
+  const normalizedStatus = String(status || '').trim().toLowerCase();
+
+  let query = 'SELECT prodCode, effDate, unitPrice, status, stamp FROM PRICEHIST WHERE prodCode = $1';
+  const queryParams = [trimmedCode];
+
+  if (isUser) {
+    query += " AND status = 'Active'";
+  } else if (normalizedStatus === 'active') {
+    query += " AND status = 'Active'";
+  } else if (normalizedStatus === 'inactive') {
+    query += " AND status = 'Inactive'";
+  }
+
+  query += ' ORDER BY effDate DESC';
+
+  const { rows } = await pool.query(query, queryParams);
+
+  if (isUser) {
+    return rows.map((r) => ({
+      prodCode: r.prodCode ?? r.prodcode,
+      effDate: r.effDate ?? r.effdate,
+      unitPrice: Number(r.unitPrice ?? r.unitprice),
+    }));
+  }
+
+  return rows.map((r) => ({
+    prodCode: r.prodCode ?? r.prodcode,
+    effDate: r.effDate ?? r.effdate,
+    unitPrice: Number(r.unitPrice ?? r.unitprice),
+    status: r.status,
+    stamp: r.stamp,
+  }));
+}
+
+/**
+ * POST /api/products/:prodCode/prices (Add Price) (§3.4, §3.8, S2-DEV-07).
+ * - Guard: requireRight('price.add')
+ * - Payload: { effDate, unitPrice }
+ * - Validation: unitPrice > 0, valid date format, duplicate (prodCode, effDate) rejected with 400
+ * - System Fields: status = 'Active', stamp = 'CREATED <currentUser> <timestamp>'
+ * - Audit log entry recorded
+ */
+async function addPrice({ prodCode, effDate, unitPrice, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  if (!requester || !requester.role) {
+    const err = new Error('Unauthorized: authentication required');
+    err.status = 401;
+    throw err;
+  }
+
+  await assertProductRight(pool, requester, 'price.add');
+
+  const trimmedCode = typeof prodCode === 'string' ? prodCode.trim() : '';
+  if (!trimmedCode) {
+    const err = new Error('Product code is required');
+    err.status = 400;
+    throw err;
+  }
+
+  const prodRes = await pool.query('SELECT 1 FROM PRODUCT WHERE prodCode = $1', [trimmedCode]);
+  if (prodRes.rows.length === 0) {
+    const err = new Error('Product not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const trimmedDate = typeof effDate === 'string' ? effDate.trim() : '';
+  if (!trimmedDate) {
+    const err = new Error('Effective date is required');
+    err.status = 400;
+    throw err;
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate) || isNaN(Date.parse(trimmedDate))) {
+    const err = new Error('Effective date must be a valid date in YYYY-MM-DD format');
+    err.status = 400;
+    throw err;
+  }
+
+  const priceNum = Number(unitPrice);
+  if (!Number.isFinite(priceNum) || priceNum <= 0) {
+    const err = new Error('Unit price must be a positive number greater than zero');
+    err.status = 400;
+    throw err;
+  }
+
+  const dupRes = await pool.query(
+    'SELECT 1 FROM PRICEHIST WHERE prodCode = $1 AND effDate = $2',
+    [trimmedCode, trimmedDate]
+  );
+  if (dupRes.rows.length > 0) {
+    const err = new Error('A price record already exists for this effective date');
+    err.status = 400;
+    throw err;
+  }
+
+  const stamp = formatAuditStamp('CREATED', requester);
+
+  await pool.query(
+    `INSERT INTO PRICEHIST (prodCode, effDate, unitPrice, status, stamp)
+     VALUES ($1, $2, $3, 'Active', $4)`,
+    [trimmedCode, trimmedDate, priceNum, stamp]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'CREATED', 'PRICEHIST', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.username || requester.role || 'system',
+        `${trimmedCode}:${trimmedDate}`,
+        JSON.stringify({
+          prodCode: trimmedCode,
+          effDate: trimmedDate,
+          unitPrice: priceNum,
+          status: 'Active',
+        }),
+      ]
+    );
+  } catch {}
+
+  return {
+    prodCode: trimmedCode,
+    effDate: trimmedDate,
+    unitPrice: priceNum,
+    status: 'Active',
+    stamp,
+  };
+}
+
+/**
+ * PUT /api/products/:prodCode/prices/:effDate (Edit Price) (§3.4, §3.8, S2-DEV-07).
+ * - Guard: requireRight('price.edit')
+ * - Payload: { unitPrice }
+ * - Validation: unitPrice > 0
+ * - System Fields: stamp = 'EDITED <currentUser> <timestamp>'
+ * - Audit log entry recorded
+ */
+async function updatePrice({ prodCode, effDate, unitPrice, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  if (!requester || !requester.role) {
+    const err = new Error('Unauthorized: authentication required');
+    err.status = 401;
+    throw err;
+  }
+
+  await assertProductRight(pool, requester, 'price.edit');
+
+  const trimmedCode = typeof prodCode === 'string' ? prodCode.trim() : '';
+  const trimmedDate = typeof effDate === 'string' ? effDate.trim() : '';
+
+  if (!trimmedCode || !trimmedDate) {
+    const err = new Error('Product code and effective date are required');
+    err.status = 400;
+    throw err;
+  }
+
+  const priceNum = Number(unitPrice);
+  if (!Number.isFinite(priceNum) || priceNum <= 0) {
+    const err = new Error('Unit price must be a positive number greater than zero');
+    err.status = 400;
+    throw err;
+  }
+
+  const existingRes = await pool.query(
+    'SELECT * FROM PRICEHIST WHERE prodCode = $1 AND effDate = $2',
+    [trimmedCode, trimmedDate]
+  );
+  if (existingRes.rows.length === 0) {
+    const err = new Error('Price record not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const existing = existingRes.rows[0];
+  const stamp = formatAuditStamp('EDITED', requester);
+
+  await pool.query(
+    `UPDATE PRICEHIST
+     SET unitPrice = $1, stamp = $2
+     WHERE prodCode = $3 AND effDate = $4`,
+    [priceNum, stamp, trimmedCode, trimmedDate]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'EDITED', 'PRICEHIST', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.username || requester.role || 'system',
+        `${trimmedCode}:${trimmedDate}`,
+        JSON.stringify({
+          before: {
+            unitPrice: Number(existing.unitPrice ?? existing.unitprice),
+            status: existing.status,
+          },
+          after: {
+            unitPrice: priceNum,
+            status: existing.status,
+          },
+        }),
+      ]
+    );
+  } catch {}
+
+  return {
+    prodCode: trimmedCode,
+    effDate: trimmedDate,
+    unitPrice: priceNum,
+    status: existing.status,
+    stamp,
+  };
+}
+
+/**
+ * DELETE /api/products/:prodCode/prices/:effDate (Delete Price) (§2.3, §3.4, §3.8, S2-DEV-07).
+ * - Guard: requireRight('price.delete')
+ * - Soft delete only: UPDATE status = 'Inactive', stamp = 'DELETED <currentUser> <timestamp>'
+ * - Rejects 404 if not found, 400 if already Inactive
+ * - Audit log entry recorded
+ */
+async function softDeletePrice({ prodCode, effDate, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  if (!requester || !requester.role) {
+    const err = new Error('Unauthorized: authentication required');
+    err.status = 401;
+    throw err;
+  }
+
+  await assertProductRight(pool, requester, 'price.delete');
+
+  const trimmedCode = typeof prodCode === 'string' ? prodCode.trim() : '';
+  const trimmedDate = typeof effDate === 'string' ? effDate.trim() : '';
+
+  if (!trimmedCode || !trimmedDate) {
+    const err = new Error('Product code and effective date are required');
+    err.status = 400;
+    throw err;
+  }
+
+  const existingRes = await pool.query(
+    'SELECT * FROM PRICEHIST WHERE prodCode = $1 AND effDate = $2',
+    [trimmedCode, trimmedDate]
+  );
+  if (existingRes.rows.length === 0) {
+    const err = new Error('Price record not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const existing = existingRes.rows[0];
+  if (existing.status === 'Inactive') {
+    const err = new Error('Price record is already inactive');
+    err.status = 400;
+    throw err;
+  }
+
+  const stamp = formatAuditStamp('DELETED', requester);
+
+  await pool.query(
+    `UPDATE PRICEHIST
+     SET status = 'Inactive', stamp = $1
+     WHERE prodCode = $2 AND effDate = $3`,
+    [stamp, trimmedCode, trimmedDate]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'DELETED', 'PRICEHIST', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.username || requester.role || 'system',
+        `${trimmedCode}:${trimmedDate}`,
+        JSON.stringify({
+          before: {
+            status: existing.status,
+            unitPrice: Number(existing.unitPrice ?? existing.unitprice),
+          },
+          after: {
+            status: 'Inactive',
+          },
+        }),
+      ]
+    );
+  } catch {}
+
+  return {
+    prodCode: trimmedCode,
+    effDate: trimmedDate,
+    unitPrice: Number(existing.unitPrice ?? existing.unitprice),
+    status: 'Inactive',
+    stamp,
+  };
+}
+
+/**
+ * PUT /api/products/:prodCode/prices/:effDate/restore (Restore Price) (§2.3, §3.4, §3.8, S2-DEV-07).
+ * - Guard: requireAdminOrSuperadmin (Admin or Superadmin only)
+ * - Sets status = 'Active', stamp = 'RESTORED <currentUser> <timestamp>'
+ * - Rejects 404 if not found, 400 if already Active
+ * - Audit log entry recorded
+ */
+async function restorePrice({ prodCode, effDate, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  if (!requester || !requester.role) {
+    const err = new Error('Unauthorized: authentication required');
+    err.status = 401;
+    throw err;
+  }
+
+  if (requester.role !== 'Admin' && requester.role !== 'Superadmin') {
+    const err = new Error('Forbidden: only Admin or Superadmin can restore prices');
+    err.status = 403;
+    throw err;
+  }
+
+  const trimmedCode = typeof prodCode === 'string' ? prodCode.trim() : '';
+  const trimmedDate = typeof effDate === 'string' ? effDate.trim() : '';
+
+  if (!trimmedCode || !trimmedDate) {
+    const err = new Error('Product code and effective date are required');
+    err.status = 400;
+    throw err;
+  }
+
+  const existingRes = await pool.query(
+    'SELECT * FROM PRICEHIST WHERE prodCode = $1 AND effDate = $2',
+    [trimmedCode, trimmedDate]
+  );
+  if (existingRes.rows.length === 0) {
+    const err = new Error('Price record not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const existing = existingRes.rows[0];
+  if (existing.status === 'Active') {
+    const err = new Error('Price record is already active');
+    err.status = 400;
+    throw err;
+  }
+
+  const stamp = formatAuditStamp('RESTORED', requester);
+
+  await pool.query(
+    `UPDATE PRICEHIST
+     SET status = 'Active', stamp = $1
+     WHERE prodCode = $2 AND effDate = $3`,
+    [stamp, trimmedCode, trimmedDate]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'RESTORED', 'PRICEHIST', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.username || requester.role || 'system',
+        `${trimmedCode}:${trimmedDate}`,
+        JSON.stringify({
+          before: {
+            status: existing.status,
+            unitPrice: Number(existing.unitPrice ?? existing.unitprice),
+          },
+          after: {
+            status: 'Active',
+          },
+        }),
+      ]
+    );
+  } catch {}
+
+  return {
+    prodCode: trimmedCode,
+    effDate: trimmedDate,
+    unitPrice: Number(existing.unitPrice ?? existing.unitprice),
+    status: 'Active',
+    stamp,
+  };
+}
+
 module.exports = {
   ALLOWED_UNITS,
   validatePackagingUnit,
@@ -638,4 +1049,9 @@ module.exports = {
   updateProduct,
   softDeleteProduct,
   restoreProduct,
+  listPrices,
+  addPrice,
+  updatePrice,
+  softDeletePrice,
+  restorePrice,
 };
