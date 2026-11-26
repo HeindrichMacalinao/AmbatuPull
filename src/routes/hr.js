@@ -15,6 +15,8 @@ const {
   getEmployees,
   createEmployee,
   updateEmployee,
+  deleteEmployee,
+  restoreEmployee,
 } = require('../controllers/hrController');
 const {
   authenticate,
@@ -51,10 +53,13 @@ const employeesRouter = express.Router();
 employeesRouter.use(authenticate);
 employeesRouter.use(requireHrAccess);
 
-// Employees List & Mutation API (S3-DEV-04 & S3-DEV-05)
+// Employees List & Mutation API (S3-DEV-04, S3-DEV-05, S3-DEV-06)
 employeesRouter.get('/', getEmployees);
 employeesRouter.post('/', requireRight('emp.add'), createEmployee);
 employeesRouter.put('/:empNo', requireRight('emp.edit'), updateEmployee);
+employeesRouter.delete('/:empNo', requireRight('emp.delete'), deleteEmployee);
+employeesRouter.post('/:empNo/restore', requireAdminOrSuperadmin, restoreEmployee);
+employeesRouter.put('/:empNo/restore', requireAdminOrSuperadmin, restoreEmployee);
 
 const router = express.Router();
 router.use('/jobs', jobsRouter);
