@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { History, LoaderCircle, Plus, Search, X } from 'lucide-react';
 import type { AppUser, RoleName } from '@/types/erp';
+import JobHistoryModal from '@/components/JobHistoryModal';
 
 type StatusFilter = 'Active' | 'Inactive' | 'All';
 
@@ -14,18 +15,6 @@ interface EmployeeRecord {
   birthDate: string | null;
   hireDate: string | null;
   sepDate: string | null;
-  status?: 'Active' | 'Inactive';
-  stamp?: string;
-}
-
-interface JobHistoryRecord {
-  empNo: string;
-  jobCode: string;
-  jobDesc?: string | null;
-  effDate: string;
-  salary: number;
-  deptCode: string | null;
-  deptName?: string | null;
   status?: 'Active' | 'Inactive';
   stamp?: string;
 }
@@ -90,9 +79,6 @@ export default function EmployeeManagement({
   const [confirmation, setConfirmation] = useState<{ employee: EmployeeRecord; action: 'delete' | 'restore' } | null>(null);
   const [confirmationSubmitting, setConfirmationSubmitting] = useState(false);
   const [historyEmployee, setHistoryEmployee] = useState<EmployeeRecord | null>(null);
-  const [history, setHistory] = useState<JobHistoryRecord[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyError, setHistoryError] = useState('');
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -266,27 +252,6 @@ export default function EmployeeManagement({
     () => `${employees.length} employee${employees.length === 1 ? '' : 's'}`,
     [employees.length]
   );
-
-  const openHistory = async (employee: EmployeeRecord) => {
-    setHistoryEmployee(employee);
-    setHistory([]);
-    setHistoryError('');
-    setHistoryLoading(true);
-    try {
-      const response = await fetch(
-        `/api/hr/employees/${encodeURIComponent(employee.empNo)}/history`,
-        { headers: requestHeaders(role, user) }
-      );
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to load employee history');
-      if (!Array.isArray(data.history)) throw new Error('The employee history API returned an invalid response.');
-      setHistory(data.history);
-    } catch (caught: unknown) {
-      setHistoryError(caught instanceof Error ? caught.message : 'Failed to load employee history');
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
 
   const confirmMutation = async () => {
     if (!confirmation) return;
@@ -468,7 +433,7 @@ export default function EmployeeManagement({
                         {canViewHistory && (
                           <button
                             type="button"
-                            onClick={() => void openHistory(employee)}
+                            onClick={() => setHistoryEmployee(employee)}
                             className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-300 px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200"
                           >
                             <History className="h-3.5 w-3.5" />
@@ -721,83 +686,12 @@ export default function EmployeeManagement({
       )}
 
       {historyEmployee && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4"
-          role="presentation"
-          onMouseDown={(event) => event.currentTarget === event.target && setHistoryEmployee(null)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="employee-history-title"
-            className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900"
-          >
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-700">
-              <h2 id="employee-history-title" className="text-base font-bold text-slate-900 dark:text-slate-100">
-                Employment History — {historyEmployee.empNo} ({historyEmployee.lastName}, {historyEmployee.firstName})
-              </h2>
-              <button
-                type="button"
-                onClick={() => setHistoryEmployee(null)}
-                aria-label="Close dialog"
-                className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="p-5">
-              {historyLoading ? (
-                <p role="status" className="flex items-center gap-2 text-sm text-slate-500">
-                  <LoaderCircle className="h-4 w-4 animate-spin" />
-                  Loading employee history…
-                </p>
-              ) : historyError ? (
-                <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
-                  {historyError}
-                </p>
-              ) : history.length === 0 ? (
-                <p className="rounded-lg border border-slate-200 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-800">
-                  No job history records are available for this employee.
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[760px] text-left text-sm">
-                    <thead className="border-b border-slate-200 text-xs uppercase text-slate-500 dark:border-slate-700">
-                      <tr>
-                        <th className="px-3 py-2">Job</th>
-                        <th className="px-3 py-2">Department</th>
-                        <th className="px-3 py-2">Effective Date</th>
-                        <th className="px-3 py-2">Salary</th>
-                        {isAdmin && <th className="px-3 py-2">Status</th>}
-                        {isAdmin && <th className="px-3 py-2">Stamp</th>}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {history.map((record) => (
-                        <tr key={`${record.jobCode}-${record.effDate}`}>
-                          <td className="px-3 py-3">
-                            <span className="font-semibold">{record.jobCode}</span>
-                            {record.jobDesc ? <span className="block text-xs text-slate-500">{record.jobDesc}</span> : null}
-                          </td>
-                          <td className="px-3 py-3">
-                            <span className="font-medium">{record.deptCode || '—'}</span>
-                            {record.deptName ? <span className="block text-xs text-slate-500">{record.deptName}</span> : null}
-                          </td>
-                          <td className="px-3 py-3">{formatDate(record.effDate)}</td>
-                          <td className="px-3 py-3">
-                            {new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(record.salary)}
-                          </td>
-                          {isAdmin && <td className="px-3 py-3">{record.status || '—'}</td>}
-                          {isAdmin && <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-500">{record.stamp || '—'}</td>}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <JobHistoryModal
+          employee={historyEmployee}
+          role={role}
+          user={user}
+          onClose={() => setHistoryEmployee(null)}
+        />
       )}
     </section>
   );

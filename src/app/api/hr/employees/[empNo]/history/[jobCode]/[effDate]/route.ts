@@ -29,18 +29,29 @@ export async function PUT(
     const { empNo, jobCode, effDate } = await context.params;
     const body = await request.json();
 
+    const newJobCode = typeof body.jobCode === 'string' ? body.jobCode.trim() : jobCode;
+    const newEffDate = typeof body.effDate === 'string' ? body.effDate.trim() : effDate;
     const deptCode = typeof body.deptCode === 'string' ? body.deptCode.trim() : '';
     const salary = Number(body.salary);
 
-    if (!deptCode || !Number.isFinite(salary) || salary <= 0) {
+    if (!newJobCode || !/^\d{4}-\d{2}-\d{2}$/.test(newEffDate) || !deptCode || !Number.isFinite(salary) || salary <= 0) {
       return NextResponse.json(
-        { error: 'deptCode and positive salary are required' },
+        { error: 'jobCode, valid effDate, deptCode, and positive salary are required' },
         { status: 400 }
       );
     }
 
     const actor = request.headers.get('x-user-email') || request.headers.get('x-user-role') || 'system';
-    const record = await updateJobHistory({ empNo, jobCode, effDate, deptCode, salary, actor });
+    const record = await updateJobHistory({
+      empNo,
+      jobCode,
+      effDate,
+      newJobCode,
+      newEffDate,
+      deptCode,
+      salary,
+      actor,
+    });
 
     return NextResponse.json({
       message: 'Job history record updated successfully',

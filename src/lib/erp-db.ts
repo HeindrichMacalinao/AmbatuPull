@@ -2654,6 +2654,8 @@ export async function updateJobHistory({
   empNo,
   jobCode,
   effDate,
+  newJobCode = jobCode,
+  newEffDate = effDate,
   deptCode,
   salary,
   actor = 'system',
@@ -2661,6 +2663,8 @@ export async function updateJobHistory({
   empNo: string;
   jobCode: string;
   effDate: string;
+  newJobCode?: string;
+  newEffDate?: string;
   deptCode: string;
   salary: number;
   actor?: string;
@@ -2671,7 +2675,22 @@ export async function updateJobHistory({
   const trimmedEmp = empNo.trim();
   const trimmedJob = jobCode.trim();
   const trimmedDate = effDate.trim();
+  const updatedJob = newJobCode.trim();
+  const updatedDate = newEffDate.trim();
   const trimmedDept = deptCode.trim();
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(updatedDate)) {
+    const err = new Error('effDate must use YYYY-MM-DD format');
+    (err as any).status = 400;
+    throw err;
+  }
+
+  const jobRow = db.prepare('SELECT status FROM JOB WHERE jobCode = ?').get(updatedJob) as any;
+  if (!jobRow || jobRow.status !== 'Active') {
+    const err = new Error(`Active job '${updatedJob}' not found`);
+    (err as any).status = 400;
+    throw err;
+  }
 
   const deptRow = db.prepare('SELECT status FROM DEPARTMENT WHERE deptCode = ?').get(trimmedDept) as any;
   if (!deptRow || deptRow.status !== 'Active') {
@@ -2689,16 +2708,27 @@ export async function updateJobHistory({
     throw err;
   }
 
+  if (updatedJob !== trimmedJob || updatedDate !== trimmedDate) {
+    const duplicate = db
+      .prepare('SELECT 1 FROM JOBHISTORY WHERE empNo = ? AND jobCode = ? AND effDate = ?')
+      .get(trimmedEmp, updatedJob, updatedDate);
+    if (duplicate) {
+      const err = new Error(`Job history entry for (${trimmedEmp}, ${updatedJob}, ${updatedDate}) already exists`);
+      (err as any).status = 409;
+      throw err;
+    }
+  }
+
   const stamp = formatJobStamp('EDITED', actor);
 
   db.prepare(
-    'UPDATE JOBHISTORY SET salary = ?, deptCode = ?, stamp = ? WHERE empNo = ? AND jobCode = ? AND effDate = ?'
-  ).run(salary, trimmedDept, stamp, trimmedEmp, trimmedJob, trimmedDate);
+    'UPDATE JOBHISTORY SET jobCode = ?, effDate = ?, salary = ?, deptCode = ?, stamp = ? WHERE empNo = ? AND jobCode = ? AND effDate = ?'
+  ).run(updatedJob, updatedDate, salary, trimmedDept, stamp, trimmedEmp, trimmedJob, trimmedDate);
 
   return {
     empNo: trimmedEmp,
-    jobCode: trimmedJob,
-    effDate: trimmedDate,
+    jobCode: updatedJob,
+    effDate: updatedDate,
     salary,
     deptCode: trimmedDept,
     status: existing.status,

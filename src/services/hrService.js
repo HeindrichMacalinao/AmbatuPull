@@ -1549,17 +1549,26 @@ async function updateJobHistory({ empNo, jobCode, effDate, data = {}, requester 
   const trimmedEmp = typeof empNo === 'string' ? empNo.trim() : '';
   const trimmedJob = typeof jobCode === 'string' ? jobCode.trim() : '';
   const trimmedDate = typeof effDate === 'string' ? effDate.trim() : '';
+  const updatedJob = typeof data.jobCode === 'string' ? data.jobCode.trim() : trimmedJob;
+  const updatedDate = typeof data.effDate === 'string' ? data.effDate.trim() : trimmedDate;
   const deptCode = typeof data.deptCode === 'string' ? data.deptCode.trim() : '';
   const salary = Number(data.salary);
 
-  if (!trimmedEmp || !trimmedJob || !isValidDateString(trimmedDate) || !deptCode) {
-    const err = new Error('empNo, jobCode, effDate, and deptCode are required');
+  if (!trimmedEmp || !trimmedJob || !isValidDateString(trimmedDate) || !updatedJob || !isValidDateString(updatedDate) || !deptCode) {
+    const err = new Error('empNo, jobCode, effDate, updated jobCode, valid effDate, and deptCode are required');
     err.status = 400;
     throw err;
   }
 
   if (!Number.isFinite(salary) || salary <= 0) {
     const err = new Error('salary must be a positive number');
+    err.status = 400;
+    throw err;
+  }
+
+  const jobRes = await pool.query("SELECT jobCode, status FROM JOB WHERE jobCode = $1", [updatedJob]);
+  if (jobRes.rows.length === 0 || jobRes.rows[0].status !== 'Active') {
+    const err = new Error(`Active job '${updatedJob}' not found`);
     err.status = 400;
     throw err;
   }
@@ -1582,13 +1591,24 @@ async function updateJobHistory({ empNo, jobCode, effDate, data = {}, requester 
   }
 
   const existing = existingRes.rows[0];
+  if (updatedJob !== trimmedJob || updatedDate !== trimmedDate) {
+    const duplicateRes = await pool.query(
+      'SELECT 1 FROM JOBHISTORY WHERE empNo = $1 AND jobCode = $2 AND effDate = $3',
+      [trimmedEmp, updatedJob, updatedDate]
+    );
+    if (duplicateRes.rows.length > 0) {
+      const err = new Error(`Job history entry for (${trimmedEmp}, ${updatedJob}, ${updatedDate}) already exists`);
+      err.status = 409;
+      throw err;
+    }
+  }
   const stamp = formatAuditStamp('EDITED', requester);
 
   await pool.query(
     `UPDATE JOBHISTORY
-     SET salary = $1, deptCode = $2, stamp = $3
-     WHERE empNo = $4 AND jobCode = $5 AND effDate = $6`,
-    [salary, deptCode, stamp, trimmedEmp, trimmedJob, trimmedDate]
+     SET jobCode = $1, effDate = $2, salary = $3, deptCode = $4, stamp = $5
+     WHERE empNo = $6 AND jobCode = $7 AND effDate = $8`,
+    [updatedJob, updatedDate, salary, deptCode, stamp, trimmedEmp, trimmedJob, trimmedDate]
   );
 
   try {
@@ -1599,8 +1619,8 @@ async function updateJobHistory({ empNo, jobCode, effDate, data = {}, requester 
         requester.email || requester.username || requester.role || 'system',
         `${trimmedEmp}|${trimmedJob}|${trimmedDate}`,
         JSON.stringify({
-          before: { salary: existing.salary, deptCode: existing.deptCode ?? existing.deptcode },
-          after: { salary, deptCode },
+          before: { jobCode: trimmedJob, effDate: trimmedDate, salary: existing.salary, deptCode: existing.deptCode ?? existing.deptcode },
+          after: { jobCode: updatedJob, effDate: updatedDate, salary, deptCode },
         }),
       ]
     );
@@ -1610,8 +1630,8 @@ async function updateJobHistory({ empNo, jobCode, effDate, data = {}, requester 
 
   return {
     empNo: trimmedEmp,
-    jobCode: trimmedJob,
-    effDate: trimmedDate,
+    jobCode: updatedJob,
+    effDate: updatedDate,
     salary,
     deptCode,
     status: existing.status,
