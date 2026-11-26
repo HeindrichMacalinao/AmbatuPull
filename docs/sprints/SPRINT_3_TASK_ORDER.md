@@ -227,12 +227,12 @@ flowchart TD
 
 ## 4. Sprint 3 Task Plan & Pull Request Tracking Spreadsheet
 
-| Task ID | Issue | Role | Member | Planned Delivery Title | Target Due | Status |
+| Task ID | Issue | Role | Member | Pull Request / Planned Delivery | Target Due | Status |
 | :--- | :---: | :--- | :--- | :--- | :---: | :---: |
-| `S3-SM-01` | [#171](https://github.com/HeindrichMacalinao/AmbatuPull/issues/171) | Scrum Master | @HeindrichMacalinao | Sprint 3 Planning Notes, Capacity Allocation & Board Setup | Day 1 | **Open** |
-| `S3-DBA-01` | [#176](https://github.com/HeindrichMacalinao/AmbatuPull/issues/176) | DevSecOps | @Chrollofuru | Active Employee, Job, Dept & JobHistory Views and Indexes | Day 1 | **Open** |
-| `S3-UIX-01` | [#190](https://github.com/HeindrichMacalinao/AmbatuPull/issues/190) | UI/UX Dev | @AlexGavarra | Working HR Nav & Module Shell Component Connected to Backend | Day 2 | **Open** |
-| `S3-SM-02` | [#172](https://github.com/HeindrichMacalinao/AmbatuPull/issues/172) | Scrum Master | @HeindrichMacalinao | Follow Up Sprint 2 Retrospective Action Items | Day 2 | **Open** |
+| `S3-SM-01` | [#171](https://github.com/HeindrichMacalinao/AmbatuPull/issues/171) | Scrum Master | @HeindrichMacalinao | [PR #201](https://github.com/HeindrichMacalinao/AmbatuPull/pull/201) — Sprint 3 Planning Notes & Board Setup | Day 1 | **Merged** |
+| `S3-DBA-01` | [#176](https://github.com/HeindrichMacalinao/AmbatuPull/issues/176) | DevSecOps | @Chrollofuru | [PR #203](https://github.com/HeindrichMacalinao/AmbatuPull/pull/203) — Active HR Views and Indexes | Day 1 | **Merged** |
+| `S3-UIX-01` | [#190](https://github.com/HeindrichMacalinao/AmbatuPull/issues/190) | UI/UX Dev | @AlexGavarra | [PR #202](https://github.com/HeindrichMacalinao/AmbatuPull/pull/202) — Working HR Nav & Module Shell Component | Day 2 | **Merged** |
+| `S3-SM-02` | [#172](https://github.com/HeindrichMacalinao/AmbatuPull/issues/172) | Scrum Master | @HeindrichMacalinao | Follow Up Sprint 2 Retrospective Action Items | Day 2 | **In Progress** |
 | `S3-DEV-01` | [#182](https://github.com/HeindrichMacalinao/AmbatuPull/issues/182) | Backend Dev | @Tysennn | Jobs Lookup API: List & Search Jobs with Role-Based Visibility | Day 2 | **Open** |
 | `S3-DEV-02` | [#183](https://github.com/HeindrichMacalinao/AmbatuPull/issues/183) | Backend Dev | @Tysennn | Jobs Mutation API: Create, Edit, Soft Delete & Restore with Stamp | Day 3 | **Open** |
 | `S3-DEV-03` | [#184](https://github.com/HeindrichMacalinao/AmbatuPull/issues/184) | Backend Dev | @Tysennn | Departments Management API: Full CRUD, Search & Soft Delete | Day 3 | **Open** |

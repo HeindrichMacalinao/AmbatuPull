@@ -281,10 +281,10 @@ flowchart TD
 
 | Task ID | Issue | Role | Assignee | Delivery Focus & Key Files | Due Day | Status |
 | :--- | :---: | :--- | :--- | :--- | :---: | :---: |
-| `S3-SM-01` | [#171](https://github.com/HeindrichMacalinao/AmbatuPull/issues/171) | Scrum Master | @HeindrichMacalinao | `docs/sprints/sprint-3-planning.md` & Project Board Setup | Day 1 | **Open** |
-| `S3-DBA-01` | [#176](https://github.com/HeindrichMacalinao/AmbatuPull/issues/176) | DevSecOps | @Chrollofuru | `migrations/` & `db/` (`v_active_employees`, `v_active_jobs`, etc.) | Day 1 | **Open** |
-| `S3-UIX-01` | [#190](https://github.com/HeindrichMacalinao/AmbatuPull/issues/190) | UI/UX Dev | @AlexGavarra | `src/components/HumanResourcesManagement.tsx` (Working HR tab shell) | Day 2 | **Open** |
-| `S3-SM-02` | [#172](https://github.com/HeindrichMacalinao/AmbatuPull/issues/172) | Scrum Master | @HeindrichMacalinao | `docs/sprints/sprint-3-retro-followup.md` (Audit retro action items) | Day 2 | **Open** |
+| `S3-SM-01` | [#171](https://github.com/HeindrichMacalinao/AmbatuPull/issues/171) | Scrum Master | @HeindrichMacalinao | [PR #201](https://github.com/HeindrichMacalinao/AmbatuPull/pull/201) — `docs/sprints/sprint-3-planning.md` & Project Board Setup | Day 1 | **Merged** |
+| `S3-DBA-01` | [#176](https://github.com/HeindrichMacalinao/AmbatuPull/issues/176) | DevSecOps | @Chrollofuru | [PR #203](https://github.com/HeindrichMacalinao/AmbatuPull/pull/203) — `migrations/` & `db/` (`v_active_employees`, `v_active_jobs`, etc.) | Day 1 | **Merged** |
+| `S3-UIX-01` | [#190](https://github.com/HeindrichMacalinao/AmbatuPull/issues/190) | UI/UX Dev | @AlexGavarra | [PR #202](https://github.com/HeindrichMacalinao/AmbatuPull/pull/202) — `src/components/HumanResourcesManagement.tsx` (Working HR tab shell) | Day 2 | **Merged** |
+| `S3-SM-02` | [#172](https://github.com/HeindrichMacalinao/AmbatuPull/issues/172) | Scrum Master | @HeindrichMacalinao | `docs/sprints/sprint-3-retro-followup.md` (Audit retro action items) | Day 2 | **In Progress** |
 | `S3-DEV-01` | [#182](https://github.com/HeindrichMacalinao/AmbatuPull/issues/182) | Backend Dev | @Tysennn | `src/routes/jobs.js` (`GET /api/hr/jobs` with search & role visibility) | Day 2 | **Open** |
 | `S3-DEV-02` | [#183](https://github.com/HeindrichMacalinao/AmbatuPull/issues/183) | Backend Dev | @Tysennn | `src/routes/jobs.js` (POST, PUT, DELETE, restore with audit stamps) | Day 3 | **Open** |
 | `S3-DEV-03` | [#184](https://github.com/HeindrichMacalinao/AmbatuPull/issues/184) | Backend Dev | @Tysennn | `src/routes/departments.js` (Full Department CRUD, search & stamps) | Day 3 | **Open** |
