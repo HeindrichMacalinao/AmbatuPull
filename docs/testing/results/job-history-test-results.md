@@ -30,6 +30,6 @@ npm test
 
 | Command | Result |
 |---|---|
-| `npm test` | Local run blocked before tests started: the Windows `python` command is unavailable. The CI `verify` job runs `npm test` on Ubuntu. |
+| `npm test` | Passed in GitHub Actions `verify` on Ubuntu (run `45854302462`); all Python checks and the configured Node test files passed. The local Windows run could not start because `python` is unavailable. |
 | `node --test --test-reporter=spec tests/customer-list-api.test.js tests/customer-crud.test.js tests/customer-delete-restore.test.js tests/dashboard-navigation-rbac.test.js tests/current-product-price.test.cjs tests/hr-job-history.test.js tests/job-history.test.js` | Passed: 62 tests, 0 failures |
 | `git diff --check` | Passed |
