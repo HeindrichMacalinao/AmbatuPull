@@ -7,6 +7,11 @@ const {
   updateJob,
   deleteJob,
   restoreJob,
+  getDepartments,
+  createDepartment,
+  updateDepartment,
+  deleteDepartment,
+  restoreDepartment,
 } = require('../controllers/hrController');
 const {
   authenticate,
@@ -27,8 +32,22 @@ jobsRouter.delete('/:jobCode', requireRight('job.delete'), deleteJob);
 jobsRouter.post('/:jobCode/restore', requireAdminOrSuperadmin, restoreJob);
 jobsRouter.put('/:jobCode/restore', requireAdminOrSuperadmin, restoreJob);
 
+const departmentsRouter = express.Router();
+departmentsRouter.use(authenticate);
+departmentsRouter.use(requireHrAccess);
+
+// Departments Management API (S3-DEV-03)
+departmentsRouter.get('/', getDepartments);
+departmentsRouter.post('/', requireRight('dept.add'), createDepartment);
+departmentsRouter.put('/:deptCode', requireRight('dept.edit'), updateDepartment);
+departmentsRouter.delete('/:deptCode', requireRight('dept.delete'), deleteDepartment);
+departmentsRouter.post('/:deptCode/restore', requireAdminOrSuperadmin, restoreDepartment);
+departmentsRouter.put('/:deptCode/restore', requireAdminOrSuperadmin, restoreDepartment);
+
 const router = express.Router();
 router.use('/jobs', jobsRouter);
+router.use('/departments', departmentsRouter);
 router.jobsRouter = jobsRouter;
+router.departmentsRouter = departmentsRouter;
 
 module.exports = router;

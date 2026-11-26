@@ -499,6 +499,396 @@ async function restoreJob({ jobCode, requester } = {}) {
   };
 }
 
+/**
+ * GET /api/hr/departments (§1.2, §3.5 Figures 19 & 22, S3-DEV-03).
+ * - Superadmin/Admin: supports status filter ('Active', 'Inactive', 'All'), returns status, stamp, and counts.
+ * - User: strictly forced to Active status, omits status and stamp fields.
+ * - Live search against deptCode and deptName.
+ */
+async function listDepartments({ requester, search, status } = {}) {
+  const pool = dbPool.getPool();
+
+  await assertHrAccess(pool, requester);
+
+  const isStandardUser = requester.role === 'User';
+
+  let query = 'SELECT deptCode, deptName, status, stamp FROM DEPARTMENT';
+  const whereClauses = [];
+  const params = [];
+
+  if (isStandardUser) {
+    whereClauses.push("status = 'Active'");
+  } else {
+    const normalizedStatus = String(status || '').trim().toLowerCase();
+    if (normalizedStatus === 'inactive') {
+      whereClauses.push("status = 'Inactive'");
+    } else if (normalizedStatus === 'all') {
+      // No status filter
+    } else {
+      whereClauses.push("status = 'Active'");
+    }
+  }
+
+  if (search && typeof search === 'string' && search.trim().length > 0) {
+    params.push(`%${search.trim().toLowerCase()}%`);
+    const pIdx = params.length;
+    whereClauses.push(`(LOWER(deptCode) LIKE $${pIdx} OR LOWER(deptName) LIKE $${pIdx})`);
+  }
+
+  if (whereClauses.length > 0) {
+    query += ' WHERE ' + whereClauses.join(' AND ');
+  }
+
+  query += ' ORDER BY deptCode ASC';
+
+  const { rows } = await pool.query(query, params);
+
+  const departments = rows.map((r) => {
+    const deptCode = r.deptCode ?? r.deptcode;
+    const deptName = r.deptName ?? r.deptname ?? null;
+
+    if (isStandardUser) {
+      return {
+        deptCode,
+        deptName,
+      };
+    }
+
+    return {
+      deptCode,
+      deptName,
+      status: r.status,
+      stamp: r.stamp,
+    };
+  });
+
+  if (isStandardUser) {
+    return {
+      departments,
+      total: departments.length,
+    };
+  }
+
+  const countRes = await pool.query('SELECT status, COUNT(*) AS count FROM DEPARTMENT GROUP BY status');
+  let activeCount = 0;
+  let inactiveCount = 0;
+  for (const row of countRes.rows || []) {
+    const rowStatus = row.status;
+    const cnt = Number(row.count ?? row.cnt ?? 0);
+    if (rowStatus === 'Active') activeCount = cnt;
+    else if (rowStatus === 'Inactive') inactiveCount = cnt;
+  }
+
+  return {
+    departments,
+    total: departments.length,
+    counts: {
+      active: activeCount,
+      inactive: inactiveCount,
+      all: activeCount + inactiveCount,
+    },
+  };
+}
+
+/**
+ * POST /api/hr/departments (Create Department) (§2.3, §3.5, §3.8, S3-DEV-03).
+ * - Guard: requireRight('dept.add')
+ * - Validates deptCode (<= 10 chars) and deptName (<= 100 chars)
+ * - Checks uniqueness of deptCode (409 on duplicate)
+ * - Sets status = 'Active', stamp = 'CREATED <currentUser> <YYYY-MM-DD HH:MM AM/PM>'
+ * - Logs to audit_log
+ */
+async function createDepartment({ data = {}, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  await assertHrRight(pool, requester, 'dept.add');
+
+  const trimmedCode = typeof data.deptCode === 'string' ? data.deptCode.trim() : '';
+  const trimmedName = typeof data.deptName === 'string' ? data.deptName.trim() : '';
+
+  if (!trimmedCode || !trimmedName) {
+    const err = new Error('Department code and department name are required');
+    err.status = 400;
+    throw err;
+  }
+
+  if (trimmedCode.length > 10) {
+    const err = new Error('Department code must not exceed 10 characters');
+    err.status = 400;
+    throw err;
+  }
+
+  if (trimmedName.length > 100) {
+    const err = new Error('Department name must not exceed 100 characters');
+    err.status = 400;
+    throw err;
+  }
+
+  const dupRes = await pool.query('SELECT 1 FROM DEPARTMENT WHERE deptCode = $1', [trimmedCode]);
+  if (dupRes.rows.length > 0) {
+    const err = new Error(`Department with code '${trimmedCode}' already exists`);
+    err.status = 409;
+    throw err;
+  }
+
+  const stamp = formatAuditStamp('CREATED', requester);
+
+  await pool.query(
+    `INSERT INTO DEPARTMENT (deptCode, deptName, status, stamp)
+     VALUES ($1, $2, 'Active', $3)`,
+    [trimmedCode, trimmedName, stamp]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'CREATED', 'DEPARTMENT', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.username || requester.role || 'system',
+        trimmedCode,
+        JSON.stringify({ deptCode: trimmedCode, deptName: trimmedName, status: 'Active' }),
+      ]
+    );
+  } catch {
+    // Non-fatal if audit_log table is absent or handled by trigger
+  }
+
+  return {
+    deptCode: trimmedCode,
+    deptName: trimmedName,
+    status: 'Active',
+    stamp,
+  };
+}
+
+/**
+ * PUT /api/hr/departments/:deptCode (Edit Department) (§2.3, §3.5, §3.8, S3-DEV-03).
+ * - Guard: requireRight('dept.edit')
+ * - Validates deptName (<= 100 chars)
+ * - Updates stamp = 'EDITED <currentUser> <YYYY-MM-DD HH:MM AM/PM>'
+ * - Logs to audit_log
+ */
+async function updateDepartment({ deptCode, data = {}, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  await assertHrRight(pool, requester, 'dept.edit');
+
+  const trimmedCode = typeof deptCode === 'string' ? deptCode.trim() : '';
+  if (!trimmedCode) {
+    const err = new Error('Department code is required');
+    err.status = 400;
+    throw err;
+  }
+
+  const trimmedName = typeof data.deptName === 'string' ? data.deptName.trim() : '';
+  if (!trimmedName) {
+    const err = new Error('Department name is required');
+    err.status = 400;
+    throw err;
+  }
+
+  if (trimmedName.length > 100) {
+    const err = new Error('Department name must not exceed 100 characters');
+    err.status = 400;
+    throw err;
+  }
+
+  const existingRes = await pool.query('SELECT * FROM DEPARTMENT WHERE deptCode = $1', [trimmedCode]);
+  if (existingRes.rows.length === 0) {
+    const err = new Error('Department not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const existing = existingRes.rows[0];
+  const stamp = formatAuditStamp('EDITED', requester);
+
+  await pool.query(
+    `UPDATE DEPARTMENT
+     SET deptName = $1, stamp = $2
+     WHERE deptCode = $3`,
+    [trimmedName, stamp, trimmedCode]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'EDITED', 'DEPARTMENT', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.username || requester.role || 'system',
+        trimmedCode,
+        JSON.stringify({
+          before: { deptName: existing.deptName ?? existing.deptname, status: existing.status },
+          after: { deptName: trimmedName, status: existing.status },
+        }),
+      ]
+    );
+  } catch {
+    // Non-fatal if audit_log table is absent or handled by trigger
+  }
+
+  return {
+    deptCode: trimmedCode,
+    deptName: trimmedName,
+    status: existing.status,
+    stamp,
+  };
+}
+
+/**
+ * DELETE /api/hr/departments/:deptCode (Soft Delete Department) (§2.3, §3.5, §3.8, S3-DEV-03).
+ * - Guard: requireRight('dept.delete')
+ * - Prevents deletion if active JOBHISTORY records reference this department (409)
+ * - Soft delete only: sets status = 'Inactive', stamp = 'DELETED <currentUser> <YYYY-MM-DD HH:MM AM/PM>'
+ * - Logs to audit_log
+ */
+async function softDeleteDepartment({ deptCode, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  await assertHrRight(pool, requester, 'dept.delete');
+
+  const trimmedCode = typeof deptCode === 'string' ? deptCode.trim() : '';
+  if (!trimmedCode) {
+    const err = new Error('Department code is required');
+    err.status = 400;
+    throw err;
+  }
+
+  const existingRes = await pool.query('SELECT * FROM DEPARTMENT WHERE deptCode = $1', [trimmedCode]);
+  if (existingRes.rows.length === 0) {
+    const err = new Error('Department not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const existing = existingRes.rows[0];
+  if (existing.status === 'Inactive') {
+    const err = new Error('Department is already inactive');
+    err.status = 400;
+    throw err;
+  }
+
+  // Child-dependency verification: prevent deletion if active job history exists
+  const childRes = await pool.query(
+    "SELECT 1 FROM JOBHISTORY WHERE deptCode = $1 AND status = 'Active' LIMIT 1",
+    [trimmedCode]
+  );
+  if (childRes.rows.length > 0) {
+    const err = new Error('Cannot delete department: active job history records reference this department');
+    err.status = 409;
+    throw err;
+  }
+
+  const stamp = formatAuditStamp('DELETED', requester);
+
+  await pool.query(
+    `UPDATE DEPARTMENT
+     SET status = 'Inactive', stamp = $1
+     WHERE deptCode = $2`,
+    [stamp, trimmedCode]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'DELETED', 'DEPARTMENT', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.username || requester.role || 'system',
+        trimmedCode,
+        JSON.stringify({
+          before: { deptName: existing.deptName ?? existing.deptname, status: existing.status },
+          after: { status: 'Inactive' },
+        }),
+      ]
+    );
+  } catch {
+    // Non-fatal if audit_log table is absent or handled by trigger
+  }
+
+  return {
+    deptCode: trimmedCode,
+    deptName: existing.deptName ?? existing.deptname,
+    status: 'Inactive',
+    stamp,
+  };
+}
+
+/**
+ * POST / PUT /api/hr/departments/:deptCode/restore (Restore Department) (§2.3, §3.5, S3-DEV-03).
+ * - Strictly restricted to Admin and Superadmin
+ * - Sets status = 'Active', stamp = 'EDITED <currentUser> <YYYY-MM-DD HH:MM AM/PM>'
+ * - Logs to audit_log
+ */
+async function restoreDepartment({ deptCode, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  if (!requester || !requester.role) {
+    const err = new Error('Unauthorized: authentication required');
+    err.status = 401;
+    throw err;
+  }
+
+  if (requester.role !== 'Admin' && requester.role !== 'Superadmin') {
+    const err = new Error('Forbidden: only Admin or Superadmin can restore departments');
+    err.status = 403;
+    throw err;
+  }
+
+  const trimmedCode = typeof deptCode === 'string' ? deptCode.trim() : '';
+  if (!trimmedCode) {
+    const err = new Error('Department code is required');
+    err.status = 400;
+    throw err;
+  }
+
+  const existingRes = await pool.query('SELECT * FROM DEPARTMENT WHERE deptCode = $1', [trimmedCode]);
+  if (existingRes.rows.length === 0) {
+    const err = new Error('Department not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const existing = existingRes.rows[0];
+  if (existing.status === 'Active') {
+    const err = new Error('Department is already active');
+    err.status = 400;
+    throw err;
+  }
+
+  const stamp = formatAuditStamp('EDITED', requester);
+
+  await pool.query(
+    `UPDATE DEPARTMENT
+     SET status = 'Active', stamp = $1
+     WHERE deptCode = $2`,
+    [stamp, trimmedCode]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'RESTORED', 'DEPARTMENT', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.username || requester.role || 'system',
+        trimmedCode,
+        JSON.stringify({
+          before: { deptName: existing.deptName ?? existing.deptname, status: existing.status },
+          after: { status: 'Active' },
+        }),
+      ]
+    );
+  } catch {
+    // Non-fatal if audit_log table is absent or handled by trigger
+  }
+
+  return {
+    deptCode: trimmedCode,
+    deptName: existing.deptName ?? existing.deptname,
+    status: 'Active',
+    stamp,
+  };
+}
+
 module.exports = {
   formatAuditStamp,
   assertHrAccess,
@@ -508,4 +898,9 @@ module.exports = {
   updateJob,
   softDeleteJob,
   restoreJob,
+  listDepartments,
+  createDepartment,
+  updateDepartment,
+  softDeleteDepartment,
+  restoreDepartment,
 };

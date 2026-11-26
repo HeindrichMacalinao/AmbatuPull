@@ -1898,3 +1898,265 @@ export async function restoreJob({
     stamp,
   };
 }
+
+export interface DepartmentRecord {
+  deptCode: string;
+  deptName: string | null;
+  status?: string;
+  stamp?: string;
+}
+
+export interface DepartmentListResult {
+  departments: DepartmentRecord[];
+  total: number;
+  counts?: {
+    active: number;
+    inactive: number;
+    all: number;
+  };
+}
+
+export async function getDepartments({
+  search,
+  status,
+  role = 'Admin',
+}: {
+  search?: string;
+  status?: string;
+  role?: string;
+} = {}): Promise<DepartmentListResult> {
+  const db = getSqliteDb();
+  const isStandardUser = role === 'User';
+
+  let query = 'SELECT deptCode, deptName, status, stamp FROM DEPARTMENT';
+  const whereClauses: string[] = [];
+  const params: any[] = [];
+
+  if (isStandardUser) {
+    whereClauses.push("status = 'Active'");
+  } else {
+    const normalizedStatus = String(status || '').trim().toLowerCase();
+    if (normalizedStatus === 'inactive') {
+      whereClauses.push("status = 'Inactive'");
+    } else if (normalizedStatus === 'all') {
+      // No status filter
+    } else {
+      whereClauses.push("status = 'Active'");
+    }
+  }
+
+  if (search && search.trim().length > 0) {
+    const pattern = `%${search.trim().toLowerCase()}%`;
+    whereClauses.push('(LOWER(deptCode) LIKE ? OR LOWER(deptName) LIKE ?)');
+    params.push(pattern, pattern);
+  }
+
+  if (whereClauses.length > 0) {
+    query += ' WHERE ' + whereClauses.join(' AND ');
+  }
+
+  query += ' ORDER BY deptCode ASC';
+
+  const rows = db.prepare(query).all(...params) as any[];
+  const departments: DepartmentRecord[] = rows.map((r) => {
+    if (isStandardUser) {
+      return {
+        deptCode: r.deptCode,
+        deptName: r.deptName ?? null,
+      };
+    }
+    return {
+      deptCode: r.deptCode,
+      deptName: r.deptName ?? null,
+      status: r.status,
+      stamp: r.stamp,
+    };
+  });
+
+  if (isStandardUser) {
+    return {
+      departments,
+      total: departments.length,
+    };
+  }
+
+  const countRows = db.prepare('SELECT status, COUNT(*) as count FROM DEPARTMENT GROUP BY status').all() as any[];
+  let active = 0;
+  let inactive = 0;
+  for (const row of countRows) {
+    if (row.status === 'Active') active = Number(row.count || 0);
+    else if (row.status === 'Inactive') inactive = Number(row.count || 0);
+  }
+
+  return {
+    departments,
+    total: departments.length,
+    counts: {
+      active,
+      inactive,
+      all: active + inactive,
+    },
+  };
+}
+
+export async function createDepartment({
+  deptCode,
+  deptName,
+  actor = 'system',
+}: {
+  deptCode: string;
+  deptName: string;
+  actor?: string;
+}): Promise<DepartmentRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const trimmedCode = deptCode.trim();
+  const trimmedName = deptName.trim();
+
+  const existing = db.prepare('SELECT 1 FROM DEPARTMENT WHERE deptCode = ?').get(trimmedCode);
+  if (existing) {
+    const err = new Error(`Department with code '${trimmedCode}' already exists`);
+    (err as any).status = 409;
+    throw err;
+  }
+
+  const stamp = formatJobStamp('CREATED', actor);
+
+  db.prepare(
+    `INSERT INTO DEPARTMENT (deptCode, deptName, status, stamp)
+     VALUES (?, ?, 'Active', ?)`
+  ).run(trimmedCode, trimmedName, stamp);
+
+  return {
+    deptCode: trimmedCode,
+    deptName: trimmedName,
+    status: 'Active',
+    stamp,
+  };
+}
+
+export async function updateDepartment({
+  deptCode,
+  deptName,
+  actor = 'system',
+}: {
+  deptCode: string;
+  deptName: string;
+  actor?: string;
+}): Promise<DepartmentRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const trimmedCode = deptCode.trim();
+  const trimmedName = deptName.trim();
+
+  const existing = db.prepare('SELECT * FROM DEPARTMENT WHERE deptCode = ?').get(trimmedCode) as any;
+  if (!existing) {
+    const err = new Error('Department not found');
+    (err as any).status = 404;
+    throw err;
+  }
+
+  const stamp = formatJobStamp('EDITED', actor);
+
+  db.prepare('UPDATE DEPARTMENT SET deptName = ?, stamp = ? WHERE deptCode = ?').run(
+    trimmedName,
+    stamp,
+    trimmedCode
+  );
+
+  return {
+    deptCode: trimmedCode,
+    deptName: trimmedName,
+    status: existing.status,
+    stamp,
+  };
+}
+
+export async function softDeleteDepartment({
+  deptCode,
+  actor = 'system',
+}: {
+  deptCode: string;
+  actor?: string;
+}): Promise<DepartmentRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const trimmedCode = deptCode.trim();
+  const existing = db.prepare('SELECT * FROM DEPARTMENT WHERE deptCode = ?').get(trimmedCode) as any;
+  if (!existing) {
+    const err = new Error('Department not found');
+    (err as any).status = 404;
+    throw err;
+  }
+
+  if (existing.status === 'Inactive') {
+    const err = new Error('Department is already inactive');
+    (err as any).status = 400;
+    throw err;
+  }
+
+  const child = db
+    .prepare("SELECT 1 FROM JOBHISTORY WHERE deptCode = ? AND status = 'Active' LIMIT 1")
+    .get(trimmedCode);
+  if (child) {
+    const err = new Error('Cannot delete department: active job history records reference this department');
+    (err as any).status = 409;
+    throw err;
+  }
+
+  const stamp = formatJobStamp('DELETED', actor);
+
+  db.prepare("UPDATE DEPARTMENT SET status = 'Inactive', stamp = ? WHERE deptCode = ?").run(
+    stamp,
+    trimmedCode
+  );
+
+  return {
+    deptCode: trimmedCode,
+    deptName: existing.deptName,
+    status: 'Inactive',
+    stamp,
+  };
+}
+
+export async function restoreDepartment({
+  deptCode,
+  actor = 'system',
+}: {
+  deptCode: string;
+  actor?: string;
+}): Promise<DepartmentRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const trimmedCode = deptCode.trim();
+  const existing = db.prepare('SELECT * FROM DEPARTMENT WHERE deptCode = ?').get(trimmedCode) as any;
+  if (!existing) {
+    const err = new Error('Department not found');
+    (err as any).status = 404;
+    throw err;
+  }
+
+  if (existing.status === 'Active') {
+    const err = new Error('Department is already active');
+    (err as any).status = 400;
+    throw err;
+  }
+
+  const stamp = formatJobStamp('EDITED', actor);
+
+  db.prepare("UPDATE DEPARTMENT SET status = 'Active', stamp = ? WHERE deptCode = ?").run(
+    stamp,
+    trimmedCode
+  );
+
+  return {
+    deptCode: trimmedCode,
+    deptName: existing.deptName,
+    status: 'Active',
+    stamp,
+  };
+}
