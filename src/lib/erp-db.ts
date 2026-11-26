@@ -2480,3 +2480,328 @@ export async function restoreEmployee({
     stamp,
   };
 }
+
+export interface JobHistoryRecord {
+  empNo: string;
+  jobCode: string;
+  jobDesc?: string | null;
+  effDate: string;
+  salary: number;
+  deptCode: string | null;
+  deptName?: string | null;
+  status?: string;
+  stamp?: string;
+}
+
+export interface JobHistoryListResult {
+  history: JobHistoryRecord[];
+  total: number;
+  counts?: {
+    active: number;
+    inactive: number;
+    all: number;
+  };
+}
+
+export async function getJobHistory({
+  empNo,
+  status,
+  role = 'Admin',
+}: {
+  empNo: string;
+  status?: string;
+  role?: string;
+}): Promise<JobHistoryListResult> {
+  const db = getSqliteDb();
+  const trimmedNo = empNo.trim();
+
+  const emp = db.prepare('SELECT empNo FROM EMPLOYEE WHERE empNo = ?').get(trimmedNo);
+  if (!emp) {
+    const err = new Error('Employee not found');
+    (err as any).status = 404;
+    throw err;
+  }
+
+  const isStandardUser = role === 'User';
+  let query = `
+    SELECT jh.empNo, jh.jobCode, j.jobDesc, jh.effDate, jh.salary, jh.deptCode, d.deptName, jh.status, jh.stamp
+    FROM JOBHISTORY jh
+    LEFT JOIN JOB j ON j.jobCode = jh.jobCode
+    LEFT JOIN DEPARTMENT d ON d.deptCode = jh.deptCode
+    WHERE jh.empNo = ?
+  `;
+
+  if (isStandardUser) {
+    query += " AND jh.status = 'Active'";
+  } else {
+    const normalizedStatus = String(status || '').trim().toLowerCase();
+    if (normalizedStatus === 'inactive') {
+      query += " AND jh.status = 'Inactive'";
+    } else if (normalizedStatus !== 'all') {
+      query += " AND jh.status = 'Active'";
+    }
+  }
+
+  query += ' ORDER BY jh.effDate DESC';
+
+  const rows = db.prepare(query).all(trimmedNo) as any[];
+  const history: JobHistoryRecord[] = rows.map((r) => {
+    const base: JobHistoryRecord = {
+      empNo: r.empNo,
+      jobCode: r.jobCode,
+      jobDesc: r.jobDesc ?? null,
+      effDate: r.effDate,
+      salary: Number(r.salary),
+      deptCode: r.deptCode ?? null,
+      deptName: r.deptName ?? null,
+    };
+    if (isStandardUser) return base;
+    return { ...base, status: r.status, stamp: r.stamp };
+  });
+
+  if (isStandardUser) {
+    return { history, total: history.length };
+  }
+
+  const countRows = db
+    .prepare('SELECT status, COUNT(*) as count FROM JOBHISTORY WHERE empNo = ? GROUP BY status')
+    .all(trimmedNo) as any[];
+  let active = 0;
+  let inactive = 0;
+  for (const row of countRows) {
+    if (row.status === 'Active') active = Number(row.count || 0);
+    else if (row.status === 'Inactive') inactive = Number(row.count || 0);
+  }
+
+  return {
+    history,
+    total: history.length,
+    counts: { active, inactive, all: active + inactive },
+  };
+}
+
+export async function createJobHistory({
+  empNo,
+  jobCode,
+  deptCode,
+  effDate,
+  salary,
+  actor = 'system',
+}: {
+  empNo: string;
+  jobCode: string;
+  deptCode: string;
+  effDate: string;
+  salary: number;
+  actor?: string;
+}): Promise<JobHistoryRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const trimmedEmp = empNo.trim();
+  const trimmedJob = jobCode.trim();
+  const trimmedDept = deptCode.trim();
+  const trimmedDate = effDate.trim();
+
+  if (!db.prepare('SELECT empNo FROM EMPLOYEE WHERE empNo = ?').get(trimmedEmp)) {
+    const err = new Error('Employee not found');
+    (err as any).status = 404;
+    throw err;
+  }
+
+  const jobRow = db.prepare('SELECT status FROM JOB WHERE jobCode = ?').get(trimmedJob) as any;
+  if (!jobRow || jobRow.status !== 'Active') {
+    const err = new Error(`Active job '${trimmedJob}' not found`);
+    (err as any).status = 400;
+    throw err;
+  }
+
+  const deptRow = db.prepare('SELECT status FROM DEPARTMENT WHERE deptCode = ?').get(trimmedDept) as any;
+  if (!deptRow || deptRow.status !== 'Active') {
+    const err = new Error(`Active department '${trimmedDept}' not found`);
+    (err as any).status = 400;
+    throw err;
+  }
+
+  const dup = db
+    .prepare('SELECT 1 FROM JOBHISTORY WHERE empNo = ? AND jobCode = ? AND effDate = ?')
+    .get(trimmedEmp, trimmedJob, trimmedDate);
+  if (dup) {
+    const err = new Error(`Job history entry for (${trimmedEmp}, ${trimmedJob}, ${trimmedDate}) already exists`);
+    (err as any).status = 409;
+    throw err;
+  }
+
+  const stamp = formatJobStamp('CREATED', actor);
+
+  db.prepare(
+    `INSERT INTO JOBHISTORY (empNo, jobCode, effDate, salary, deptCode, status, stamp)
+     VALUES (?, ?, ?, ?, ?, 'Active', ?)`
+  ).run(trimmedEmp, trimmedJob, trimmedDate, salary, trimmedDept, stamp);
+
+  return {
+    empNo: trimmedEmp,
+    jobCode: trimmedJob,
+    effDate: trimmedDate,
+    salary,
+    deptCode: trimmedDept,
+    status: 'Active',
+    stamp,
+  };
+}
+
+export async function updateJobHistory({
+  empNo,
+  jobCode,
+  effDate,
+  deptCode,
+  salary,
+  actor = 'system',
+}: {
+  empNo: string;
+  jobCode: string;
+  effDate: string;
+  deptCode: string;
+  salary: number;
+  actor?: string;
+}): Promise<JobHistoryRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const trimmedEmp = empNo.trim();
+  const trimmedJob = jobCode.trim();
+  const trimmedDate = effDate.trim();
+  const trimmedDept = deptCode.trim();
+
+  const deptRow = db.prepare('SELECT status FROM DEPARTMENT WHERE deptCode = ?').get(trimmedDept) as any;
+  if (!deptRow || deptRow.status !== 'Active') {
+    const err = new Error(`Active department '${trimmedDept}' not found`);
+    (err as any).status = 400;
+    throw err;
+  }
+
+  const existing = db
+    .prepare('SELECT * FROM JOBHISTORY WHERE empNo = ? AND jobCode = ? AND effDate = ?')
+    .get(trimmedEmp, trimmedJob, trimmedDate) as any;
+  if (!existing) {
+    const err = new Error('Job history record not found');
+    (err as any).status = 404;
+    throw err;
+  }
+
+  const stamp = formatJobStamp('EDITED', actor);
+
+  db.prepare(
+    'UPDATE JOBHISTORY SET salary = ?, deptCode = ?, stamp = ? WHERE empNo = ? AND jobCode = ? AND effDate = ?'
+  ).run(salary, trimmedDept, stamp, trimmedEmp, trimmedJob, trimmedDate);
+
+  return {
+    empNo: trimmedEmp,
+    jobCode: trimmedJob,
+    effDate: trimmedDate,
+    salary,
+    deptCode: trimmedDept,
+    status: existing.status,
+    stamp,
+  };
+}
+
+export async function softDeleteJobHistory({
+  empNo,
+  jobCode,
+  effDate,
+  actor = 'system',
+}: {
+  empNo: string;
+  jobCode: string;
+  effDate: string;
+  actor?: string;
+}): Promise<JobHistoryRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const trimmedEmp = empNo.trim();
+  const trimmedJob = jobCode.trim();
+  const trimmedDate = effDate.trim();
+
+  const existing = db
+    .prepare('SELECT * FROM JOBHISTORY WHERE empNo = ? AND jobCode = ? AND effDate = ?')
+    .get(trimmedEmp, trimmedJob, trimmedDate) as any;
+  if (!existing) {
+    const err = new Error('Job history record not found');
+    (err as any).status = 404;
+    throw err;
+  }
+
+  if (existing.status === 'Inactive') {
+    const err = new Error('Job history record is already inactive');
+    (err as any).status = 400;
+    throw err;
+  }
+
+  const stamp = formatJobStamp('DELETED', actor);
+
+  db.prepare(
+    "UPDATE JOBHISTORY SET status = 'Inactive', stamp = ? WHERE empNo = ? AND jobCode = ? AND effDate = ?"
+  ).run(stamp, trimmedEmp, trimmedJob, trimmedDate);
+
+  return {
+    empNo: trimmedEmp,
+    jobCode: trimmedJob,
+    effDate: trimmedDate,
+    salary: Number(existing.salary),
+    deptCode: existing.deptCode ?? null,
+    status: 'Inactive',
+    stamp,
+  };
+}
+
+export async function restoreJobHistory({
+  empNo,
+  jobCode,
+  effDate,
+  actor = 'system',
+}: {
+  empNo: string;
+  jobCode: string;
+  effDate: string;
+  actor?: string;
+}): Promise<JobHistoryRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const trimmedEmp = empNo.trim();
+  const trimmedJob = jobCode.trim();
+  const trimmedDate = effDate.trim();
+
+  const existing = db
+    .prepare('SELECT * FROM JOBHISTORY WHERE empNo = ? AND jobCode = ? AND effDate = ?')
+    .get(trimmedEmp, trimmedJob, trimmedDate) as any;
+  if (!existing) {
+    const err = new Error('Job history record not found');
+    (err as any).status = 404;
+    throw err;
+  }
+
+  if (existing.status === 'Active') {
+    const err = new Error('Job history record is already active');
+    (err as any).status = 400;
+    throw err;
+  }
+
+  const stamp = formatJobStamp('EDITED', actor);
+
+  db.prepare(
+    "UPDATE JOBHISTORY SET status = 'Active', stamp = ? WHERE empNo = ? AND jobCode = ? AND effDate = ?"
+  ).run(stamp, trimmedEmp, trimmedJob, trimmedDate);
+
+  return {
+    empNo: trimmedEmp,
+    jobCode: trimmedJob,
+    effDate: trimmedDate,
+    salary: Number(existing.salary),
+    deptCode: existing.deptCode ?? null,
+    status: 'Active',
+    stamp,
+  };
+}
