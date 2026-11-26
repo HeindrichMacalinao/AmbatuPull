@@ -31,6 +31,7 @@ import {
 import type { RoleName, AppUser } from '@/types/erp';
 import CustomerManagement from '@/components/CustomerManagement';
 import ProductManagement from '@/components/ProductManagement';
+import HumanResourcesManagement from '@/components/HumanResourcesManagement';
 
 type DashboardTab =
   | 'overview'
@@ -698,30 +699,8 @@ export default function DashboardPage() {
 
           {/* TAB 6: HUMAN RESOURCES */}
           {activeTab === 'hr' && (
-            <div className="space-y-5 animate-in fade-in">
-              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <Briefcase className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                  Human Resources &amp; RA 10173 Privacy Gating (§3.5)
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Personnel records (EMPLOYEE), job titles (JOB), and career progression (JOBHISTORY)
-                </p>
-              </div>
-
-              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
-                <div className="flex items-start gap-3 p-4 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs">
-                  <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className="font-bold text-blue-950 dark:text-blue-200 text-sm mb-1">
-                      Data Privacy Act of 2012 (RA 10173) Salary Protection
-                    </h3>
-                    <p className="text-blue-800 dark:text-blue-300 leading-relaxed">
-                      Salary figures and confidential compensation histories are strictly gated behind authorized HR permissions. Standard staff members cannot view compensation columns on employee records.
-                    </p>
-                  </div>
-                </div>
-              </div>
+            <div className="animate-in fade-in">
+              <HumanResourcesManagement role={activeRole} user={currentUser} />
             </div>
           )}
 
