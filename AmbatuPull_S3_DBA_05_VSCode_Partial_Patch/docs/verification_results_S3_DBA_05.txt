@@ -1,0 +1,23 @@
+S3-DBA-05 local evidence (non-production, disposable databases)
+Date: 2026-11-26
+
+python3 -B tests/verify_sprint3_hr_demo_seed.py
+PASS runner: two runs identical; figures provided verified; conflict rejected; FK integrity retained
+PASS historical: two runs identical; figures provided verified; conflict rejected; FK integrity retained
+PASS S3-DBA-05 partial seed: both SQLite schema variants
+INCOMPLETE: Figures 16-17 unavailable; PostgreSQL schema mismatch; full acceptance not claimed
+
+Prior Sprint 3 regression checks:
+PASS python3 -B tests/verify_active_hr_views.py
+PASS python3 -B tests/verify_current_job_sql.py
+PASS python3 -B tests/verify_hr_constraints.py
+PASS python3 -B tests/verify_hr_referential_integrity.py
+
+SQLite file-based wrapper check (disposable tempfile):
+PASS python scripts/migrate/apply_sprint3_hr_demo_seed.py <temp>/hr_demo.db --confirm-non-production
+PASS same wrapper run second time; persisted E-001 JOBHISTORY count=2
+
+Source history omitted deliberately:
+E-002, E-003, E-004 absent: source Figures 16-17 not available.
+Supabase PostgreSQL not executed; committed schema lacks essential fields.
+No production databases, migrations, or data files changed.
