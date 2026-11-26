@@ -9,6 +9,8 @@ import {
   Users,
 } from 'lucide-react';
 import type { AppUser, RoleName } from '@/types/erp';
+import JobManagement from '@/components/JobManagement';
+import DepartmentManagement from '@/components/DepartmentManagement';
 
 type HrTab = 'Employees' | 'Jobs' | 'Departments';
 type StatusFilter = 'Active' | 'Inactive' | 'All';
@@ -165,22 +167,9 @@ export default function HumanResourcesManagement({
                     }`}
                   >
                     <span>{filter}</span>
-                    <span
-                      className={`rounded px-1.5 py-0.5 text-[10px] font-mono ${
-                        statusFilter === filter
-                          ? 'bg-blue-700 text-white'
-                          : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-300'
-                      }`}
-                      title="Backend HR status count unavailable"
-                    >
-                      —
-                    </span>
                   </button>
                 ))}
               </div>
-              <p className="mt-1.5 text-[10px] text-slate-500 dark:text-slate-400">
-                Live HR badge counts unavailable: no HR list/count endpoint exists.
-              </p>
             </div>
           ) : (
             <span className="inline-flex self-start rounded border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300">
@@ -232,16 +221,20 @@ export default function HumanResourcesManagement({
         aria-labelledby={`hr-tab-${activeTab.toLowerCase()}`}
         className="p-4 sm:p-5"
       >
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-800/40">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-            {activeTab}
-          </h3>
-          <p className="mt-1.5 max-w-2xl text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-            The {activeTab.toLowerCase()} view is not available yet. This Sprint 3 shell
-            preserves the HR navigation and session context until the corresponding
-            backend and child-view tasks are implemented.
-          </p>
-        </div>
+        {activeTab === 'Employees' && (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-800/40">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Employees</h3>
+            <p className="mt-1.5 max-w-2xl text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              Employee management will be available in its corresponding Sprint 3 task.
+            </p>
+          </div>
+        )}
+        {activeTab === 'Jobs' && (
+          <JobManagement role={sessionRole} user={user} statusFilter={statusFilter} />
+        )}
+        {activeTab === 'Departments' && (
+          <DepartmentManagement role={sessionRole} user={user} statusFilter={statusFilter} />
+        )}
       </div>
     </section>
   );
