@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { History, LoaderCircle, Plus, Search, X } from 'lucide-react';
+import { History, Plus, Search, X } from 'lucide-react';
 import type { AppUser, RoleName } from '@/types/erp';
 import JobHistoryModal from '@/components/JobHistoryModal';
 
@@ -368,11 +368,16 @@ export default function EmployeeManagement({
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {loading ? (
               <tr>
-                <td colSpan={isAdmin ? 10 : 8} className="px-4 py-10 text-center text-slate-500">
-                  <span className="inline-flex items-center gap-2">
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                    Loading employees…
-                  </span>
+                <td colSpan={isAdmin ? 10 : 8} className="px-4 py-5">
+                  <div className="space-y-3">
+                    {[0, 1, 2].map((row) => (
+                      <div key={row} className="grid grid-cols-6 gap-4">
+                        {[0, 1, 2, 3, 4, 5].map((cell) => (
+                          <span key={cell} className="h-4 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
                 </td>
               </tr>
             ) : employees.length === 0 ? (
@@ -381,8 +386,10 @@ export default function EmployeeManagement({
                   {error
                     ? 'Employees unavailable.'
                     : search.trim()
-                      ? 'No employees match the search.'
-                      : 'No employees found.'}
+                      ? 'No matching records found.'
+                      : statusFilter !== 'All'
+                        ? 'No records match the selected filters.'
+                        : 'No records available yet.'}
                 </td>
               </tr>
             ) : (
