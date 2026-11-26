@@ -1,0 +1,79 @@
+SQLite version: 3.46.1; testing disposable databases only
+PASS v_active_employees: all 11 columns, 1 active records, no inactive records
+PASS v_active_jobs: all 4 columns, 6 active records, no inactive records
+PASS v_active_departments: all 4 columns, 6 active records, no inactive records
+PASS v_active_jobhistory: all 7 columns, 1 active records, no inactive records
+PASS idx_employee_status_lastname_firstname: ('status', 'lastName', 'firstName')
+PASS idx_job_status_jobcode: ('status', 'jobCode')
+PASS idx_department_status_deptcode: ('status', 'deptCode')
+PASS idx_jobhistory_empno_effdate_status: ('empNo', 'effDate', 'status')
+PASS EXPLAIN: SEARCH EMPLOYEE USING INDEX idx_employee_status_lastname_firstname (status=?)
+PASS EXPLAIN: SEARCH JOB USING COVERING INDEX idx_job_status_jobcode (status=?)
+PASS EXPLAIN: SEARCH DEPARTMENT USING COVERING INDEX idx_department_status_deptcode (status=?)
+PASS EXPLAIN: SEARCH JOBHISTORY USING COVERING INDEX idx_jobhistory_empno_effdate_status (empNo=?)
+PASS v_active_employees: all 11 columns, 1 active records, no inactive records
+PASS v_active_jobs: all 4 columns, 6 active records, no inactive records
+PASS v_active_departments: all 4 columns, 6 active records, no inactive records
+PASS v_active_jobhistory: all 7 columns, 1 active records, no inactive records
+PASS idx_employee_status_lastname_firstname: ('status', 'lastName', 'firstName')
+PASS idx_job_status_jobcode: ('status', 'jobCode')
+PASS idx_department_status_deptcode: ('status', 'deptCode')
+PASS idx_jobhistory_empno_effdate_status: ('empNo', 'effDate', 'status')
+PASS EXPLAIN: SEARCH EMPLOYEE USING INDEX idx_employee_status_lastname_firstname (status=?)
+PASS EXPLAIN: SEARCH JOB USING COVERING INDEX idx_job_status_jobcode (status=?)
+PASS EXPLAIN: SEARCH DEPARTMENT USING COVERING INDEX idx_department_status_deptcode (status=?)
+PASS EXPLAIN: SEARCH JOBHISTORY USING COVERING INDEX idx_jobhistory_empno_effdate_status (empNo=?)
+PASS local-runner: up/down/up, no data loss, FK/integrity OK
+PASS v_active_employees: all 9 columns, 1 active records, no inactive records
+PASS v_active_jobs: all 4 columns, 1 active records, no inactive records
+PASS v_active_departments: all 4 columns, 1 active records, no inactive records
+PASS v_active_jobhistory: all 7 columns, 1 active records, no inactive records
+PASS idx_employee_status_lastname_firstname: ('status', 'lastName', 'firstName')
+PASS idx_job_status_jobcode: ('status', 'jobCode')
+PASS idx_department_status_deptcode: ('status', 'deptCode')
+PASS idx_jobhistory_empno_effdate_status: ('empNo', 'effDate', 'status')
+PASS EXPLAIN: SEARCH EMPLOYEE USING INDEX idx_employee_status_lastname_firstname (status=?)
+PASS EXPLAIN: SEARCH JOB USING COVERING INDEX idx_job_status_jobcode (status=?)
+PASS EXPLAIN: SEARCH DEPARTMENT USING COVERING INDEX idx_department_status_deptcode (status=?)
+PASS EXPLAIN: SEARCH JOBHISTORY USING COVERING INDEX idx_jobhistory_empno_effdate_status (empNo=?)
+PASS v_active_employees: all 9 columns, 1 active records, no inactive records
+PASS v_active_jobs: all 4 columns, 1 active records, no inactive records
+PASS v_active_departments: all 4 columns, 1 active records, no inactive records
+PASS v_active_jobhistory: all 7 columns, 1 active records, no inactive records
+PASS idx_employee_status_lastname_firstname: ('status', 'lastName', 'firstName')
+PASS idx_job_status_jobcode: ('status', 'jobCode')
+PASS idx_department_status_deptcode: ('status', 'deptCode')
+PASS idx_jobhistory_empno_effdate_status: ('empNo', 'effDate', 'status')
+PASS EXPLAIN: SEARCH EMPLOYEE USING INDEX idx_employee_status_lastname_firstname (status=?)
+PASS EXPLAIN: SEARCH JOB USING COVERING INDEX idx_job_status_jobcode (status=?)
+PASS EXPLAIN: SEARCH DEPARTMENT USING COVERING INDEX idx_department_status_deptcode (status=?)
+PASS EXPLAIN: SEARCH JOBHISTORY USING COVERING INDEX idx_jobhistory_empno_effdate_status (empNo=?)
+PASS historical-asset: up/down/up, no data loss, FK/integrity OK
+PASS Node runner: up
+PASS Node runner: down
+PASS Node runner: up
+PASS Node runner: status
+PASS v_active_employees: all 11 columns, 0 active records, no inactive records
+PASS v_active_jobs: all 4 columns, 5 active records, no inactive records
+PASS v_active_departments: all 4 columns, 5 active records, no inactive records
+PASS v_active_jobhistory: all 7 columns, 0 active records, no inactive records
+PASS idx_employee_status_lastname_firstname: ('status', 'lastName', 'firstName')
+PASS idx_job_status_jobcode: ('status', 'jobCode')
+PASS idx_department_status_deptcode: ('status', 'deptCode')
+PASS idx_jobhistory_empno_effdate_status: ('empNo', 'effDate', 'status')
+PASS EXPLAIN: SEARCH EMPLOYEE USING INDEX idx_employee_status_lastname_firstname (status=?)
+PASS EXPLAIN: SEARCH JOB USING COVERING INDEX idx_job_status_jobcode (status=?)
+PASS EXPLAIN: SEARCH DEPARTMENT USING COVERING INDEX idx_department_status_deptcode (status=?)
+PASS EXPLAIN: SEARCH JOBHISTORY USING COVERING INDEX idx_jobhistory_empno_effdate_status (empNo=?)
+ALL S3-DBA-01 SQLITE CHECKS PASSED
+
+ADDITIONAL CHECKS (separate runs):
+PASS: Python syntax compilation (test and regeneration scripts).
+PASS: disposable historical artifact rebuild of HopeERP.db and HOPE_Model1.db;
+      each contains all four HR views and retains 82 CUSTOMER rows.
+PASS: tests/verify_active_views.py
+PASS: tests/verify_hope.py (reference/Model1.db absent in archived source; original simulation check skipped)
+PASS: tests/verify_customer_product_restrict.py
+BLOCKED: npm test in archived source: pre-existing referenced file
+         tests/verify_user_registration_time.py is missing. The full suite did not complete.
+NOT RUN: Supabase/PostgreSQL migration or EXPLAIN (server/staging credentials unavailable).
