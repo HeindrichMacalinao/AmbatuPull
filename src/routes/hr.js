@@ -66,8 +66,8 @@ employeesRouter.delete('/:empNo', requireRight('emp.delete'), deleteEmployee);
 employeesRouter.post('/:empNo/restore', requireAdminOrSuperadmin, restoreEmployee);
 employeesRouter.put('/:empNo/restore', requireAdminOrSuperadmin, restoreEmployee);
 
-// Job History Timeline API (S3-DEV-07)
-employeesRouter.get('/:empNo/history', getJobHistory);
+// Job History Timeline API (S3-DEV-07 & S3-DEV-08 RA 10173)
+employeesRouter.get('/:empNo/history', requireRight('jobhistory.view'), getJobHistory);
 employeesRouter.post('/:empNo/history', requireRight('jobhistory.add'), createJobHistory);
 employeesRouter.put('/:empNo/history/:jobCode/:effDate', requireRight('jobhistory.edit'), updateJobHistory);
 employeesRouter.delete('/:empNo/history/:jobCode/:effDate', requireRight('jobhistory.delete'), deleteJobHistory);

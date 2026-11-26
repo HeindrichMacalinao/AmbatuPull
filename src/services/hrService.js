@@ -1367,7 +1367,7 @@ async function restoreEmployee({ empNo, requester } = {}) {
 async function listJobHistory({ empNo, requester, status } = {}) {
   const pool = dbPool.getPool();
 
-  await assertHrAccess(pool, requester);
+  await assertHrRight(pool, requester, 'jobhistory.view');
 
   const trimmedNo = typeof empNo === 'string' ? empNo.trim() : '';
   if (!trimmedNo) {
