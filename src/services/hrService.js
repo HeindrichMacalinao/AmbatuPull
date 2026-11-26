@@ -994,6 +994,222 @@ async function listEmployees({ requester, search, status } = {}) {
   };
 }
 
+function isValidDateString(val) {
+  if (typeof val !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(val.trim())) {
+    return false;
+  }
+  const d = new Date(`${val.trim()}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(val.trim());
+}
+
+function validateEmployeePayload(data = {}, { requireEmpNo = true } = {}) {
+  const empNo = typeof data.empNo === 'string' ? data.empNo.trim() : '';
+  const lastName = typeof data.lastName === 'string' ? data.lastName.trim() : '';
+  const firstName = typeof data.firstName === 'string' ? data.firstName.trim() : '';
+  const gender = typeof data.gender === 'string' ? data.gender.trim().toUpperCase() : '';
+  const birthDate = typeof data.birthDate === 'string' ? data.birthDate.trim() : '';
+  const hireDate = typeof data.hireDate === 'string' ? data.hireDate.trim() : '';
+  const rawSepDate = data.sepDate;
+  const sepDate =
+    rawSepDate === null || rawSepDate === undefined || String(rawSepDate).trim() === ''
+      ? null
+      : String(rawSepDate).trim();
+
+  if (requireEmpNo) {
+    if (!empNo) {
+      const err = new Error('Employee number (empNo) is required');
+      err.status = 400;
+      throw err;
+    }
+    if (empNo.length > 10) {
+      const err = new Error('Employee number must not exceed 10 characters');
+      err.status = 400;
+      throw err;
+    }
+  }
+
+  if (!lastName || !firstName) {
+    const err = new Error('Last name and first name are required');
+    err.status = 400;
+    throw err;
+  }
+
+  if (lastName.length > 100 || firstName.length > 100) {
+    const err = new Error('Last name and first name must not exceed 100 characters');
+    err.status = 400;
+    throw err;
+  }
+
+  if (gender !== 'M' && gender !== 'F') {
+    const err = new Error("Gender must be 'M' or 'F'");
+    err.status = 400;
+    throw err;
+  }
+
+  if (!isValidDateString(birthDate) || !isValidDateString(hireDate)) {
+    const err = new Error('Valid birthDate and hireDate (YYYY-MM-DD) are required');
+    err.status = 400;
+    throw err;
+  }
+
+  if (birthDate >= hireDate) {
+    const err = new Error('birthDate must be strictly earlier than hireDate');
+    err.status = 400;
+    throw err;
+  }
+
+  if (sepDate !== null) {
+    if (!isValidDateString(sepDate)) {
+      const err = new Error('sepDate must be a valid date (YYYY-MM-DD)');
+      err.status = 400;
+      throw err;
+    }
+    if (sepDate < hireDate) {
+      const err = new Error('sepDate must be greater than or equal to hireDate');
+      err.status = 400;
+      throw err;
+    }
+  }
+
+  return { empNo, lastName, firstName, gender, birthDate, hireDate, sepDate };
+}
+
+/**
+ * POST /api/hr/employees (Create Employee) (§2.3, §3.5, §3.8, §4.2, S3-DEV-05).
+ */
+async function createEmployee({ data = {}, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  await assertHrRight(pool, requester, 'emp.add');
+
+  const validated = validateEmployeePayload(data, { requireEmpNo: true });
+
+  const dupRes = await pool.query('SELECT 1 FROM EMPLOYEE WHERE empNo = $1', [validated.empNo]);
+  if (dupRes.rows.length > 0) {
+    const err = new Error(`Employee with number '${validated.empNo}' already exists`);
+    err.status = 409;
+    throw err;
+  }
+
+  const stamp = formatAuditStamp('CREATED', requester);
+
+  await pool.query(
+    `INSERT INTO EMPLOYEE (empNo, lastName, firstName, gender, birthDate, hireDate, sepDate, status, stamp)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'Active', $8)`,
+    [
+      validated.empNo,
+      validated.lastName,
+      validated.firstName,
+      validated.gender,
+      validated.birthDate,
+      validated.hireDate,
+      validated.sepDate,
+      stamp,
+    ]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'CREATED', 'EMPLOYEE', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.username || requester.role || 'system',
+        validated.empNo,
+        JSON.stringify({ ...validated, status: 'Active' }),
+      ]
+    );
+  } catch {
+    // Non-fatal if audit_log table is absent or handled by trigger
+  }
+
+  return {
+    ...validated,
+    status: 'Active',
+    stamp,
+  };
+}
+
+/**
+ * PUT /api/hr/employees/:empNo (Edit Employee) (§2.3, §3.5, §3.8, §4.2, S3-DEV-05).
+ */
+async function updateEmployee({ empNo, data = {}, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  await assertHrRight(pool, requester, 'emp.edit');
+
+  const trimmedNo = typeof empNo === 'string' ? empNo.trim() : '';
+  if (!trimmedNo) {
+    const err = new Error('Employee number is required');
+    err.status = 400;
+    throw err;
+  }
+
+  const validated = validateEmployeePayload(data, { requireEmpNo: false });
+
+  const existingRes = await pool.query('SELECT * FROM EMPLOYEE WHERE empNo = $1', [trimmedNo]);
+  if (existingRes.rows.length === 0) {
+    const err = new Error('Employee not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const existing = existingRes.rows[0];
+  const stamp = formatAuditStamp('EDITED', requester);
+
+  await pool.query(
+    `UPDATE EMPLOYEE
+     SET lastName = $1, firstName = $2, gender = $3, birthDate = $4, hireDate = $5, sepDate = $6, stamp = $7
+     WHERE empNo = $8`,
+    [
+      validated.lastName,
+      validated.firstName,
+      validated.gender,
+      validated.birthDate,
+      validated.hireDate,
+      validated.sepDate,
+      stamp,
+      trimmedNo,
+    ]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'EDITED', 'EMPLOYEE', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.username || requester.role || 'system',
+        trimmedNo,
+        JSON.stringify({
+          before: {
+            lastName: existing.lastName ?? existing.lastname,
+            firstName: existing.firstName ?? existing.firstname,
+            status: existing.status,
+          },
+          after: {
+            lastName: validated.lastName,
+            firstName: validated.firstName,
+            status: existing.status,
+          },
+        }),
+      ]
+    );
+  } catch {
+    // Non-fatal if audit_log table is absent or handled by trigger
+  }
+
+  return {
+    empNo: trimmedNo,
+    lastName: validated.lastName,
+    firstName: validated.firstName,
+    gender: validated.gender,
+    birthDate: validated.birthDate,
+    hireDate: validated.hireDate,
+    sepDate: validated.sepDate,
+    status: existing.status,
+    stamp,
+  };
+}
+
 module.exports = {
   formatAuditStamp,
   assertHrAccess,
@@ -1009,4 +1225,6 @@ module.exports = {
   softDeleteDepartment,
   restoreDepartment,
   listEmployees,
+  createEmployee,
+  updateEmployee,
 };
