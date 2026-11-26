@@ -293,6 +293,68 @@ async function requireProductAccess(req, res, next) {
   }
 }
 
+/**
+ * Human Resources Module Access Middleware (§4.2 & S3-DEV-01).
+ * Superadmin and Admin have access.
+ * Standard User must have at least one active HR right (emp.*, job.*, dept.*, jobhistory.*, hr.*).
+ */
+async function requireHrAccess(req, res, next) {
+  if (!req.user || !req.user.role) {
+    return res.status(401).json({ error: 'Unauthorized: authentication required' });
+  }
+
+  if (req.user.role === 'Superadmin' || req.user.role === 'Admin') {
+    return next();
+  }
+
+  if (req.user.rights && Array.isArray(req.user.rights)) {
+    const hasRight = req.user.rights.some(
+      (r) =>
+        typeof r === 'string' &&
+        (r.startsWith('emp.') ||
+          r.startsWith('job.') ||
+          r.startsWith('dept.') ||
+          r.startsWith('jobhistory.') ||
+          r.startsWith('hr.') ||
+          r === 'hr' ||
+          r === '*')
+    );
+    if (hasRight) {
+      return next();
+    }
+  }
+
+  try {
+    const pool = dbPool.getPool();
+    const userId = req.user.userId ?? req.user.userid;
+    const { rows } = await pool.query(
+      `SELECT 1 FROM user_permission
+       WHERE userId = $1
+         AND status = 'Active'
+         AND (
+           rightCode LIKE 'emp.%'
+           OR rightCode LIKE 'job.%'
+           OR rightCode LIKE 'dept.%'
+           OR rightCode LIKE 'jobhistory.%'
+           OR rightCode LIKE 'hr.%'
+           OR rightCode = 'hr'
+         )
+       LIMIT 1`,
+      [userId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(403).json({
+        error: 'Forbidden: Human Resources module access required',
+      });
+    }
+
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   authenticate,
   requireAdminOrSuperadmin,
@@ -300,4 +362,5 @@ module.exports = {
   requireRight,
   requireCustomerAccess,
   requireProductAccess,
+  requireHrAccess,
 };

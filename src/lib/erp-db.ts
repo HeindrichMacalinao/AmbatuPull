@@ -1635,3 +1635,101 @@ export async function restoreCustomer({
     stamp,
   };
 }
+
+export interface JobRecord {
+  jobCode: string;
+  jobDesc: string | null;
+  status?: 'Active' | 'Inactive';
+  stamp?: string;
+}
+
+export interface JobListResult {
+  jobs: JobRecord[];
+  total: number;
+  counts?: {
+    active: number;
+    inactive: number;
+    all: number;
+  };
+}
+
+export async function getJobs({
+  search,
+  status,
+  role = 'User',
+}: {
+  search?: string;
+  status?: string;
+  role?: string;
+} = {}): Promise<JobListResult> {
+  const isUser = role !== 'Admin' && role !== 'Superadmin';
+  const db = getSqliteDb();
+
+  const normalizedStatus = String(status || '').trim().toLowerCase();
+  const activeOnly = isUser || !['inactive', 'all'].includes(normalizedStatus);
+
+  let query = 'SELECT jobCode, jobDesc, status, stamp FROM JOB';
+  const conditions: string[] = [];
+  const params: any[] = [];
+
+  if (activeOnly) {
+    conditions.push("status = 'Active'");
+  } else if (!isUser && normalizedStatus === 'inactive') {
+    conditions.push("status = 'Inactive'");
+  }
+
+  if (search && search.trim()) {
+    conditions.push('(LOWER(jobCode) LIKE ? OR LOWER(jobDesc) LIKE ?)');
+    const term = `%${search.trim().toLowerCase()}%`;
+    params.push(term, term);
+  }
+
+  if (conditions.length > 0) {
+    query += ' WHERE ' + conditions.join(' AND ');
+  }
+
+  query += ' ORDER BY jobCode ASC';
+
+  const rows = db.prepare(query).all(...params) as Array<{
+    jobCode: string;
+    jobDesc: string | null;
+    status: 'Active' | 'Inactive';
+    stamp: string;
+  }>;
+
+  if (isUser) {
+    const jobs = rows.map((r) => ({
+      jobCode: r.jobCode,
+      jobDesc: r.jobDesc,
+    }));
+    return { jobs, total: jobs.length };
+  }
+
+  const countRows = db
+    .prepare('SELECT status, COUNT(*) AS count FROM JOB GROUP BY status')
+    .all() as Array<{ status: string; count: number }>;
+
+  let active = 0;
+  let inactive = 0;
+  for (const row of countRows) {
+    if (row.status === 'Active') active = Number(row.count || 0);
+    else if (row.status === 'Inactive') inactive = Number(row.count || 0);
+  }
+
+  const jobs = rows.map((r) => ({
+    jobCode: r.jobCode,
+    jobDesc: r.jobDesc,
+    status: r.status,
+    stamp: r.stamp,
+  }));
+
+  return {
+    jobs,
+    total: jobs.length,
+    counts: {
+      active,
+      inactive,
+      all: active + inactive,
+    },
+  };
+}
