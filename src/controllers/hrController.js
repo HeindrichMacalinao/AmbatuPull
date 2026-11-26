@@ -95,10 +95,108 @@ async function restoreJob(req, res, next) {
   }
 }
 
+/**
+ * GET /api/hr/departments
+ */
+async function getDepartments(req, res, next) {
+  try {
+    const result = await hrService.listDepartments({
+      requester: req.user,
+      search: req.query.search,
+      status: req.query.status,
+    });
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/hr/departments (Create Department)
+ */
+async function createDepartment(req, res, next) {
+  try {
+    const department = await hrService.createDepartment({
+      data: req.body,
+      requester: req.user,
+    });
+    res.status(201).json({
+      message: 'Department created successfully',
+      department,
+      ...department,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PUT /api/hr/departments/:deptCode (Edit Department)
+ */
+async function updateDepartment(req, res, next) {
+  try {
+    const department = await hrService.updateDepartment({
+      deptCode: req.params.deptCode,
+      data: req.body,
+      requester: req.user,
+    });
+    res.status(200).json({
+      message: 'Department updated successfully',
+      department,
+      ...department,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * DELETE /api/hr/departments/:deptCode (Soft Delete Department)
+ */
+async function deleteDepartment(req, res, next) {
+  try {
+    const department = await hrService.softDeleteDepartment({
+      deptCode: req.params.deptCode,
+      requester: req.user,
+    });
+    res.status(200).json({
+      message: 'Department deleted successfully',
+      department,
+      ...department,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST / PUT /api/hr/departments/:deptCode/restore (Restore Department)
+ */
+async function restoreDepartment(req, res, next) {
+  try {
+    const department = await hrService.restoreDepartment({
+      deptCode: req.params.deptCode,
+      requester: req.user,
+    });
+    res.status(200).json({
+      message: 'Department restored successfully',
+      department,
+      ...department,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getJobs,
   createJob,
   updateJob,
   deleteJob,
   restoreJob,
+  getDepartments,
+  createDepartment,
+  updateDepartment,
+  deleteDepartment,
+  restoreDepartment,
 };
