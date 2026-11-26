@@ -25,6 +25,7 @@ CREATED_AT_MIGRATION = ROOT / 'db/migrations/005_app_user_created_at.sql'
 ACTIVE_VIEWS_MIGRATION = ROOT / 'db/migrations/006_active_customer_product_views_indexes.sql'
 DOMAIN_MIGRATION = ROOT / 'db/migrations/007_customer_product_domain_constraints.sql'
 SOFT_DELETE_MIGRATION = ROOT / 'db/migrations/008_customer_product_referential_soft_delete.sql'
+ACTIVE_HR_VIEWS_MIGRATION = ROOT / 'db/migrations/009_active_hr_views_indexes.sql'
 DEFAULT_MODEL1 = ROOT / 'reference/Model1.db'
 
 
@@ -89,6 +90,8 @@ def rebuild(target: Path, source_model: Path | None) -> None:
             # S2-DBA-04 permits soft-delete of legacy values without weakening
             # FK restrictions or domain validation on inserted/changed values.
             conn.executescript(SOFT_DELETE_MIGRATION.read_text(encoding='utf-8'))
+            # S3-DBA-01 read-only HR views and supporting indexes.
+            conn.executescript(ACTIVE_HR_VIEWS_MIGRATION.read_text(encoding='utf-8'))
             assert conn.execute('PRAGMA foreign_keys').fetchone()[0] == 1
             assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
             assert conn.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
