@@ -889,6 +889,111 @@ async function restoreDepartment({ deptCode, requester } = {}) {
   };
 }
 
+/**
+ * GET /api/hr/employees (§1.2, §3.5 Figures 15 & 20, S3-DEV-04).
+ * - Superadmin/Admin: supports status filter ('Active', 'Inactive', 'All'), returns status, stamp, and counts.
+ * - User: strictly forced to Active status, omits status and stamp fields.
+ * - Live search against empNo, lastName, and firstName.
+ */
+async function listEmployees({ requester, search, status } = {}) {
+  const pool = dbPool.getPool();
+
+  await assertHrAccess(pool, requester);
+
+  const isStandardUser = requester.role === 'User';
+
+  let query =
+    'SELECT empNo, lastName, firstName, gender, birthDate, hireDate, sepDate, status, stamp FROM EMPLOYEE';
+  const whereClauses = [];
+  const params = [];
+
+  if (isStandardUser) {
+    whereClauses.push("status = 'Active'");
+  } else {
+    const normalizedStatus = String(status || '').trim().toLowerCase();
+    if (normalizedStatus === 'inactive') {
+      whereClauses.push("status = 'Inactive'");
+    } else if (normalizedStatus === 'all') {
+      // No status filter
+    } else {
+      whereClauses.push("status = 'Active'");
+    }
+  }
+
+  if (search && typeof search === 'string' && search.trim().length > 0) {
+    params.push(`%${search.trim().toLowerCase()}%`);
+    const pIdx = params.length;
+    whereClauses.push(
+      `(LOWER(empNo) LIKE $${pIdx} OR LOWER(lastName) LIKE $${pIdx} OR LOWER(firstName) LIKE $${pIdx})`
+    );
+  }
+
+  if (whereClauses.length > 0) {
+    query += ' WHERE ' + whereClauses.join(' AND ');
+  }
+
+  query += ' ORDER BY empNo ASC';
+
+  const { rows } = await pool.query(query, params);
+
+  const employees = rows.map((r) => {
+    const empNo = r.empNo ?? r.empno;
+    const lastName = r.lastName ?? r.lastname ?? null;
+    const firstName = r.firstName ?? r.firstname ?? null;
+    const gender = r.gender ?? null;
+    const birthDate = r.birthDate ?? r.birthdate ?? null;
+    const hireDate = r.hireDate ?? r.hiredate ?? null;
+    const sepDate = r.sepDate ?? r.sepdate ?? null;
+
+    const base = {
+      empNo,
+      lastName,
+      firstName,
+      gender,
+      birthDate,
+      hireDate,
+      sepDate: sepDate || null,
+    };
+
+    if (isStandardUser) {
+      return base;
+    }
+
+    return {
+      ...base,
+      status: r.status,
+      stamp: r.stamp,
+    };
+  });
+
+  if (isStandardUser) {
+    return {
+      employees,
+      total: employees.length,
+    };
+  }
+
+  const countRes = await pool.query('SELECT status, COUNT(*) AS count FROM EMPLOYEE GROUP BY status');
+  let activeCount = 0;
+  let inactiveCount = 0;
+  for (const row of countRes.rows || []) {
+    const rowStatus = row.status;
+    const cnt = Number(row.count ?? row.cnt ?? 0);
+    if (rowStatus === 'Active') activeCount = cnt;
+    else if (rowStatus === 'Inactive') inactiveCount = cnt;
+  }
+
+  return {
+    employees,
+    total: employees.length,
+    counts: {
+      active: activeCount,
+      inactive: inactiveCount,
+      all: activeCount + inactiveCount,
+    },
+  };
+}
+
 module.exports = {
   formatAuditStamp,
   assertHrAccess,
@@ -903,4 +1008,5 @@ module.exports = {
   updateDepartment,
   softDeleteDepartment,
   restoreDepartment,
+  listEmployees,
 };

@@ -188,6 +188,22 @@ async function restoreDepartment(req, res, next) {
   }
 }
 
+/**
+ * GET /api/hr/employees
+ */
+async function getEmployees(req, res, next) {
+  try {
+    const result = await hrService.listEmployees({
+      requester: req.user,
+      search: req.query.search,
+      status: req.query.status,
+    });
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getJobs,
   createJob,
@@ -199,4 +215,5 @@ module.exports = {
   updateDepartment,
   deleteDepartment,
   restoreDepartment,
+  getEmployees,
 };
