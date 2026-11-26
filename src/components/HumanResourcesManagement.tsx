@@ -11,6 +11,7 @@ import {
 import type { AppUser, RoleName } from '@/types/erp';
 import JobManagement from '@/components/JobManagement';
 import DepartmentManagement from '@/components/DepartmentManagement';
+import EmployeeManagement from '@/components/EmployeeManagement';
 
 type HrTab = 'Employees' | 'Jobs' | 'Departments';
 type StatusFilter = 'Active' | 'Inactive' | 'All';
@@ -222,12 +223,7 @@ export default function HumanResourcesManagement({
         className="p-4 sm:p-5"
       >
         {activeTab === 'Employees' && (
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-800/40">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Employees</h3>
-            <p className="mt-1.5 max-w-2xl text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-              Employee management will be available in its corresponding Sprint 3 task.
-            </p>
-          </div>
+          <EmployeeManagement role={sessionRole} user={user} statusFilter={statusFilter} />
         )}
         {activeTab === 'Jobs' && (
           <JobManagement role={sessionRole} user={user} statusFilter={statusFilter} />
