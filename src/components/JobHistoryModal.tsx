@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { LoaderCircle, Plus, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import type { AppUser, RoleName } from '@/types/erp';
 
 interface EmployeeRecord {
@@ -144,7 +144,20 @@ export default function JobHistoryModal({
     return () => controller.abort();
   }, [role, user?.userId]);
 
+  const canViewHistory = isAdmin || (
+    role === 'User'
+    && !rightsLoading
+    && !rightsError
+    && rights.includes('jobhistory.view')
+  );
+
   const loadHistory = useCallback(async (signal?: AbortSignal) => {
+    if (!canViewHistory) {
+      setHistory([]);
+      setError('');
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -165,7 +178,7 @@ export default function JobHistoryModal({
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
-  }, [employee.empNo, isAdmin, role, statusFilter, user]);
+  }, [canViewHistory, employee.empNo, isAdmin, role, statusFilter, user]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -318,7 +331,19 @@ export default function JobHistoryModal({
           <button type="button" onClick={onClose} aria-label="Close dialog" className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"><X className="h-4 w-4" /></button>
         </div>
         <div className="space-y-4 p-5">
-          {isAdmin && (
+          {role === 'User' && rightsLoading && (
+            <div role="status" aria-label="Loading history permissions" className="space-y-3 rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+              <span className="block h-4 w-1/3 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+              <span className="block h-10 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+            </div>
+          )}
+          {role === 'User' && !rightsLoading && !canViewHistory && (
+            <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+              <p className="font-bold">Privacy Restriction</p>
+              <p className="mt-1">Access to employee Job History information is restricted. Your account does not have the required permission to view these personal records.</p>
+            </div>
+          )}
+          {canViewHistory && isAdmin && (
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700">
               <div className="flex gap-1">
                 {(['Active', 'Inactive', 'All'] as const).map((status) => (
@@ -332,14 +357,14 @@ export default function JobHistoryModal({
               )}
             </div>
           )}
-          {!isAdmin && canAdd && (
+          {canViewHistory && !isAdmin && canAdd && (
             <div className="flex justify-end">
               <button type="button" onClick={() => openForm('add')} className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-3 text-sm font-semibold text-white hover:bg-blue-700"><Plus className="h-4 w-4" />Add History</button>
             </div>
           )}
-          {rightsError && role === 'User' && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">History permissions could not be loaded. Administrative history actions are unavailable.</p>}
-          {error && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">{error}</p>}
-          <div className="overflow-x-auto">
+          {canViewHistory && rightsError && role === 'User' && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">History permissions could not be loaded. Administrative history actions are unavailable.</p>}
+          {canViewHistory && error && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">{error}</p>}
+          {canViewHistory && <div className="overflow-x-auto">
             <table className="w-full min-w-[820px] text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500 dark:border-slate-700 dark:bg-slate-800">
                 <tr>
@@ -353,9 +378,9 @@ export default function JobHistoryModal({
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {loading ? (
-                  <tr><td colSpan={isAdmin ? 7 : showActions ? 5 : 4} className="px-4 py-10 text-center text-slate-500"><span className="inline-flex items-center gap-2"><LoaderCircle className="h-4 w-4 animate-spin" />Loading employee history…</span></td></tr>
+                  <tr><td colSpan={isAdmin ? 7 : showActions ? 5 : 4} className="px-4 py-5"><div className="space-y-3">{[0, 1, 2].map((row) => <div key={row} className="grid grid-cols-6 gap-4">{[0, 1, 2, 3, 4, 5].map((cell) => <span key={cell} className="h-4 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />)}</div>)}</div></td></tr>
                 ) : history.length === 0 ? (
-                  <tr><td colSpan={isAdmin ? 7 : showActions ? 5 : 4} className="px-4 py-10 text-center text-slate-500">No job history records are available for this employee.</td></tr>
+                  <tr><td colSpan={isAdmin ? 7 : showActions ? 5 : 4} className="px-4 py-10 text-center text-slate-500">{isAdmin && statusFilter !== 'All' ? 'No records match the selected filters.' : 'No records available yet.'}</td></tr>
                 ) : history.map((record) => (
                   <tr key={`${record.jobCode}-${record.effDate}`} className={record.status === 'Inactive' ? 'bg-slate-100 dark:bg-slate-800/50' : ''}>
                     <td className="whitespace-nowrap px-4 py-3">{formatDate(record.effDate)}</td>
@@ -377,7 +402,7 @@ export default function JobHistoryModal({
                 ))}
               </tbody>
             </table>
-          </div>
+          </div>}
         </div>
       </div>
 
