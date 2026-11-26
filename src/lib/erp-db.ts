@@ -2273,3 +2273,122 @@ export async function getEmployees({
     },
   };
 }
+
+export async function createEmployee({
+  empNo,
+  lastName,
+  firstName,
+  gender,
+  birthDate,
+  hireDate,
+  sepDate = null,
+  actor = 'system',
+}: {
+  empNo: string;
+  lastName: string;
+  firstName: string;
+  gender: string;
+  birthDate: string;
+  hireDate: string;
+  sepDate?: string | null;
+  actor?: string;
+}): Promise<EmployeeRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const trimmedNo = empNo.trim();
+  const existing = db.prepare('SELECT 1 FROM EMPLOYEE WHERE empNo = ?').get(trimmedNo);
+  if (existing) {
+    const err = new Error(`Employee with number '${trimmedNo}' already exists`);
+    (err as any).status = 409;
+    throw err;
+  }
+
+  const stamp = formatJobStamp('CREATED', actor);
+
+  db.prepare(
+    `INSERT INTO EMPLOYEE (empNo, lastName, firstName, gender, birthDate, hireDate, sepDate, status, stamp)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'Active', ?)`
+  ).run(
+    trimmedNo,
+    lastName.trim(),
+    firstName.trim(),
+    gender.trim().toUpperCase(),
+    birthDate.trim(),
+    hireDate.trim(),
+    sepDate ? sepDate.trim() : null,
+    stamp
+  );
+
+  return {
+    empNo: trimmedNo,
+    lastName: lastName.trim(),
+    firstName: firstName.trim(),
+    gender: gender.trim().toUpperCase(),
+    birthDate: birthDate.trim(),
+    hireDate: hireDate.trim(),
+    sepDate: sepDate ? sepDate.trim() : null,
+    status: 'Active',
+    stamp,
+  };
+}
+
+export async function updateEmployee({
+  empNo,
+  lastName,
+  firstName,
+  gender,
+  birthDate,
+  hireDate,
+  sepDate = null,
+  actor = 'system',
+}: {
+  empNo: string;
+  lastName: string;
+  firstName: string;
+  gender: string;
+  birthDate: string;
+  hireDate: string;
+  sepDate?: string | null;
+  actor?: string;
+}): Promise<EmployeeRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const trimmedNo = empNo.trim();
+  const existing = db.prepare('SELECT * FROM EMPLOYEE WHERE empNo = ?').get(trimmedNo) as any;
+  if (!existing) {
+    const err = new Error('Employee not found');
+    (err as any).status = 404;
+    throw err;
+  }
+
+  const stamp = formatJobStamp('EDITED', actor);
+
+  db.prepare(
+    `UPDATE EMPLOYEE
+     SET lastName = ?, firstName = ?, gender = ?, birthDate = ?, hireDate = ?, sepDate = ?, stamp = ?
+     WHERE empNo = ?`
+  ).run(
+    lastName.trim(),
+    firstName.trim(),
+    gender.trim().toUpperCase(),
+    birthDate.trim(),
+    hireDate.trim(),
+    sepDate ? sepDate.trim() : null,
+    stamp,
+    trimmedNo
+  );
+
+  return {
+    empNo: trimmedNo,
+    lastName: lastName.trim(),
+    firstName: firstName.trim(),
+    gender: gender.trim().toUpperCase(),
+    birthDate: birthDate.trim(),
+    hireDate: hireDate.trim(),
+    sepDate: sepDate ? sepDate.trim() : null,
+    status: existing.status,
+    stamp,
+  };
+}

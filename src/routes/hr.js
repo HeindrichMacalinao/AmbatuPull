@@ -13,6 +13,8 @@ const {
   deleteDepartment,
   restoreDepartment,
   getEmployees,
+  createEmployee,
+  updateEmployee,
 } = require('../controllers/hrController');
 const {
   authenticate,
@@ -49,8 +51,10 @@ const employeesRouter = express.Router();
 employeesRouter.use(authenticate);
 employeesRouter.use(requireHrAccess);
 
-// Employees List & Search API (S3-DEV-04)
+// Employees List & Mutation API (S3-DEV-04 & S3-DEV-05)
 employeesRouter.get('/', getEmployees);
+employeesRouter.post('/', requireRight('emp.add'), createEmployee);
+employeesRouter.put('/:empNo', requireRight('emp.edit'), updateEmployee);
 
 const router = express.Router();
 router.use('/jobs', jobsRouter);

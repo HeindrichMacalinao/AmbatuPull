@@ -204,6 +204,45 @@ async function getEmployees(req, res, next) {
   }
 }
 
+/**
+ * POST /api/hr/employees (Create Employee)
+ */
+async function createEmployee(req, res, next) {
+  try {
+    const employee = await hrService.createEmployee({
+      data: req.body,
+      requester: req.user,
+    });
+    res.status(201).json({
+      message: 'Employee created successfully',
+      employee,
+      ...employee,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PUT /api/hr/employees/:empNo (Edit Employee)
+ */
+async function updateEmployee(req, res, next) {
+  try {
+    const employee = await hrService.updateEmployee({
+      empNo: req.params.empNo,
+      data: req.body,
+      requester: req.user,
+    });
+    res.status(200).json({
+      message: 'Employee updated successfully',
+      employee,
+      ...employee,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getJobs,
   createJob,
@@ -216,4 +255,6 @@ module.exports = {
   deleteDepartment,
   restoreDepartment,
   getEmployees,
+  createEmployee,
+  updateEmployee,
 };
