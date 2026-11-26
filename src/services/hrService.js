@@ -1358,6 +1358,399 @@ async function restoreEmployee({ empNo, requester } = {}) {
   };
 }
 
+/**
+ * GET /api/hr/employees/:empNo/history (§3.5 Figures 16 & 17, S3-DEV-07).
+ * - Ordered by effDate DESC, joined with JOB (jobDesc) and DEPARTMENT (deptName)
+ * - User role: forced Active, strips status and stamp
+ * - Admin/Superadmin: supports status filter ('Active', 'Inactive', 'All') and counts
+ */
+async function listJobHistory({ empNo, requester, status } = {}) {
+  const pool = dbPool.getPool();
+
+  await assertHrAccess(pool, requester);
+
+  const trimmedNo = typeof empNo === 'string' ? empNo.trim() : '';
+  if (!trimmedNo) {
+    const err = new Error('Employee number is required');
+    err.status = 400;
+    throw err;
+  }
+
+  const empRes = await pool.query('SELECT empNo FROM EMPLOYEE WHERE empNo = $1', [trimmedNo]);
+  if (empRes.rows.length === 0) {
+    const err = new Error('Employee not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const isStandardUser = requester.role === 'User';
+  let query = `
+    SELECT jh.empNo, jh.jobCode, j.jobDesc, jh.effDate, jh.salary, jh.deptCode, d.deptName, jh.status, jh.stamp
+    FROM JOBHISTORY jh
+    LEFT JOIN JOB j ON j.jobCode = jh.jobCode
+    LEFT JOIN DEPARTMENT d ON d.deptCode = jh.deptCode
+    WHERE jh.empNo = $1
+  `;
+
+  if (isStandardUser) {
+    query += " AND jh.status = 'Active'";
+  } else {
+    const normalizedStatus = String(status || '').trim().toLowerCase();
+    if (normalizedStatus === 'inactive') {
+      query += " AND jh.status = 'Inactive'";
+    } else if (normalizedStatus !== 'all') {
+      query += " AND jh.status = 'Active'";
+    }
+  }
+
+  query += ' ORDER BY jh.effDate DESC';
+
+  const { rows } = await pool.query(query, [trimmedNo]);
+
+  const history = rows.map((r) => {
+    const base = {
+      empNo: r.empNo ?? r.empno,
+      jobCode: r.jobCode ?? r.jobcode,
+      jobDesc: r.jobDesc ?? r.jobdesc ?? null,
+      effDate: r.effDate ?? r.effdate,
+      salary: r.salary !== null && r.salary !== undefined ? Number(r.salary) : null,
+      deptCode: r.deptCode ?? r.deptcode ?? null,
+      deptName: r.deptName ?? r.deptname ?? null,
+    };
+    if (isStandardUser) return base;
+    return { ...base, status: r.status, stamp: r.stamp };
+  });
+
+  if (isStandardUser) {
+    return { history, total: history.length };
+  }
+
+  const countRes = await pool.query(
+    'SELECT status, COUNT(*) AS count FROM JOBHISTORY WHERE empNo = $1 GROUP BY status',
+    [trimmedNo]
+  );
+  let activeCount = 0;
+  let inactiveCount = 0;
+  for (const row of countRes.rows || []) {
+    const cnt = Number(row.count ?? row.cnt ?? 0);
+    if (row.status === 'Active') activeCount = cnt;
+    else if (row.status === 'Inactive') inactiveCount = cnt;
+  }
+
+  return {
+    history,
+    total: history.length,
+    counts: {
+      active: activeCount,
+      inactive: inactiveCount,
+      all: activeCount + inactiveCount,
+    },
+  };
+}
+
+/**
+ * POST /api/hr/employees/:empNo/history (Create Job History) (§2.2, §3.5, S3-DEV-07).
+ */
+async function createJobHistory({ empNo, data = {}, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  await assertHrRight(pool, requester, 'jobhistory.add');
+
+  const trimmedEmp = typeof empNo === 'string' ? empNo.trim() : '';
+  const jobCode = typeof data.jobCode === 'string' ? data.jobCode.trim() : '';
+  const deptCode = typeof data.deptCode === 'string' ? data.deptCode.trim() : '';
+  const effDate = typeof data.effDate === 'string' ? data.effDate.trim() : '';
+  const salary = Number(data.salary);
+
+  if (!trimmedEmp || !jobCode || !deptCode || !isValidDateString(effDate)) {
+    const err = new Error('empNo, jobCode, deptCode, and valid effDate (YYYY-MM-DD) are required');
+    err.status = 400;
+    throw err;
+  }
+
+  if (!Number.isFinite(salary) || salary <= 0) {
+    const err = new Error('salary must be a positive number');
+    err.status = 400;
+    throw err;
+  }
+
+  const empRes = await pool.query('SELECT empNo FROM EMPLOYEE WHERE empNo = $1', [trimmedEmp]);
+  if (empRes.rows.length === 0) {
+    const err = new Error('Employee not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const jobRes = await pool.query("SELECT jobCode, status FROM JOB WHERE jobCode = $1", [jobCode]);
+  if (jobRes.rows.length === 0 || jobRes.rows[0].status !== 'Active') {
+    const err = new Error(`Active job '${jobCode}' not found`);
+    err.status = 400;
+    throw err;
+  }
+
+  const deptRes = await pool.query("SELECT deptCode, status FROM DEPARTMENT WHERE deptCode = $1", [deptCode]);
+  if (deptRes.rows.length === 0 || deptRes.rows[0].status !== 'Active') {
+    const err = new Error(`Active department '${deptCode}' not found`);
+    err.status = 400;
+    throw err;
+  }
+
+  const dupRes = await pool.query(
+    'SELECT 1 FROM JOBHISTORY WHERE empNo = $1 AND jobCode = $2 AND effDate = $3',
+    [trimmedEmp, jobCode, effDate]
+  );
+  if (dupRes.rows.length > 0) {
+    const err = new Error(`Job history entry for (${trimmedEmp}, ${jobCode}, ${effDate}) already exists`);
+    err.status = 409;
+    throw err;
+  }
+
+  const stamp = formatAuditStamp('CREATED', requester);
+
+  await pool.query(
+    `INSERT INTO JOBHISTORY (empNo, jobCode, effDate, salary, deptCode, status, stamp)
+     VALUES ($1, $2, $3, $4, $5, 'Active', $6)`,
+    [trimmedEmp, jobCode, effDate, salary, deptCode, stamp]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'CREATED', 'JOBHISTORY', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.username || requester.role || 'system',
+        `${trimmedEmp}|${jobCode}|${effDate}`,
+        JSON.stringify({ empNo: trimmedEmp, jobCode, effDate, salary, deptCode, status: 'Active' }),
+      ]
+    );
+  } catch {
+    // Non-fatal
+  }
+
+  return {
+    empNo: trimmedEmp,
+    jobCode,
+    effDate,
+    salary,
+    deptCode,
+    status: 'Active',
+    stamp,
+  };
+}
+
+/**
+ * PUT /api/hr/employees/:empNo/history/:jobCode/:effDate (Edit Job History) (S3-DEV-07).
+ */
+async function updateJobHistory({ empNo, jobCode, effDate, data = {}, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  await assertHrRight(pool, requester, 'jobhistory.edit');
+
+  const trimmedEmp = typeof empNo === 'string' ? empNo.trim() : '';
+  const trimmedJob = typeof jobCode === 'string' ? jobCode.trim() : '';
+  const trimmedDate = typeof effDate === 'string' ? effDate.trim() : '';
+  const deptCode = typeof data.deptCode === 'string' ? data.deptCode.trim() : '';
+  const salary = Number(data.salary);
+
+  if (!trimmedEmp || !trimmedJob || !isValidDateString(trimmedDate) || !deptCode) {
+    const err = new Error('empNo, jobCode, effDate, and deptCode are required');
+    err.status = 400;
+    throw err;
+  }
+
+  if (!Number.isFinite(salary) || salary <= 0) {
+    const err = new Error('salary must be a positive number');
+    err.status = 400;
+    throw err;
+  }
+
+  const deptRes = await pool.query("SELECT deptCode, status FROM DEPARTMENT WHERE deptCode = $1", [deptCode]);
+  if (deptRes.rows.length === 0 || deptRes.rows[0].status !== 'Active') {
+    const err = new Error(`Active department '${deptCode}' not found`);
+    err.status = 400;
+    throw err;
+  }
+
+  const existingRes = await pool.query(
+    'SELECT * FROM JOBHISTORY WHERE empNo = $1 AND jobCode = $2 AND effDate = $3',
+    [trimmedEmp, trimmedJob, trimmedDate]
+  );
+  if (existingRes.rows.length === 0) {
+    const err = new Error('Job history record not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const existing = existingRes.rows[0];
+  const stamp = formatAuditStamp('EDITED', requester);
+
+  await pool.query(
+    `UPDATE JOBHISTORY
+     SET salary = $1, deptCode = $2, stamp = $3
+     WHERE empNo = $4 AND jobCode = $5 AND effDate = $6`,
+    [salary, deptCode, stamp, trimmedEmp, trimmedJob, trimmedDate]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'EDITED', 'JOBHISTORY', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.username || requester.role || 'system',
+        `${trimmedEmp}|${trimmedJob}|${trimmedDate}`,
+        JSON.stringify({
+          before: { salary: existing.salary, deptCode: existing.deptCode ?? existing.deptcode },
+          after: { salary, deptCode },
+        }),
+      ]
+    );
+  } catch {
+    // Non-fatal
+  }
+
+  return {
+    empNo: trimmedEmp,
+    jobCode: trimmedJob,
+    effDate: trimmedDate,
+    salary,
+    deptCode,
+    status: existing.status,
+    stamp,
+  };
+}
+
+/**
+ * DELETE /api/hr/employees/:empNo/history/:jobCode/:effDate (Soft Delete Job History) (S3-DEV-07).
+ */
+async function softDeleteJobHistory({ empNo, jobCode, effDate, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  await assertHrRight(pool, requester, 'jobhistory.delete');
+
+  const trimmedEmp = typeof empNo === 'string' ? empNo.trim() : '';
+  const trimmedJob = typeof jobCode === 'string' ? jobCode.trim() : '';
+  const trimmedDate = typeof effDate === 'string' ? effDate.trim() : '';
+
+  const existingRes = await pool.query(
+    'SELECT * FROM JOBHISTORY WHERE empNo = $1 AND jobCode = $2 AND effDate = $3',
+    [trimmedEmp, trimmedJob, trimmedDate]
+  );
+  if (existingRes.rows.length === 0) {
+    const err = new Error('Job history record not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const existing = existingRes.rows[0];
+  if (existing.status === 'Inactive') {
+    const err = new Error('Job history record is already inactive');
+    err.status = 400;
+    throw err;
+  }
+
+  const stamp = formatAuditStamp('DELETED', requester);
+
+  await pool.query(
+    `UPDATE JOBHISTORY
+     SET status = 'Inactive', stamp = $1
+     WHERE empNo = $2 AND jobCode = $3 AND effDate = $4`,
+    [stamp, trimmedEmp, trimmedJob, trimmedDate]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'DELETED', 'JOBHISTORY', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.username || requester.role || 'system',
+        `${trimmedEmp}|${trimmedJob}|${trimmedDate}`,
+        JSON.stringify({ before: { status: existing.status }, after: { status: 'Inactive' } }),
+      ]
+    );
+  } catch {
+    // Non-fatal
+  }
+
+  return {
+    empNo: trimmedEmp,
+    jobCode: trimmedJob,
+    effDate: trimmedDate,
+    status: 'Inactive',
+    stamp,
+  };
+}
+
+/**
+ * POST / PUT /api/hr/employees/:empNo/history/:jobCode/:effDate/restore (Admin only) (S3-DEV-07).
+ */
+async function restoreJobHistory({ empNo, jobCode, effDate, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  if (!requester || !requester.role) {
+    const err = new Error('Unauthorized: authentication required');
+    err.status = 401;
+    throw err;
+  }
+
+  if (requester.role !== 'Admin' && requester.role !== 'Superadmin') {
+    const err = new Error('Forbidden: only Admin or Superadmin can restore job history');
+    err.status = 403;
+    throw err;
+  }
+
+  const trimmedEmp = typeof empNo === 'string' ? empNo.trim() : '';
+  const trimmedJob = typeof jobCode === 'string' ? jobCode.trim() : '';
+  const trimmedDate = typeof effDate === 'string' ? effDate.trim() : '';
+
+  const existingRes = await pool.query(
+    'SELECT * FROM JOBHISTORY WHERE empNo = $1 AND jobCode = $2 AND effDate = $3',
+    [trimmedEmp, trimmedJob, trimmedDate]
+  );
+  if (existingRes.rows.length === 0) {
+    const err = new Error('Job history record not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const existing = existingRes.rows[0];
+  if (existing.status === 'Active') {
+    const err = new Error('Job history record is already active');
+    err.status = 400;
+    throw err;
+  }
+
+  const stamp = formatAuditStamp('EDITED', requester);
+
+  await pool.query(
+    `UPDATE JOBHISTORY
+     SET status = 'Active', stamp = $1
+     WHERE empNo = $2 AND jobCode = $3 AND effDate = $4`,
+    [stamp, trimmedEmp, trimmedJob, trimmedDate]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'RESTORED', 'JOBHISTORY', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.username || requester.role || 'system',
+        `${trimmedEmp}|${trimmedJob}|${trimmedDate}`,
+        JSON.stringify({ before: { status: existing.status }, after: { status: 'Active' } }),
+      ]
+    );
+  } catch {
+    // Non-fatal
+  }
+
+  return {
+    empNo: trimmedEmp,
+    jobCode: trimmedJob,
+    effDate: trimmedDate,
+    status: 'Active',
+    stamp,
+  };
+}
+
 module.exports = {
   formatAuditStamp,
   assertHrAccess,
@@ -1377,4 +1770,9 @@ module.exports = {
   updateEmployee,
   softDeleteEmployee,
   restoreEmployee,
+  listJobHistory,
+  createJobHistory,
+  updateJobHistory,
+  softDeleteJobHistory,
+  restoreJobHistory,
 };

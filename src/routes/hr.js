@@ -17,6 +17,11 @@ const {
   updateEmployee,
   deleteEmployee,
   restoreEmployee,
+  getJobHistory,
+  createJobHistory,
+  updateJobHistory,
+  deleteJobHistory,
+  restoreJobHistory,
 } = require('../controllers/hrController');
 const {
   authenticate,
@@ -60,6 +65,14 @@ employeesRouter.put('/:empNo', requireRight('emp.edit'), updateEmployee);
 employeesRouter.delete('/:empNo', requireRight('emp.delete'), deleteEmployee);
 employeesRouter.post('/:empNo/restore', requireAdminOrSuperadmin, restoreEmployee);
 employeesRouter.put('/:empNo/restore', requireAdminOrSuperadmin, restoreEmployee);
+
+// Job History Timeline API (S3-DEV-07)
+employeesRouter.get('/:empNo/history', getJobHistory);
+employeesRouter.post('/:empNo/history', requireRight('jobhistory.add'), createJobHistory);
+employeesRouter.put('/:empNo/history/:jobCode/:effDate', requireRight('jobhistory.edit'), updateJobHistory);
+employeesRouter.delete('/:empNo/history/:jobCode/:effDate', requireRight('jobhistory.delete'), deleteJobHistory);
+employeesRouter.post('/:empNo/history/:jobCode/:effDate/restore', requireAdminOrSuperadmin, restoreJobHistory);
+employeesRouter.put('/:empNo/history/:jobCode/:effDate/restore', requireAdminOrSuperadmin, restoreJobHistory);
 
 const router = express.Router();
 router.use('/jobs', jobsRouter);

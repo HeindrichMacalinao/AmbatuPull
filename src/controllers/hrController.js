@@ -281,6 +281,106 @@ async function restoreEmployee(req, res, next) {
   }
 }
 
+/**
+ * GET /api/hr/employees/:empNo/history
+ */
+async function getJobHistory(req, res, next) {
+  try {
+    const result = await hrService.listJobHistory({
+      empNo: req.params.empNo,
+      requester: req.user,
+      status: req.query.status,
+    });
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/hr/employees/:empNo/history
+ */
+async function createJobHistory(req, res, next) {
+  try {
+    const record = await hrService.createJobHistory({
+      empNo: req.params.empNo,
+      data: req.body,
+      requester: req.user,
+    });
+    res.status(201).json({
+      message: 'Job history record created successfully',
+      record,
+      ...record,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PUT /api/hr/employees/:empNo/history/:jobCode/:effDate
+ */
+async function updateJobHistory(req, res, next) {
+  try {
+    const record = await hrService.updateJobHistory({
+      empNo: req.params.empNo,
+      jobCode: req.params.jobCode,
+      effDate: req.params.effDate,
+      data: req.body,
+      requester: req.user,
+    });
+    res.status(200).json({
+      message: 'Job history record updated successfully',
+      record,
+      ...record,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * DELETE /api/hr/employees/:empNo/history/:jobCode/:effDate
+ */
+async function deleteJobHistory(req, res, next) {
+  try {
+    const record = await hrService.softDeleteJobHistory({
+      empNo: req.params.empNo,
+      jobCode: req.params.jobCode,
+      effDate: req.params.effDate,
+      requester: req.user,
+    });
+    res.status(200).json({
+      message: 'Job history record deleted successfully',
+      record,
+      ...record,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST / PUT /api/hr/employees/:empNo/history/:jobCode/:effDate/restore
+ */
+async function restoreJobHistory(req, res, next) {
+  try {
+    const record = await hrService.restoreJobHistory({
+      empNo: req.params.empNo,
+      jobCode: req.params.jobCode,
+      effDate: req.params.effDate,
+      requester: req.user,
+    });
+    res.status(200).json({
+      message: 'Job history record restored successfully',
+      record,
+      ...record,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getJobs,
   createJob,
@@ -297,4 +397,9 @@ module.exports = {
   updateEmployee,
   deleteEmployee,
   restoreEmployee,
+  getJobHistory,
+  createJobHistory,
+  updateJobHistory,
+  deleteJobHistory,
+  restoreJobHistory,
 };
