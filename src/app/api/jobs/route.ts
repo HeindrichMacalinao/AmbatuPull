@@ -1,1 +1,1 @@
-export { GET } from '../hr/jobs/route';
+export { GET, POST } from '../hr/jobs/route';

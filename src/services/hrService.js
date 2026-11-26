@@ -200,9 +200,312 @@ async function listJobs({ requester, search, status } = {}) {
   };
 }
 
+/**
+ * POST /api/hr/jobs (Create Job) (§2.3, §3.5, §3.8, S3-DEV-02).
+ * - Guard: requireRight('job.add')
+ * - Validates jobCode (<= 10 chars) and jobDesc (<= 100 chars)
+ * - Checks uniqueness of jobCode (409 on duplicate)
+ * - Sets status = 'Active', stamp = 'CREATED <currentUser> <YYYY-MM-DD HH:MM AM/PM>'
+ * - Logs to audit_log
+ */
+async function createJob({ data = {}, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  await assertHrRight(pool, requester, 'job.add');
+
+  const trimmedCode = typeof data.jobCode === 'string' ? data.jobCode.trim() : '';
+  const trimmedDesc = typeof data.jobDesc === 'string' ? data.jobDesc.trim() : '';
+
+  if (!trimmedCode || !trimmedDesc) {
+    const err = new Error('Job code and job description are required');
+    err.status = 400;
+    throw err;
+  }
+
+  if (trimmedCode.length > 10) {
+    const err = new Error('Job code must not exceed 10 characters');
+    err.status = 400;
+    throw err;
+  }
+
+  if (trimmedDesc.length > 100) {
+    const err = new Error('Job description must not exceed 100 characters');
+    err.status = 400;
+    throw err;
+  }
+
+  const dupRes = await pool.query('SELECT 1 FROM JOB WHERE jobCode = $1', [trimmedCode]);
+  if (dupRes.rows.length > 0) {
+    const err = new Error(`Job with code '${trimmedCode}' already exists`);
+    err.status = 409;
+    throw err;
+  }
+
+  const stamp = formatAuditStamp('CREATED', requester);
+
+  await pool.query(
+    `INSERT INTO JOB (jobCode, jobDesc, status, stamp)
+     VALUES ($1, $2, 'Active', $3)`,
+    [trimmedCode, trimmedDesc, stamp]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'CREATED', 'JOB', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.username || requester.role || 'system',
+        trimmedCode,
+        JSON.stringify({ jobCode: trimmedCode, jobDesc: trimmedDesc, status: 'Active' }),
+      ]
+    );
+  } catch {
+    // Non-fatal if audit_log table is absent or handled by trigger
+  }
+
+  return {
+    jobCode: trimmedCode,
+    jobDesc: trimmedDesc,
+    status: 'Active',
+    stamp,
+  };
+}
+
+/**
+ * PUT /api/hr/jobs/:jobCode (Edit Job) (§2.3, §3.5, §3.8, S3-DEV-02).
+ * - Guard: requireRight('job.edit')
+ * - Validates jobDesc (<= 100 chars)
+ * - Updates stamp = 'EDITED <currentUser> <YYYY-MM-DD HH:MM AM/PM>'
+ * - Logs to audit_log
+ */
+async function updateJob({ jobCode, data = {}, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  await assertHrRight(pool, requester, 'job.edit');
+
+  const trimmedCode = typeof jobCode === 'string' ? jobCode.trim() : '';
+  if (!trimmedCode) {
+    const err = new Error('Job code is required');
+    err.status = 400;
+    throw err;
+  }
+
+  const trimmedDesc = typeof data.jobDesc === 'string' ? data.jobDesc.trim() : '';
+  if (!trimmedDesc) {
+    const err = new Error('Job description is required');
+    err.status = 400;
+    throw err;
+  }
+
+  if (trimmedDesc.length > 100) {
+    const err = new Error('Job description must not exceed 100 characters');
+    err.status = 400;
+    throw err;
+  }
+
+  const existingRes = await pool.query('SELECT * FROM JOB WHERE jobCode = $1', [trimmedCode]);
+  if (existingRes.rows.length === 0) {
+    const err = new Error('Job not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const existing = existingRes.rows[0];
+  const stamp = formatAuditStamp('EDITED', requester);
+
+  await pool.query(
+    `UPDATE JOB
+     SET jobDesc = $1, stamp = $2
+     WHERE jobCode = $3`,
+    [trimmedDesc, stamp, trimmedCode]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'EDITED', 'JOB', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.username || requester.role || 'system',
+        trimmedCode,
+        JSON.stringify({
+          before: { jobDesc: existing.jobDesc ?? existing.jobdesc, status: existing.status },
+          after: { jobDesc: trimmedDesc, status: existing.status },
+        }),
+      ]
+    );
+  } catch {
+    // Non-fatal if audit_log table is absent or handled by trigger
+  }
+
+  return {
+    jobCode: trimmedCode,
+    jobDesc: trimmedDesc,
+    status: existing.status,
+    stamp,
+  };
+}
+
+/**
+ * DELETE /api/hr/jobs/:jobCode (Soft Delete Job) (§2.3, §3.5, §3.8, S3-DEV-02).
+ * - Guard: requireRight('job.delete')
+ * - Prevents deletion if active JOBHISTORY records reference this job (409)
+ * - Soft delete only: sets status = 'Inactive', stamp = 'DELETED <currentUser> <YYYY-MM-DD HH:MM AM/PM>'
+ * - Logs to audit_log
+ */
+async function softDeleteJob({ jobCode, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  await assertHrRight(pool, requester, 'job.delete');
+
+  const trimmedCode = typeof jobCode === 'string' ? jobCode.trim() : '';
+  if (!trimmedCode) {
+    const err = new Error('Job code is required');
+    err.status = 400;
+    throw err;
+  }
+
+  const existingRes = await pool.query('SELECT * FROM JOB WHERE jobCode = $1', [trimmedCode]);
+  if (existingRes.rows.length === 0) {
+    const err = new Error('Job not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const existing = existingRes.rows[0];
+  if (existing.status === 'Inactive') {
+    const err = new Error('Job is already inactive');
+    err.status = 400;
+    throw err;
+  }
+
+  // Child-dependency verification: prevent deletion if active job history exists
+  const childRes = await pool.query(
+    "SELECT 1 FROM JOBHISTORY WHERE jobCode = $1 AND status = 'Active' LIMIT 1",
+    [trimmedCode]
+  );
+  if (childRes.rows.length > 0) {
+    const err = new Error('Cannot delete job: active job history records reference this job');
+    err.status = 409;
+    throw err;
+  }
+
+  const stamp = formatAuditStamp('DELETED', requester);
+
+  await pool.query(
+    `UPDATE JOB
+     SET status = 'Inactive', stamp = $1
+     WHERE jobCode = $2`,
+    [stamp, trimmedCode]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'DELETED', 'JOB', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.username || requester.role || 'system',
+        trimmedCode,
+        JSON.stringify({
+          before: { jobDesc: existing.jobDesc ?? existing.jobdesc, status: existing.status },
+          after: { status: 'Inactive' },
+        }),
+      ]
+    );
+  } catch {
+    // Non-fatal if audit_log table is absent or handled by trigger
+  }
+
+  return {
+    jobCode: trimmedCode,
+    jobDesc: existing.jobDesc ?? existing.jobdesc,
+    status: 'Inactive',
+    stamp,
+  };
+}
+
+/**
+ * POST / PUT /api/hr/jobs/:jobCode/restore (Restore Job) (§2.3, §3.5, S3-DEV-02).
+ * - Strictly restricted to Admin and Superadmin
+ * - Sets status = 'Active', stamp = 'EDITED <currentUser> <YYYY-MM-DD HH:MM AM/PM>'
+ * - Logs to audit_log
+ */
+async function restoreJob({ jobCode, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  if (!requester || !requester.role) {
+    const err = new Error('Unauthorized: authentication required');
+    err.status = 401;
+    throw err;
+  }
+
+  if (requester.role !== 'Admin' && requester.role !== 'Superadmin') {
+    const err = new Error('Forbidden: only Admin or Superadmin can restore jobs');
+    err.status = 403;
+    throw err;
+  }
+
+  const trimmedCode = typeof jobCode === 'string' ? jobCode.trim() : '';
+  if (!trimmedCode) {
+    const err = new Error('Job code is required');
+    err.status = 400;
+    throw err;
+  }
+
+  const existingRes = await pool.query('SELECT * FROM JOB WHERE jobCode = $1', [trimmedCode]);
+  if (existingRes.rows.length === 0) {
+    const err = new Error('Job not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const existing = existingRes.rows[0];
+  if (existing.status === 'Active') {
+    const err = new Error('Job is already active');
+    err.status = 400;
+    throw err;
+  }
+
+  const stamp = formatAuditStamp('EDITED', requester);
+
+  await pool.query(
+    `UPDATE JOB
+     SET status = 'Active', stamp = $1
+     WHERE jobCode = $2`,
+    [stamp, trimmedCode]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'RESTORED', 'JOB', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.username || requester.role || 'system',
+        trimmedCode,
+        JSON.stringify({
+          before: { jobDesc: existing.jobDesc ?? existing.jobdesc, status: existing.status },
+          after: { status: 'Active' },
+        }),
+      ]
+    );
+  } catch {
+    // Non-fatal if audit_log table is absent or handled by trigger
+  }
+
+  return {
+    jobCode: trimmedCode,
+    jobDesc: existing.jobDesc ?? existing.jobdesc,
+    status: 'Active',
+    stamp,
+  };
+}
+
 module.exports = {
   formatAuditStamp,
   assertHrAccess,
   assertHrRight,
   listJobs,
+  createJob,
+  updateJob,
+  softDeleteJob,
+  restoreJob,
 };
