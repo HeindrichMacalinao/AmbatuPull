@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { updateEmployee, getUserGrantedRights } from '@/lib/erp-db';
+import { updateEmployee, softDeleteEmployee, getUserGrantedRights } from '@/lib/erp-db';
 
-async function assertEmployeeRight(request: Request, rightCode: 'emp.edit') {
+async function assertEmployeeRight(request: Request, rightCode: 'emp.edit' | 'emp.delete') {
   const role = request.headers.get('x-user-role') || 'User';
   if (role === 'Admin' || role === 'Superadmin') return;
 
@@ -88,6 +88,30 @@ export async function PUT(
     console.error('[API PUT /api/hr/employees/[empNo]] error:', err);
     return NextResponse.json(
       { error: err.message || 'Failed to update employee' },
+      { status: err.status || 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ empNo: string }> }
+) {
+  try {
+    await assertEmployeeRight(request, 'emp.delete');
+    const { empNo } = await context.params;
+    const actor = request.headers.get('x-user-email') || request.headers.get('x-user-role') || 'system';
+    const employee = await softDeleteEmployee({ empNo, actor });
+
+    return NextResponse.json({
+      message: 'Employee deleted successfully',
+      employee,
+      ...employee,
+    });
+  } catch (err: any) {
+    console.error('[API DELETE /api/hr/employees/[empNo]] error:', err);
+    return NextResponse.json(
+      { error: err.message || 'Failed to delete employee' },
       { status: err.status || 500 }
     );
   }

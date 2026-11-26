@@ -1210,6 +1210,154 @@ async function updateEmployee({ empNo, data = {}, requester } = {}) {
   };
 }
 
+/**
+ * DELETE /api/hr/employees/:empNo (Soft Delete Employee) (§2.3, §3.5, S3-DEV-06).
+ * - Guard: requireRight('emp.delete')
+ * - Soft delete only: sets status = 'Inactive', stamp = 'DELETED <user> <datetime>'
+ * - Preserves sepDate, JOBHISTORY, and SALES records
+ * - Logs to audit_log
+ */
+async function softDeleteEmployee({ empNo, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  await assertHrRight(pool, requester, 'emp.delete');
+
+  const trimmedNo = typeof empNo === 'string' ? empNo.trim() : '';
+  if (!trimmedNo) {
+    const err = new Error('Employee number is required');
+    err.status = 400;
+    throw err;
+  }
+
+  const existingRes = await pool.query('SELECT * FROM EMPLOYEE WHERE empNo = $1', [trimmedNo]);
+  if (existingRes.rows.length === 0) {
+    const err = new Error('Employee not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const existing = existingRes.rows[0];
+  if (existing.status === 'Inactive') {
+    const err = new Error('Employee is already inactive');
+    err.status = 400;
+    throw err;
+  }
+
+  const stamp = formatAuditStamp('DELETED', requester);
+
+  await pool.query(
+    `UPDATE EMPLOYEE
+     SET status = 'Inactive', stamp = $1
+     WHERE empNo = $2`,
+    [stamp, trimmedNo]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'DELETED', 'EMPLOYEE', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.username || requester.role || 'system',
+        trimmedNo,
+        JSON.stringify({
+          before: { status: existing.status, sepDate: existing.sepDate ?? existing.sepdate ?? null },
+          after: { status: 'Inactive' },
+        }),
+      ]
+    );
+  } catch {
+    // Non-fatal if audit_log table is absent or handled by trigger
+  }
+
+  return {
+    empNo: trimmedNo,
+    lastName: existing.lastName ?? existing.lastname ?? null,
+    firstName: existing.firstName ?? existing.firstname ?? null,
+    sepDate: existing.sepDate ?? existing.sepdate ?? null,
+    status: 'Inactive',
+    stamp,
+  };
+}
+
+/**
+ * POST / PUT /api/hr/employees/:empNo/restore (Restore Employee) (§2.3, §3.5, S3-DEV-06).
+ * - Strictly restricted to Admin and Superadmin
+ * - Sets status = 'Active', stamp = 'EDITED <user> <datetime>'
+ * - Preserves sepDate
+ * - Logs to audit_log
+ */
+async function restoreEmployee({ empNo, requester } = {}) {
+  const pool = dbPool.getPool();
+
+  if (!requester || !requester.role) {
+    const err = new Error('Unauthorized: authentication required');
+    err.status = 401;
+    throw err;
+  }
+
+  if (requester.role !== 'Admin' && requester.role !== 'Superadmin') {
+    const err = new Error('Forbidden: only Admin or Superadmin can restore employees');
+    err.status = 403;
+    throw err;
+  }
+
+  const trimmedNo = typeof empNo === 'string' ? empNo.trim() : '';
+  if (!trimmedNo) {
+    const err = new Error('Employee number is required');
+    err.status = 400;
+    throw err;
+  }
+
+  const existingRes = await pool.query('SELECT * FROM EMPLOYEE WHERE empNo = $1', [trimmedNo]);
+  if (existingRes.rows.length === 0) {
+    const err = new Error('Employee not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const existing = existingRes.rows[0];
+  if (existing.status === 'Active') {
+    const err = new Error('Employee is already active');
+    err.status = 400;
+    throw err;
+  }
+
+  const stamp = formatAuditStamp('EDITED', requester);
+
+  await pool.query(
+    `UPDATE EMPLOYEE
+     SET status = 'Active', stamp = $1
+     WHERE empNo = $2`,
+    [stamp, trimmedNo]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (performedBy, action, tableName, recordId, details, timestamp)
+       VALUES ($1, 'RESTORED', 'EMPLOYEE', $2, $3, CURRENT_TIMESTAMP)`,
+      [
+        requester.email || requester.username || requester.role || 'system',
+        trimmedNo,
+        JSON.stringify({
+          before: { status: existing.status, sepDate: existing.sepDate ?? existing.sepdate ?? null },
+          after: { status: 'Active' },
+        }),
+      ]
+    );
+  } catch {
+    // Non-fatal if audit_log table is absent or handled by trigger
+  }
+
+  return {
+    empNo: trimmedNo,
+    lastName: existing.lastName ?? existing.lastname ?? null,
+    firstName: existing.firstName ?? existing.firstname ?? null,
+    sepDate: existing.sepDate ?? existing.sepdate ?? null,
+    status: 'Active',
+    stamp,
+  };
+}
+
 module.exports = {
   formatAuditStamp,
   assertHrAccess,
@@ -1227,4 +1375,6 @@ module.exports = {
   listEmployees,
   createEmployee,
   updateEmployee,
+  softDeleteEmployee,
+  restoreEmployee,
 };

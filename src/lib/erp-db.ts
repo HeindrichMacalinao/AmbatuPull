@@ -2392,3 +2392,91 @@ export async function updateEmployee({
     stamp,
   };
 }
+
+export async function softDeleteEmployee({
+  empNo,
+  actor = 'system',
+}: {
+  empNo: string;
+  actor?: string;
+}): Promise<EmployeeRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const trimmedNo = empNo.trim();
+  const existing = db.prepare('SELECT * FROM EMPLOYEE WHERE empNo = ?').get(trimmedNo) as any;
+  if (!existing) {
+    const err = new Error('Employee not found');
+    (err as any).status = 404;
+    throw err;
+  }
+
+  if (existing.status === 'Inactive') {
+    const err = new Error('Employee is already inactive');
+    (err as any).status = 400;
+    throw err;
+  }
+
+  const stamp = formatJobStamp('DELETED', actor);
+
+  db.prepare("UPDATE EMPLOYEE SET status = 'Inactive', stamp = ? WHERE empNo = ?").run(
+    stamp,
+    trimmedNo
+  );
+
+  return {
+    empNo: trimmedNo,
+    lastName: existing.lastName ?? null,
+    firstName: existing.firstName ?? null,
+    gender: existing.gender ?? null,
+    birthDate: existing.birthDate ?? null,
+    hireDate: existing.hireDate ?? null,
+    sepDate: existing.sepDate || null,
+    status: 'Inactive',
+    stamp,
+  };
+}
+
+export async function restoreEmployee({
+  empNo,
+  actor = 'system',
+}: {
+  empNo: string;
+  actor?: string;
+}): Promise<EmployeeRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const trimmedNo = empNo.trim();
+  const existing = db.prepare('SELECT * FROM EMPLOYEE WHERE empNo = ?').get(trimmedNo) as any;
+  if (!existing) {
+    const err = new Error('Employee not found');
+    (err as any).status = 404;
+    throw err;
+  }
+
+  if (existing.status === 'Active') {
+    const err = new Error('Employee is already active');
+    (err as any).status = 400;
+    throw err;
+  }
+
+  const stamp = formatJobStamp('EDITED', actor);
+
+  db.prepare("UPDATE EMPLOYEE SET status = 'Active', stamp = ? WHERE empNo = ?").run(
+    stamp,
+    trimmedNo
+  );
+
+  return {
+    empNo: trimmedNo,
+    lastName: existing.lastName ?? null,
+    firstName: existing.firstName ?? null,
+    gender: existing.gender ?? null,
+    birthDate: existing.birthDate ?? null,
+    hireDate: existing.hireDate ?? null,
+    sepDate: existing.sepDate || null,
+    status: 'Active',
+    stamp,
+  };
+}

@@ -243,6 +243,44 @@ async function updateEmployee(req, res, next) {
   }
 }
 
+/**
+ * DELETE /api/hr/employees/:empNo (Soft Delete Employee)
+ */
+async function deleteEmployee(req, res, next) {
+  try {
+    const employee = await hrService.softDeleteEmployee({
+      empNo: req.params.empNo,
+      requester: req.user,
+    });
+    res.status(200).json({
+      message: 'Employee deleted successfully',
+      employee,
+      ...employee,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST / PUT /api/hr/employees/:empNo/restore (Restore Employee)
+ */
+async function restoreEmployee(req, res, next) {
+  try {
+    const employee = await hrService.restoreEmployee({
+      empNo: req.params.empNo,
+      requester: req.user,
+    });
+    res.status(200).json({
+      message: 'Employee restored successfully',
+      employee,
+      ...employee,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getJobs,
   createJob,
@@ -257,4 +295,6 @@ module.exports = {
   getEmployees,
   createEmployee,
   updateEmployee,
+  deleteEmployee,
+  restoreEmployee,
 };
