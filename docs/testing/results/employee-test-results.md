@@ -17,7 +17,7 @@
 | EMP-SEP-01 | Employee `E-004 Garcia` with `sepDate = 2025-12-31` remains Active until explicitly soft-deleted | Passed |
 | EMP-CRUD-03 | Edit employee details and verify the `EDITED` audit stamp | Passed |
 | EMP-DELETE-01 | Soft-delete preserves `sepDate`, sets status to Inactive, and records a `DELETED` stamp | Passed |
-| EMP-ROLE-01 | Admin can see inactive employee and audit fields; User sees only Active records without status/stamp/count fields | Passed |
+| EMP-ROLE-01 | Admin can see inactive employee and audit fields; User listing enforces `status = 'Active'` and omits status/stamp/count fields | Passed |
 | EMP-RESTORE-01 | User restore is denied; Admin restore returns the record to Active while preserving `sepDate` | Passed |
 | EMP-UI-01 | Assert employee form date constraints and Admin-only status/stamp columns plus inactive-row shading | Passed |
 
@@ -29,4 +29,4 @@ The UI case checks the existing component source contract; no interactive browse
 node --test --test-reporter=spec tests/employee-crud.test.js
 ```
 
-**Result:** Passed — 3 tests, 3 passed, 0 failed. Expected duplicate and invalid-date HTTP errors are logged by the existing API error handler during negative cases.
+**Result:** Passed — 7 tests, 7 passed, 0 failed, including separate subtests for create/edit, date validation, User listing, and soft-delete/restore. The User listing test also asserts the emitted SQL forces Active-only results. Expected duplicate and invalid-date HTTP errors are logged by the existing API error handler during negative cases.
