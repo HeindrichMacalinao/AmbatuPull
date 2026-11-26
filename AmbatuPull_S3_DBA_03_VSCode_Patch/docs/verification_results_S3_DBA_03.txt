@@ -1,0 +1,29 @@
+S3-DBA-03 Local Verification — 2026-11-26
+Source: user-provided AmbatuPull-main.zip, supplemented with earlier Sprint 2 and S3-DBA-01/02 patches.
+Execution environment: Python sqlite3 SQLite 3.46.1; Node.js 22.16.0. All database writes were in memory or disposable temporary databases.
+
+PASSED:
+- python3 -B tests/verify_hr_constraints.py
+  - New SQLite up/down/up migration on main schema
+  - Alternate/historical SQLite schema up/down/up
+  - INSERT and UPDATE: gender M/F/O (and permitted NULL), invalid gender rejected
+  - INSERT and UPDATE: separation earlier than hire rejected; equal, later and NULL accepted
+  - INSERT and UPDATE: birth date equal/later than hire rejected; earlier and NULL accepted
+  - Dates: ISO canonical and leap-day validation; malformed/invalid dates rejected
+  - Salary: negative rejected, zero/positive and permitted NULL accepted on both operations
+  - JOBHISTORY.effDate: NULL rejected by original NOT NULL; invalid ISO rejected by added triggers
+  - Existing HR views, foreign keys, indexes, and data retained
+  - Historical original HopeERP.db and HOPE_Model1.db: 32 employees/54 histories each, preflight passed on disposable memory clones
+  - Deliberately invalid pre-existing row causes migration preflight failure; data remains unchanged
+  - Node migration runner up, down, up, status all passed using temporary database
+- python3 -B tests/verify_active_hr_views.py: all S3-DBA-01 regressions passed
+- node --test tests/employee-position-as-of.test.cjs: 11/11 S3-DBA-02 tests passed
+
+NOT PASSED (pre-existing repository issue, not related to this patch):
+- npm test: exit 2, stops because tests/verify_user_registration_time.py is missing from provided repository snapshot.
+
+NOT RUN:
+- PostgreSQL/Supabase migration and verification: no authorized staging PostgreSQL connection available.
+- PostgreSQL EMPLOYEE.gender/birthDate checks: committed schema lacks both columns; migration emits warnings and intentionally does not fabricate columns.
+
+No production data, live credentials, or production database modified.
