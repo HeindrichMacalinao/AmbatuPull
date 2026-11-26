@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getJobHistory, createJobHistory, getUserGrantedRights } from '@/lib/erp-db';
 
-async function assertJobHistoryRight(request: Request, rightCode: 'jobhistory.add') {
+async function assertJobHistoryRight(request: Request, rightCode: 'jobhistory.view' | 'jobhistory.add') {
   const role = request.headers.get('x-user-role') || 'User';
   if (role === 'Admin' || role === 'Superadmin') return;
 
@@ -25,6 +25,7 @@ export async function GET(
   context: { params: Promise<{ empNo: string }> }
 ) {
   try {
+    await assertJobHistoryRight(request, 'jobhistory.view');
     const { empNo } = await context.params;
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || undefined;
