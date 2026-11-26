@@ -1,0 +1,152 @@
+TAP version 13
+# (node:1396) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: main: latest Active assignment on/before date, excluding future and inactive history
+ok 1 - main: latest Active assignment on/before date, excluding future and inactive history
+  ---
+  duration_ms: 4.251064
+  type: 'test'
+  ...
+# Subtest: main: employee with no eligible history returns null assignment fields
+ok 2 - main: employee with no eligible history returns null assignment fields
+  ---
+  duration_ms: 1.935411
+  type: 'test'
+  ...
+# Subtest: main: batch returns all Active employees once, excludes Inactive employee
+ok 3 - main: batch returns all Active employees once, excludes Inactive employee
+  ---
+  duration_ms: 1.292881
+  type: 'test'
+  ...
+# Subtest: main: bound parameters reject malformed dates/injection, preserve tables
+ok 4 - main: bound parameters reject malformed dates/injection, preserve tables
+  ---
+  duration_ms: 1.677069
+  type: 'test'
+  ...
+# Subtest: historical: latest Active assignment on/before date, excluding future and inactive history
+ok 5 - historical: latest Active assignment on/before date, excluding future and inactive history
+  ---
+  duration_ms: 1.483162
+  type: 'test'
+  ...
+# Subtest: historical: employee with no eligible history returns null assignment fields
+ok 6 - historical: employee with no eligible history returns null assignment fields
+  ---
+  duration_ms: 0.988891
+  type: 'test'
+  ...
+# Subtest: historical: batch returns all Active employees once, excludes Inactive employee
+ok 7 - historical: batch returns all Active employees once, excludes Inactive employee
+  ---
+  duration_ms: 0.902674
+  type: 'test'
+  ...
+# Subtest: historical: bound parameters reject malformed dates/injection, preserve tables
+ok 8 - historical: bound parameters reject malformed dates/injection, preserve tables
+  ---
+  duration_ms: 0.741677
+  type: 'test'
+  ...
+# Subtest: main SQLite: same employee/date with different jobs fails closed pending tie-break rule
+ok 9 - main SQLite: same employee/date with different jobs fails closed pending tie-break rule
+  ---
+  duration_ms: 1.614597
+  type: 'test'
+  ...
+# Subtest: Postgres function is SECURITY INVOKER and service-role only; no public salary endpoint
+ok 10 - Postgres function is SECURITY INVOKER and service-role only; no public salary endpoint
+  ---
+  duration_ms: 0.696209
+  type: 'test'
+  ...
+# Subtest: salary queries deny missing or insufficient server-side permission context
+ok 11 - salary queries deny missing or insufficient server-side permission context
+  ---
+  duration_ms: 1.195498
+  type: 'test'
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 66.211334
+SQLite version 3.46.1; all fixtures in-memory
+PASS: db/verify/verify_current_job.sql (parameterized SQL, history and no-history cases)
+PASS: db/verify/verify_current_job_historical.sql (parameterized SQL, history and no-history cases)
+PASS: HopeERP.db opened read-only
+PASS: HOPE_Model1.db opened read-only
+ALL S3-DBA-02 SQL VERIFICATIONS PASSED
+SQLite version: 3.46.1; testing disposable databases only
+PASS v_active_employees: all 11 columns, 1 active records, no inactive records
+PASS v_active_jobs: all 4 columns, 6 active records, no inactive records
+PASS v_active_departments: all 4 columns, 6 active records, no inactive records
+PASS v_active_jobhistory: all 7 columns, 1 active records, no inactive records
+PASS idx_employee_status_lastname_firstname: ('status', 'lastName', 'firstName')
+PASS idx_job_status_jobcode: ('status', 'jobCode')
+PASS idx_department_status_deptcode: ('status', 'deptCode')
+PASS idx_jobhistory_empno_effdate_status: ('empNo', 'effDate', 'status')
+PASS EXPLAIN: SEARCH EMPLOYEE USING INDEX idx_employee_status_lastname_firstname (status=?)
+PASS EXPLAIN: SEARCH JOB USING COVERING INDEX idx_job_status_jobcode (status=?)
+PASS EXPLAIN: SEARCH DEPARTMENT USING COVERING INDEX idx_department_status_deptcode (status=?)
+PASS EXPLAIN: SEARCH JOBHISTORY USING COVERING INDEX idx_jobhistory_empno_effdate_status (empNo=?)
+PASS v_active_employees: all 11 columns, 1 active records, no inactive records
+PASS v_active_jobs: all 4 columns, 6 active records, no inactive records
+PASS v_active_departments: all 4 columns, 6 active records, no inactive records
+PASS v_active_jobhistory: all 7 columns, 1 active records, no inactive records
+PASS idx_employee_status_lastname_firstname: ('status', 'lastName', 'firstName')
+PASS idx_job_status_jobcode: ('status', 'jobCode')
+PASS idx_department_status_deptcode: ('status', 'deptCode')
+PASS idx_jobhistory_empno_effdate_status: ('empNo', 'effDate', 'status')
+PASS EXPLAIN: SEARCH EMPLOYEE USING INDEX idx_employee_status_lastname_firstname (status=?)
+PASS EXPLAIN: SEARCH JOB USING COVERING INDEX idx_job_status_jobcode (status=?)
+PASS EXPLAIN: SEARCH DEPARTMENT USING COVERING INDEX idx_department_status_deptcode (status=?)
+PASS EXPLAIN: SEARCH JOBHISTORY USING COVERING INDEX idx_jobhistory_empno_effdate_status (empNo=?)
+PASS local-runner: up/down/up, no data loss, FK/integrity OK
+PASS v_active_employees: all 9 columns, 1 active records, no inactive records
+PASS v_active_jobs: all 4 columns, 1 active records, no inactive records
+PASS v_active_departments: all 4 columns, 1 active records, no inactive records
+PASS v_active_jobhistory: all 7 columns, 1 active records, no inactive records
+PASS idx_employee_status_lastname_firstname: ('status', 'lastName', 'firstName')
+PASS idx_job_status_jobcode: ('status', 'jobCode')
+PASS idx_department_status_deptcode: ('status', 'deptCode')
+PASS idx_jobhistory_empno_effdate_status: ('empNo', 'effDate', 'status')
+PASS EXPLAIN: SEARCH EMPLOYEE USING INDEX idx_employee_status_lastname_firstname (status=?)
+PASS EXPLAIN: SEARCH JOB USING COVERING INDEX idx_job_status_jobcode (status=?)
+PASS EXPLAIN: SEARCH DEPARTMENT USING COVERING INDEX idx_department_status_deptcode (status=?)
+PASS EXPLAIN: SEARCH JOBHISTORY USING COVERING INDEX idx_jobhistory_empno_effdate_status (empNo=?)
+PASS v_active_employees: all 9 columns, 1 active records, no inactive records
+PASS v_active_jobs: all 4 columns, 1 active records, no inactive records
+PASS v_active_departments: all 4 columns, 1 active records, no inactive records
+PASS v_active_jobhistory: all 7 columns, 1 active records, no inactive records
+PASS idx_employee_status_lastname_firstname: ('status', 'lastName', 'firstName')
+PASS idx_job_status_jobcode: ('status', 'jobCode')
+PASS idx_department_status_deptcode: ('status', 'deptCode')
+PASS idx_jobhistory_empno_effdate_status: ('empNo', 'effDate', 'status')
+PASS EXPLAIN: SEARCH EMPLOYEE USING INDEX idx_employee_status_lastname_firstname (status=?)
+PASS EXPLAIN: SEARCH JOB USING COVERING INDEX idx_job_status_jobcode (status=?)
+PASS EXPLAIN: SEARCH DEPARTMENT USING COVERING INDEX idx_department_status_deptcode (status=?)
+PASS EXPLAIN: SEARCH JOBHISTORY USING COVERING INDEX idx_jobhistory_empno_effdate_status (empNo=?)
+PASS historical-asset: up/down/up, no data loss, FK/integrity OK
+PASS Node runner: up
+PASS Node runner: down
+PASS Node runner: up
+PASS Node runner: status
+PASS v_active_employees: all 11 columns, 0 active records, no inactive records
+PASS v_active_jobs: all 4 columns, 5 active records, no inactive records
+PASS v_active_departments: all 4 columns, 5 active records, no inactive records
+PASS v_active_jobhistory: all 7 columns, 0 active records, no inactive records
+PASS idx_employee_status_lastname_firstname: ('status', 'lastName', 'firstName')
+PASS idx_job_status_jobcode: ('status', 'jobCode')
+PASS idx_department_status_deptcode: ('status', 'deptCode')
+PASS idx_jobhistory_empno_effdate_status: ('empNo', 'effDate', 'status')
+PASS EXPLAIN: SEARCH EMPLOYEE USING INDEX idx_employee_status_lastname_firstname (status=?)
+PASS EXPLAIN: SEARCH JOB USING COVERING INDEX idx_job_status_jobcode (status=?)
+PASS EXPLAIN: SEARCH DEPARTMENT USING COVERING INDEX idx_department_status_deptcode (status=?)
+PASS EXPLAIN: SEARCH JOBHISTORY USING COVERING INDEX idx_jobhistory_empno_effdate_status (empNo=?)
+ALL S3-DBA-01 SQLITE CHECKS PASSED
