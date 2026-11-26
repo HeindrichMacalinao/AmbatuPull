@@ -55,7 +55,8 @@ node --test --test-reporter=spec tests/customer-list-api.test.js tests/customer-
 |---|---|
 | `node --test --test-reporter=spec tests/hr-permission-matrix.test.js` | Passed: 16 tests, 0 failures |
 | Node test command above | Passed: 78 tests, 0 failures |
-| `npm test` on this Windows host | Blocked before tests started: the `python` command is unavailable. The CI `verify` job runs `npm test` on Ubuntu. |
+| `npm test` in GitHub Actions `verify` (run `45900899786`) | Passed on Ubuntu, including the HR matrix suite |
+| `npm test` on this Windows host | Blocked before tests started: the `python` command is unavailable |
 | `git diff --check` | Passed |
 
 The UI verification is a source-contract check of permission expressions and conditional rendering; no browser session or rendered-DOM test was run. Tests exercise the production Express authorization middleware/routes with a database-pool test double; no production source or schema was changed.
