@@ -9,8 +9,6 @@ const dashboardRouter = require('./dashboard');
 const customersRouter = require('./customers');
 const productsRouter = require('./products');
 const hrRouter = require('./hr');
-const { getJobs } = require('../controllers/hrController');
-const { authenticate, requireHrAccess } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -22,6 +20,6 @@ router.use('/dashboard', dashboardRouter);
 router.use('/customers', customersRouter);
 router.use('/products', productsRouter);
 router.use('/hr', hrRouter);
-router.get('/jobs', authenticate, requireHrAccess, getJobs);
+router.use('/jobs', hrRouter.jobsRouter);
 
 module.exports = router;

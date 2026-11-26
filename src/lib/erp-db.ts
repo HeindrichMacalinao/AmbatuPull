@@ -1733,3 +1733,168 @@ export async function getJobs({
     },
   };
 }
+
+function formatJobStamp(action: string, actor: string): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const now = new Date();
+  let hours = now.getHours();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  return `${action} ${actor} ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(hours)}:${pad(now.getMinutes())} ${ampm}`;
+}
+
+export async function createJob({
+  jobCode,
+  jobDesc,
+  actor = 'system',
+}: {
+  jobCode: string;
+  jobDesc: string;
+  actor?: string;
+}): Promise<JobRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const trimmedCode = jobCode.trim();
+  const trimmedDesc = jobDesc.trim();
+
+  const existing = db.prepare('SELECT 1 FROM JOB WHERE jobCode = ?').get(trimmedCode);
+  if (existing) {
+    const err = new Error(`Job with code '${trimmedCode}' already exists`);
+    (err as any).status = 409;
+    throw err;
+  }
+
+  const stamp = formatJobStamp('CREATED', actor);
+
+  db.prepare(`
+    INSERT INTO JOB (jobCode, jobDesc, status, stamp)
+    VALUES (?, ?, 'Active', ?)
+  `).run(trimmedCode, trimmedDesc, stamp);
+
+  return {
+    jobCode: trimmedCode,
+    jobDesc: trimmedDesc,
+    status: 'Active',
+    stamp,
+  };
+}
+
+export async function updateJob({
+  jobCode,
+  jobDesc,
+  actor = 'system',
+}: {
+  jobCode: string;
+  jobDesc: string;
+  actor?: string;
+}): Promise<JobRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const trimmedCode = jobCode.trim();
+  const trimmedDesc = jobDesc.trim();
+
+  const existing = db.prepare('SELECT * FROM JOB WHERE jobCode = ?').get(trimmedCode) as any;
+  if (!existing) {
+    const err = new Error('Job not found');
+    (err as any).status = 404;
+    throw err;
+  }
+
+  const stamp = formatJobStamp('EDITED', actor);
+
+  db.prepare(`
+    UPDATE JOB
+    SET jobDesc = ?, stamp = ?
+    WHERE jobCode = ?
+  `).run(trimmedDesc, stamp, trimmedCode);
+
+  return {
+    jobCode: trimmedCode,
+    jobDesc: trimmedDesc,
+    status: existing.status,
+    stamp,
+  };
+}
+
+export async function softDeleteJob({
+  jobCode,
+  actor = 'system',
+}: {
+  jobCode: string;
+  actor?: string;
+}): Promise<JobRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const trimmedCode = jobCode.trim();
+  const existing = db.prepare('SELECT * FROM JOB WHERE jobCode = ?').get(trimmedCode) as any;
+  if (!existing) {
+    const err = new Error('Job not found');
+    (err as any).status = 404;
+    throw err;
+  }
+
+  if (existing.status === 'Inactive') {
+    const err = new Error('Job is already inactive');
+    (err as any).status = 400;
+    throw err;
+  }
+
+  const hasActiveHistory = db
+    .prepare("SELECT 1 FROM JOBHISTORY WHERE jobCode = ? AND status = 'Active' LIMIT 1")
+    .get(trimmedCode);
+  if (hasActiveHistory) {
+    const err = new Error('Cannot delete job: active job history records reference this job');
+    (err as any).status = 409;
+    throw err;
+  }
+
+  const stamp = formatJobStamp('DELETED', actor);
+
+  db.prepare("UPDATE JOB SET status = 'Inactive', stamp = ? WHERE jobCode = ?").run(stamp, trimmedCode);
+
+  return {
+    jobCode: trimmedCode,
+    jobDesc: existing.jobDesc,
+    status: 'Inactive',
+    stamp,
+  };
+}
+
+export async function restoreJob({
+  jobCode,
+  actor = 'system',
+}: {
+  jobCode: string;
+  actor?: string;
+}): Promise<JobRecord> {
+  const db = getSqliteDb();
+  setAuditActor(actor);
+
+  const trimmedCode = jobCode.trim();
+  const existing = db.prepare('SELECT * FROM JOB WHERE jobCode = ?').get(trimmedCode) as any;
+  if (!existing) {
+    const err = new Error('Job not found');
+    (err as any).status = 404;
+    throw err;
+  }
+
+  if (existing.status === 'Active') {
+    const err = new Error('Job is already active');
+    (err as any).status = 400;
+    throw err;
+  }
+
+  const stamp = formatJobStamp('EDITED', actor);
+
+  db.prepare("UPDATE JOB SET status = 'Active', stamp = ? WHERE jobCode = ?").run(stamp, trimmedCode);
+
+  return {
+    jobCode: trimmedCode,
+    jobDesc: existing.jobDesc,
+    status: 'Active',
+    stamp,
+  };
+}
