@@ -22,17 +22,14 @@ history view without modifying application code or a local database.
 
 ## Execution
 
-Run the new database-backed suite together with the existing job-history API
-regressions:
+Run the full repository suite, including both job-history test files:
 
 ```powershell
-node --test tests/job-history.test.js tests/hr-job-history.test.js
+npm test
 ```
 
 | Command | Result |
 |---|---|
-| `node --test tests/job-history.test.js tests/hr-job-history.test.js` | Passed: 7 tests, 0 failures |
+| `npm test` | Local run blocked before tests started: the Windows `python` command is unavailable. The CI `verify` job runs `npm test` on Ubuntu. |
+| `node --test --test-reporter=spec tests/customer-list-api.test.js tests/customer-crud.test.js tests/customer-delete-restore.test.js tests/dashboard-navigation-rbac.test.js tests/current-product-price.test.cjs tests/hr-job-history.test.js tests/job-history.test.js` | Passed: 62 tests, 0 failures |
 | `git diff --check` | Passed |
-
-The broader `npm test` suite was not run; this change adds a separate focused
-suite and does not change the existing test command.

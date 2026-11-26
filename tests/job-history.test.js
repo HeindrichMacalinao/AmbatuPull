@@ -28,6 +28,7 @@ function createDatabase(t) {
       const rightNumber = Number.parseInt(right, 10);
       return leftNumber - rightNumber || left.localeCompare(right);
     });
+  assert.ok(migrations.length > 0, `at least one migration must be loaded from ${migrationsDir}`);
 
   for (const migration of migrations) {
     const sql = fs
@@ -44,21 +45,22 @@ function createDatabase(t) {
 
 function seedReferences(db) {
   db.prepare(
-    `INSERT INTO DEPARTMENT (deptCode, deptName, stamp)
-     VALUES (?, ?, ?)`
-  ).run('ENG', 'Engineering', 'CREATED test');
+    `INSERT INTO DEPARTMENT (deptCode, deptName, status, stamp)
+     VALUES (?, ?, ?, ?)`
+  ).run('ENG', 'Engineering', 'Active', 'CREATED test');
   db.prepare(
-    `INSERT INTO JOB (jobCode, jobDesc, stamp)
-     VALUES (?, ?, ?)`
-  ).run('DEV', 'Developer', 'CREATED test');
+    `INSERT INTO JOB (jobCode, jobDesc, status, stamp)
+     VALUES (?, ?, ?, ?)`
+  ).run('DEV', 'Developer', 'Active', 'CREATED test');
   db.prepare(
-    `INSERT INTO JOB (jobCode, jobDesc, stamp)
-     VALUES (?, ?, ?)`
-  ).run('LEAD', 'Team Lead', 'CREATED test');
+    `INSERT INTO JOB (jobCode, jobDesc, status, stamp)
+     VALUES (?, ?, ?, ?)`
+  ).run('LEAD', 'Team Lead', 'Active', 'CREATED test');
   db.prepare(
-    `INSERT INTO EMPLOYEE (empNo, lastName, firstName, hireDate, stamp)
-     VALUES (?, ?, ?, ?, ?)`
-  ).run('E-001', 'Santos', 'Alex', '2020-01-01', 'CREATED test');
+    `INSERT INTO EMPLOYEE
+       (empNo, lastName, firstName, gender, birthDate, hireDate, sepDate, status, stamp)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run('E-001', 'Santos', 'Alex', 'M', '1990-02-10', '2020-01-01', null, 'Active', 'CREATED test');
 }
 
 function insertHistory(db, {
@@ -185,6 +187,7 @@ test('job history entries can be soft-deleted and restored independently', (t) =
   insertHistory(db, { effDate: '2021-01-01' });
   insertHistory(db, { effDate: '2022-01-01' });
 
+  // Schema-layer check for active-view filtering; API lifecycle stamps are covered by hr-job-history.test.js.
   db.prepare(
     `UPDATE JOBHISTORY
      SET status = 'Inactive'
