@@ -2160,3 +2160,116 @@ export async function restoreDepartment({
     stamp,
   };
 }
+
+export interface EmployeeRecord {
+  empNo: string;
+  lastName: string | null;
+  firstName: string | null;
+  gender: string | null;
+  birthDate: string | null;
+  hireDate: string | null;
+  sepDate: string | null;
+  status?: string;
+  stamp?: string;
+}
+
+export interface EmployeeListResult {
+  employees: EmployeeRecord[];
+  total: number;
+  counts?: {
+    active: number;
+    inactive: number;
+    all: number;
+  };
+}
+
+export async function getEmployees({
+  search,
+  status,
+  role = 'Admin',
+}: {
+  search?: string;
+  status?: string;
+  role?: string;
+} = {}): Promise<EmployeeListResult> {
+  const db = getSqliteDb();
+  const isStandardUser = role === 'User';
+
+  let query =
+    'SELECT empNo, lastName, firstName, gender, birthDate, hireDate, sepDate, status, stamp FROM EMPLOYEE';
+  const whereClauses: string[] = [];
+  const params: any[] = [];
+
+  if (isStandardUser) {
+    whereClauses.push("status = 'Active'");
+  } else {
+    const normalizedStatus = String(status || '').trim().toLowerCase();
+    if (normalizedStatus === 'inactive') {
+      whereClauses.push("status = 'Inactive'");
+    } else if (normalizedStatus === 'all') {
+      // No status filter
+    } else {
+      whereClauses.push("status = 'Active'");
+    }
+  }
+
+  if (search && search.trim().length > 0) {
+    const pattern = `%${search.trim().toLowerCase()}%`;
+    whereClauses.push('(LOWER(empNo) LIKE ? OR LOWER(lastName) LIKE ? OR LOWER(firstName) LIKE ?)');
+    params.push(pattern, pattern, pattern);
+  }
+
+  if (whereClauses.length > 0) {
+    query += ' WHERE ' + whereClauses.join(' AND ');
+  }
+
+  query += ' ORDER BY empNo ASC';
+
+  const rows = db.prepare(query).all(...params) as any[];
+  const employees: EmployeeRecord[] = rows.map((r) => {
+    const base: EmployeeRecord = {
+      empNo: r.empNo,
+      lastName: r.lastName ?? null,
+      firstName: r.firstName ?? null,
+      gender: r.gender ?? null,
+      birthDate: r.birthDate ?? null,
+      hireDate: r.hireDate ?? null,
+      sepDate: r.sepDate || null,
+    };
+
+    if (isStandardUser) {
+      return base;
+    }
+
+    return {
+      ...base,
+      status: r.status,
+      stamp: r.stamp,
+    };
+  });
+
+  if (isStandardUser) {
+    return {
+      employees,
+      total: employees.length,
+    };
+  }
+
+  const countRows = db.prepare('SELECT status, COUNT(*) as count FROM EMPLOYEE GROUP BY status').all() as any[];
+  let active = 0;
+  let inactive = 0;
+  for (const row of countRows) {
+    if (row.status === 'Active') active = Number(row.count || 0);
+    else if (row.status === 'Inactive') inactive = Number(row.count || 0);
+  }
+
+  return {
+    employees,
+    total: employees.length,
+    counts: {
+      active,
+      inactive,
+      all: active + inactive,
+    },
+  };
+}

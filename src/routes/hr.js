@@ -12,6 +12,7 @@ const {
   updateDepartment,
   deleteDepartment,
   restoreDepartment,
+  getEmployees,
 } = require('../controllers/hrController');
 const {
   authenticate,
@@ -44,10 +45,19 @@ departmentsRouter.delete('/:deptCode', requireRight('dept.delete'), deleteDepart
 departmentsRouter.post('/:deptCode/restore', requireAdminOrSuperadmin, restoreDepartment);
 departmentsRouter.put('/:deptCode/restore', requireAdminOrSuperadmin, restoreDepartment);
 
+const employeesRouter = express.Router();
+employeesRouter.use(authenticate);
+employeesRouter.use(requireHrAccess);
+
+// Employees List & Search API (S3-DEV-04)
+employeesRouter.get('/', getEmployees);
+
 const router = express.Router();
 router.use('/jobs', jobsRouter);
 router.use('/departments', departmentsRouter);
+router.use('/employees', employeesRouter);
 router.jobsRouter = jobsRouter;
 router.departmentsRouter = departmentsRouter;
+router.employeesRouter = employeesRouter;
 
 module.exports = router;
