@@ -56,7 +56,7 @@ node --test --test-reporter=spec tests/customer-list-api.test.js tests/customer-
 |---|---|
 | `node --test --test-reporter=spec tests/hr-permission-matrix.test.js` | Passed: 16 tests (3 top-level tests + 13 nested action cases), 0 failures |
 | `node --test --test-reporter=spec tests/customer-list-api.test.js tests/customer-crud.test.js tests/customer-delete-restore.test.js tests/dashboard-navigation-rbac.test.js tests/current-product-price.test.cjs tests/hr-job-history.test.js tests/job-history.test.js tests/hr-permission-matrix.test.js` | Passed: 78 tests, 0 failures |
-| `npm test` in GitHub Actions `verify` (run `45900899786`) | Passed on Ubuntu, including the HR matrix suite |
+| `npm test` in GitHub Actions `verify` (run `45965255567`) | Passed on Ubuntu, including the database-backed HR matrix suite |
 | `npm test` on this Windows host | Blocked before tests started: the `python` command is unavailable |
 | `git diff --check` | Passed |
 
