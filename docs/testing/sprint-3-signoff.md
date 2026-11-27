@@ -58,11 +58,12 @@ npm run test:smoke
 | `node --test --test-reporter=spec` over the 24 Sprint 1–3 Node test files | Passed: 220 total, 205 passed, 15 skipped, 0 failed. Skips require `BASE_URL` for live HTTP cases. |
 | Focused HR suite (six files above) | Passed: 37 tests, 0 failures. |
 | Latest `main` CI before this sign-off branch (`npm test`, run `46011558643`) | Passed: 13 Python verification scripts and 206 Node tests (191 passed, 15 skipped, 0 failed). |
+| `npm test` for this sign-off branch in GitHub Actions `verify` (run `46012297174`) | Passed: 13 Python verification scripts and 220 Node tests (205 passed, 15 skipped, 0 failed). |
 | Local `npm test` on Windows | Blocked before Python verification: the `python` command is unavailable. |
 | Live smoke/manual regression | Not run. No application server or test database was provisioned; the three `tests/smoke.test.js` HTTP cases require `BASE_URL`. |
 | `git diff --check` | Passed. |
 
-The current branch adds the three HR suites that were not yet part of the `main` test command; branch CI is required to validate the expanded 220-test command. The local Node run found no failures, but skipped live cases are not counted as passed.
+The current branch adds the three HR suites that were not yet part of the `main` test command; branch CI passed the expanded 220-test command. The local and CI Node runs found no failures, but skipped live cases are not counted as passed.
 
 ## Sign-off
 
