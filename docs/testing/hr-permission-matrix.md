@@ -8,7 +8,7 @@ The application names department rights `dept.*` and employee rights `emp.*`; th
 
 ## Per-action matrix
 
-Each server case calls the corresponding endpoint twice as a standard User: once with no grant (expected HTTP 403) and once with only that action's exact grant (expected HTTP 2xx). The UI checks confirm that the matching control's permission expression checks the same right and that the control is conditionally rendered.
+Each server case calls the corresponding endpoint twice as a standard User: once with HR module access but without that action's grant (expected HTTP 403) and once with only that action's exact grant (expected HTTP 2xx). Requests use a bearer token; the pool test double returns an active `app_user` and configured active `user_permission` rows, exercising the session authentication and database-rights path rather than the `x-user-*` test/dev headers. Keeping `hr.view` active for denied action cases ensures they reach the per-action authorization check. The UI checks confirm that the matching control's permission expression checks the same right and that the control is conditionally rendered.
 
 | Issue right | Application right | Direct API action | UI control |
 |---|---|---|---|
@@ -29,7 +29,8 @@ Each server case calls the corresponding endpoint twice as a standard User: once
 ## Salary privacy checks
 
 - A User without `jobhistory.view` receives HTTP 403 from the job-history endpoint; a User with that right can access the history and salary.
-- The employee list test seeds a salary sentinel in the mocked database row and verifies that the response omits both the salary property and sentinel value. It also checks that the employee-list query does not select salary.
+- A User with no HR rights receives HTTP 403 from the employee list. The employee list test seeds a salary sentinel in the mocked database row and verifies that the response omits both the salary property and sentinel value. It also checks that the employee-list query does not select salary.
+- The current Express employee-list route is protected by the general HR-access check, not a specific `emp.view` check; a User with another HR right can pass that gate. This suite does not claim that `emp.view` is independently required for `GET /api/hr/employees`.
 
 ## Execution and limitations
 
@@ -53,8 +54,8 @@ node --test --test-reporter=spec tests/customer-list-api.test.js tests/customer-
 
 | Command | Result |
 |---|---|
-| `node --test --test-reporter=spec tests/hr-permission-matrix.test.js` | Passed: 16 tests, 0 failures |
-| Node test command above | Passed: 78 tests, 0 failures |
+| `node --test --test-reporter=spec tests/hr-permission-matrix.test.js` | Passed: 16 tests (3 top-level tests + 13 nested action cases), 0 failures |
+| `node --test --test-reporter=spec tests/customer-list-api.test.js tests/customer-crud.test.js tests/customer-delete-restore.test.js tests/dashboard-navigation-rbac.test.js tests/current-product-price.test.cjs tests/hr-job-history.test.js tests/job-history.test.js tests/hr-permission-matrix.test.js` | Passed: 78 tests, 0 failures |
 | `npm test` in GitHub Actions `verify` (run `45900899786`) | Passed on Ubuntu, including the HR matrix suite |
 | `npm test` on this Windows host | Blocked before tests started: the `python` command is unavailable |
 | `git diff --check` | Passed |

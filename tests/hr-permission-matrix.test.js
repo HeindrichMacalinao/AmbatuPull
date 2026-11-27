@@ -56,10 +56,28 @@ function rowResult(rows = []) {
 }
 
 function createPermissionTestPool(sqlQueries = []) {
+  let activeRights = [];
   return {
+    setRights(rights) {
+      activeRights = rights;
+    },
     query: async (sql, params = []) => {
       sqlQueries.push(sql);
-      if (sql.includes('FROM user_permission')) return rowResult();
+      if (sql.startsWith('SELECT * FROM app_user WHERE userId = $1')) {
+        return rowResult([{
+          userId: 77,
+          email: 'matrix-user@hope.local',
+          role: 'User',
+          status: 'Active',
+          isBlocked: false,
+        }]);
+      }
+      if (sql.includes('SELECT rightCode FROM user_permission')) {
+        return rowResult(activeRights.map((rightCode) => ({ rightCode })));
+      }
+      if (sql.includes('SELECT 1 FROM user_permission')) {
+        return rowResult(activeRights.includes(params[1]) ? [{ '?column?': 1 }] : []);
+      }
 
       if (sql.startsWith('SELECT 1 FROM EMPLOYEE WHERE empNo')) {
         return rowResult(params[0] === employee.empNo ? [{ empNo: employee.empNo }] : []);
@@ -102,6 +120,7 @@ function installPool(t, pool) {
   t.after(() => {
     dbPool.getPool = originalGetPool;
   });
+  return pool;
 }
 
 async function startServer(t) {
@@ -113,13 +132,9 @@ async function startServer(t) {
   return `http://127.0.0.1:${server.address().port}`;
 }
 
-async function requestApp(baseUrl, route, { method = 'GET', body, rights = [] } = {}) {
-  const headers = {
-    'x-user-id': '77',
-    'x-user-role': 'User',
-    'x-user-email': 'matrix-user@hope.local',
-    'x-user-rights': JSON.stringify(rights),
-  };
+async function requestApp(baseUrl, route, { method = 'GET', body } = {}) {
+  // Use the session-token path so authenticate loads active rights from user_permission.
+  const headers = { Authorization: `Bearer ${Buffer.from('77').toString('base64')}` };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   const response = await fetch(`${baseUrl}${route}`, {
     method,
@@ -131,21 +146,22 @@ async function requestApp(baseUrl, route, { method = 'GET', body, rights = [] } 
 }
 
 test('all 13 HR actions allow their exact granted right and reject the revoked state', async (t) => {
-  installPool(t, createPermissionTestPool());
+  const pool = installPool(t, createPermissionTestPool());
   const baseUrl = await startServer(t);
 
   for (const action of HR_ACTIONS) {
     await t.test(action.right, async () => {
+      pool.setRights(['hr.view']);
       const revoked = await requestApp(baseUrl, action.path, {
         method: action.method,
         body: action.body,
       });
       assert.equal(revoked.status, 403, `${action.issueName || action.right} (${action.right}) must be denied without its grant`);
 
+      pool.setRights([action.right]);
       const granted = await requestApp(baseUrl, action.path, {
         method: action.method,
         body: action.body,
-        rights: [action.right],
       });
       assert.ok(
         granted.status >= 200 && granted.status < 300,
@@ -177,30 +193,33 @@ test('HR UI controls are conditional on the corresponding per-action right', () 
 
 test('RA 10173 salary privacy: history requires jobhistory.view and employee lists omit salary', async (t) => {
   const queries = [];
-  installPool(t, createPermissionTestPool(queries));
+  const pool = installPool(t, createPermissionTestPool(queries));
   const baseUrl = await startServer(t);
 
+  pool.setRights(['emp.view']);
   const noHistoryRight = await requestApp(baseUrl, '/api/hr/employees/E-001/history', {
-    rights: ['emp.view'],
   });
   assert.equal(noHistoryRight.status, 403);
 
+  pool.setRights(['jobhistory.view']);
   const authorizedHistory = await requestApp(baseUrl, '/api/hr/employees/E-001/history', {
-    rights: ['jobhistory.view'],
   });
   assert.equal(authorizedHistory.status, 200);
   assert.equal(authorizedHistory.body.history[0].salary, salarySentinel);
 
-  const employeeList = await requestApp(baseUrl, '/api/hr/employees', {
-    rights: ['emp.view'],
-  });
+  pool.setRights([]);
+  const noHrAccess = await requestApp(baseUrl, '/api/hr/employees');
+  assert.equal(noHrAccess.status, 403);
+
+  pool.setRights(['emp.view']);
+  const employeeListStart = queries.length;
+  const employeeList = await requestApp(baseUrl, '/api/hr/employees');
   assert.equal(employeeList.status, 200);
   assert.equal(employeeList.body.employees[0].salary, undefined);
   assert.equal(JSON.stringify(employeeList.body).includes(String(salarySentinel)), false);
-  const employeeListQuery = queries[queries.length - 1];
-  assert.ok(
-    employeeListQuery && employeeListQuery.includes('FROM EMPLOYEE'),
-    'the employee-list salary assertion must exercise the employee query'
-  );
+  const employeeListQuery = queries
+    .slice(employeeListStart)
+    .find((sql) => sql.includes('FROM EMPLOYEE') && !sql.includes('GROUP BY status'));
+  assert.ok(employeeListQuery, 'employee-list query must be issued');
   assert.doesNotMatch(employeeListQuery, /salary/i, 'employee list SQL must not select salary');
 });
