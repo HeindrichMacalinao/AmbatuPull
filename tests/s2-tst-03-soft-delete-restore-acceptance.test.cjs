@@ -146,6 +146,9 @@ test('TC-DEL-02: Admin UI contract shades inactive rows and offers Restore inste
   const source = fs.readFileSync(path.join(root, 'src/components/CustomerManagement.tsx'), 'utf8');
   assert.match(source, /status === 'Inactive'/);
   assert.match(source, /bg-slate-100/);
-  assert.match(source, /action: 'restore'/);
-  assert.match(source, /action: 'delete'/);
+  assert.match(source, /status === 'Inactive' && isAdmin \?/);
+  assert.match(source, /onClick=\{\(\) => void restoreCustomer\(customer\)\}/);
+  assert.match(source, /aria-label=\{`Restore \$\{customer\.custName\}`\}>Restore<\/button>/);
+  assert.match(source, /setDeleteCustomer\(customer\)/);
+  assert.match(source, /aria-label=\{`Delete \$\{customer\.custName\}`\}>Delete<\/button>/);
 });
