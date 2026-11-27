@@ -3,7 +3,7 @@
 **Task:** S3-TST-05  
 **Issue:** #199  
 **Role:** Test Engineer  
-**Status:** All executable local Node regression cases pass; live smoke and manual verification remain pending.
+**Status:** The complete repository test command passed in GitHub Actions; live smoke and manual verification remain pending.
 
 ## Coverage
 
@@ -43,8 +43,9 @@ npm run test:smoke
 |---|---|
 | Sprint 1–2 and existing regression Node suites | Passed: 206 tests total, 191 passed, 15 skipped, 0 failed. Skips require `BASE_URL` for live HTTP cases. |
 | `npm run test:smoke` without `BASE_URL` | Completed: 3 smoke cases skipped; no live server was available. |
+| `npm test` in GitHub Actions `verify` (run `46009978038`) | Passed, including Python verification, Node regression suites, schema checks, QA fixtures, and migration checks. |
 | `npm test` on this Windows host | Blocked before Python verification or Node tests: the `python` command is unavailable. |
 | Manual end-to-end regression | Not run: no live application/database environment was provisioned. |
 | `git diff --check` | Passed. |
 
-No production behavior was changed. The automated test results show no failures in the executable local Node cases; live smoke and manual checks are not claimed as passed.
+No production behavior was changed. No failures occurred in the executed local Node tests or CI suite; live smoke and manual checks are not claimed as passed.
