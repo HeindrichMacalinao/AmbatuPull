@@ -29,7 +29,7 @@ Each server case calls the corresponding endpoint twice as a standard User: once
 ## Salary privacy checks
 
 - A User without `jobhistory.view` receives HTTP 403 from the job-history endpoint; a User with that right can access the history and salary.
-- A User with no HR rights receives HTTP 403 from the employee list. The employee list test seeds a salary sentinel in the mocked database row and verifies that the response omits both the salary property and sentinel value. It also checks that the employee-list query does not select salary.
+- A User without `emp.view` and without any other HR right receives HTTP 403 from the employee list. The employee list test seeds a salary sentinel in the mocked database row and verifies that the response omits both the salary property and sentinel value. It also checks that the employee-list query does not select salary.
 - The current Express employee-list route is protected by the general HR-access check, not a specific `emp.view` check; a User with another HR right can pass that gate. This suite does not claim that `emp.view` is independently required for `GET /api/hr/employees`.
 
 ## Execution and limitations

@@ -208,8 +208,8 @@ test('RA 10173 salary privacy: history requires jobhistory.view and employee lis
   assert.equal(authorizedHistory.body.history[0].salary, salarySentinel);
 
   pool.setRights([]);
-  const noHrAccess = await requestApp(baseUrl, '/api/hr/employees');
-  assert.equal(noHrAccess.status, 403);
+  const userWithoutEmpView = await requestApp(baseUrl, '/api/hr/employees');
+  assert.equal(userWithoutEmpView.status, 403, 'a User without emp.view or any other HR right is denied');
 
   pool.setRights(['emp.view']);
   const employeeListStart = queries.length;
