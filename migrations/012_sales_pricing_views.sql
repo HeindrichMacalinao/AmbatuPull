@@ -45,9 +45,9 @@ SELECT
     s.salesDate,
     s.custNo,
     COUNT(l.prodCode) AS totalLines,
-    COALESCE(SUM(CASE WHEN l.unitPrice IS NULL THEN 1 ELSE 0 END), 0) AS missingPriceCount,
+    COALESCE(SUM(CASE WHEN l.prodCode IS NOT NULL AND l.unitPrice IS NULL THEN 1 ELSE 0 END), 0) AS missingPriceCount,
     CASE
-        WHEN COALESCE(SUM(CASE WHEN l.unitPrice IS NULL THEN 1 ELSE 0 END), 0) > 0 THEN 1
+        WHEN COALESCE(SUM(CASE WHEN l.prodCode IS NOT NULL AND l.unitPrice IS NULL THEN 1 ELSE 0 END), 0) > 0 THEN 1
         ELSE 0
     END AS hasMissingPrice,
     ROUND(COALESCE(SUM(l.lineTotal), 0), 2) AS transactionTotal,

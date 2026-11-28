@@ -67,6 +67,35 @@ FROM v_sales_summary
 WHERE transNo IN ('T-BEFORE', 'T-ON', 'T-AFTER', 'T-MULTI', 'T-EMPTY', 'T-INACT')
 ORDER BY transNo;
 
+CREATE TEMP TABLE sales_pricing_assertion (
+    passed INTEGER NOT NULL CHECK (passed = 1)
+);
+
+INSERT INTO sales_pricing_assertion
+SELECT CASE
+    WHEN COUNT(*) = 1
+     AND MAX(totalLines) = 0
+     AND MAX(missingPriceCount) = 0
+     AND MAX(hasMissingPrice) = 0
+     AND MAX(transactionTotal) = 0
+    THEN 1
+    ELSE 0
+END
+FROM v_sales_summary
+WHERE transNo = 'T-EMPTY';
+
+INSERT INTO sales_pricing_assertion
+SELECT CASE
+    WHEN COUNT(*) = 1
+     AND MAX(totalLines) = 2
+     AND MAX(missingPriceCount) = 1
+     AND MAX(hasMissingPrice) = 1
+    THEN 1
+    ELSE 0
+END
+FROM v_sales_summary
+WHERE transNo = 'T-MULTI';
+
 -- 6. Verify index usage on PRICEHIST
 EXPLAIN QUERY PLAN
 SELECT * FROM v_saleline WHERE transNo = 'T-AFTER';

@@ -42,8 +42,8 @@ SELECT
     s."salesDate",
     s."custNo",
     COUNT(l."prodCode")::integer AS "totalLines",
-    COALESCE(SUM(CASE WHEN l."unitPrice" IS NULL THEN 1 ELSE 0 END), 0)::integer AS "missingPriceCount",
-    (COALESCE(SUM(CASE WHEN l."unitPrice" IS NULL THEN 1 ELSE 0 END), 0) > 0) AS "hasMissingPrice",
+    COALESCE(SUM(CASE WHEN l."prodCode" IS NOT NULL AND l."unitPrice" IS NULL THEN 1 ELSE 0 END), 0)::integer AS "missingPriceCount",
+    (COALESCE(SUM(CASE WHEN l."prodCode" IS NOT NULL AND l."unitPrice" IS NULL THEN 1 ELSE 0 END), 0) > 0) AS "hasMissingPrice",
     ROUND(COALESCE(SUM(l."lineTotal"), 0)::numeric, 2) AS "transactionTotal",
     s."status",
     s."stamp"
